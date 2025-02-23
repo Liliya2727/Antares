@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Generate game list filter
-game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/ZepassCharge/gamelist.txt")"
+game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/Antares/gamelist.txt")"
 
 cpu_cores=$(($(nproc --all) - 1))
 
@@ -10,8 +10,8 @@ REBOOT_FLAG="/data/local/tmp/reboot_flag"
 
 check_reboot() {
     if [ ! -f "$REBOOT_FLAG" ]; then
-        sleep 40
-        su -lp 2000 -c "/system/bin/cmd notification post -S bigtext -t \"ANTARES!\" \"$NOTIF_TAG\" \"Tweak Successfully Applied!\""
+        sleep 15
+        su -lp 2000 -c "/system/bin/cmd notification post -t 'ANTARES!' -i file:///data/local/tmp/antares.png -I file:///data/local/tmp/antares.png 'antares' 'tweak is applied!'" >/dev/null &
 
         touch "$REBOOT_FLAG"
         sleep 3
@@ -23,7 +23,7 @@ check_reboot() {
 zeshia() {
 	if [ -f $2 ]; then
 		chmod 644 $2 >/dev/null 2>&1
-		zeshia $1 >$2 2>/dev/null
+		echo $1 >$2 2>/dev/null
 		chmod 444 $2 >/dev/null 2>&1
 	fi
 }
@@ -96,15 +96,13 @@ apply_mode() {
 
         if [ "$1" -eq 1 ] && [ "$cur_mode" -ne 1 ]; then
             export cur_mode=1
-            Sleep 5
             renice -n -20 -p $pid
 		    ionice -c 2 -n 0 -p $pid
+		    sleep 5
             /system/bin/am start -a android.intent.action.MAIN -e toasttext "Applying Antares!" -n bellavita.toast/.MainActivity
             sleep 2
             startgamemode 
-        fi
-
-    if [ "$1" -eq 0 ] && [ "$cur_mode" -ne 0 ]; then
+    elif [ "$1" -eq 0 ] && [ "$cur_mode" -ne 0 ]; then
         export cur_mode=0
         sleep 5
         /system/bin/am start -a android.intent.action.MAIN -e toasttext "Disable gamemode" -n bellavita.toast/.MainActivity
@@ -123,14 +121,14 @@ echo "schedhorizon" > "/sys/devices/system/cpu/cpufreq/policy7/scaling_governor"
 monitoring() {
 	while true; do
 		window=$(dumpsys window)
-		gamestart=$(zeshia "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
-		screenoff=$(zeshia "$window" | grep "mScreen" | grep -Eo "false" | tail -n 1)
+		gamestart=$(echo "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
+		screenoff=$(echo "$window" | grep "mScreen" | grep -Eo "false" | tail -n 1)
 
 		if [ -n "$gamestart" ] && [ "$screenoff" != "false" ]; then
 			pid=$(pgrep -f "$gamestart")
-			apply_mode 1 # Enable Bypass Charge
+			apply_mode 1 # Enable Tweak
 		else
-			apply_mode 0 # Disable Bypass Charge
+			apply_mode 0 # Disable Tweak
 		fi
 	sleep 5
 done		
