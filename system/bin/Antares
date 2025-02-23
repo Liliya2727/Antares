@@ -3,13 +3,15 @@
 # Generate game list filter
 game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/ZepassCharge/gamelist.txt")"
 
+cpu_cores=$(($(nproc --all) - 1))
+
 # Path to reboot flag
 REBOOT_FLAG="/data/local/tmp/reboot_flag"
 
 check_reboot() {
     if [ ! -f "$REBOOT_FLAG" ]; then
         sleep 40
-        su -lp 2000 -c "/system/bin/cmd notification post -S bigtext -t \"ZEPASSCHARGE\" \"$NOTIF_TAG\" \"Bypass Charging Applied!\""
+        su -lp 2000 -c "/system/bin/cmd notification post -S bigtext -t \"ANTARES!\" \"$NOTIF_TAG\" \"Tweak Successfully Applied!\""
 
         touch "$REBOOT_FLAG"
         sleep 3
@@ -17,75 +19,112 @@ check_reboot() {
     fi
 }
 
-# Function to get battery percentage
-BatteryPercentage() {
-    dumpsys battery | grep -m 1 "level:" | awk '{print $2}'
-}
-
-# Function to check if the phone is charging
-isCharging() {
-    dumpsys battery | grep -m 1 "status:" | awk '{print $2}'
-}
-
 # Function to write values to sysfs/proc files
-apply() {
+zeshia() {
 	if [ -f $2 ]; then
 		chmod 644 $2 >/dev/null 2>&1
-		echo $1 >$2 2>/dev/null
+		zeshia $1 >$2 2>/dev/null
 		chmod 444 $2 >/dev/null 2>&1
 	fi
 }
 
-# Enable bypass charging
-startBypass() {
-	apply 1 /sys/devices/platform/charger/bypass_charger
+# Enable Tweak
+startgamemode() {
+	cpu=0
+	while [ $cpu -lt $cpu_cores ]; do
+		cpu_dir="/sys/devices/system/cpu/cpu${cpu}"
+		if [ -d "$cpu_dir" ]; then
+			echo "performance" >"${cpu_dir}/cpufreq/scaling_governor"
+		fi
+		cpu=$((cpu + 1))
+	done
+	
+	# DRAM Frequency
+	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
+		echo 0 >/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+	else
+		echo 0 >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+	fi
+	
+zeshia -8 /proc/eem/EEM_DET_B/eem_offset
+zeshia -8 /proc/eem/EEM_DET_BL/eem_offset
+zeshia -8 /proc/eem/EEM_DET_L/eem_offset
+zeshia -4 /proc/eem/EEM_DET_CCI/eem_offset
+zeshia -1 /proc/eemg/EEMG_DET_GPU/eemg_offset
+zeshia -1 /proc/eemg/EEMG_DET_GPU_HI/eemg_offset
 }
 
-# Disable bypass charging
-disableBypass() {
-	apply 0 /sys/devices/platform/charger/bypass_charger
+# Disable Tweak
+stopgamemode() {
+	cpu=0
+	while [ $cpu -lt $cpu_cores ]; do
+		cpu_dir="/sys/devices/system/cpu/cpu${cpu}"
+		if [ -d "$cpu_dir" ]; then
+			echo "schedhorizon" >"${cpu_dir}/cpufreq/scaling_governor"
+		fi
+		cpu=$((cpu + 1))
+	done
+
+	# Disable Power Budget management for new 5.x kernels
+	write_val "stop 0" /proc/pbm/pbm_stop
+
+	# Disable battery current limiter
+	write_val "stop 0" /proc/mtk_batoc_throttling/battery_oc_protect_stop
+
+	# DRAM Frequency
+	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
+		echo -1 >/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+	else
+		echo -1 >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+	fi
+
+zeshia -14 /proc/eem/EEM_DET_B/eem_offset
+zeshia -14 /proc/eem/EEM_DET_BL/eem_offset
+zeshia -14 /proc/eem/EEM_DET_L/eem_offset
+zeshia -9 /proc/eem/EEM_DET_CCI/eem_offset
+zeshia -2 /proc/eemg/EEMG_DET_GPU/eemg_offset
+zeshia -2 /proc/eemg/EEMG_DET_GPU_HI/eemg_offset
 }
 
 # Apply mode based on game detection
 apply_mode() {
-    battery_level=$(BatteryPercentage)
-    charging_status=$(isCharging)
 
     # Ensure cur_mode is initialized
     if [ -z "$cur_mode" ]; then
         export cur_mode=0
     fi
-    
-    # Disable bypass if not charging
-    if [ "$charging_status" -ne 2 ]; then
-        if [ "$cur_mode" -ne 0 ]; then
-            export cur_mode=0
-            disableBypass
-        fi
-        return
-    fi
 
         if [ "$1" -eq 1 ] && [ "$cur_mode" -ne 1 ]; then
             export cur_mode=1
-            /system/bin/am start -a android.intent.action.MAIN -e toasttext "Applying Bypass..." -n bellavita.toast/.MainActivity
+            Sleep 5
+            renice -n -20 -p $pid
+		    ionice -c 2 -n 0 -p $pid
+            /system/bin/am start -a android.intent.action.MAIN -e toasttext "Applying Antares!" -n bellavita.toast/.MainActivity
             sleep 2
-            startBypass 
+            startgamemode 
         fi
 
     if [ "$1" -eq 0 ] && [ "$cur_mode" -ne 0 ]; then
         export cur_mode=0
-        /system/bin/am start -a android.intent.action.MAIN -e toasttext "No apps active, disabling bypass.." -n bellavita.toast/.MainActivity
-        sleep 1
-        disableBypass
+        sleep 5
+        /system/bin/am start -a android.intent.action.MAIN -e toasttext "Disable gamemode" -n bellavita.toast/.MainActivity
+        sleep 2
+        stopgamemode
     fi
+}
+
+schedhorizon() {
+echo "schedhorizon" > "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor"
+echo "schedhorizon" > "/sys/devices/system/cpu/cpufreq/policy4/scaling_governor"
+echo "schedhorizon" > "/sys/devices/system/cpu/cpufreq/policy7/scaling_governor"
 }
 
 # Monitoring function for game detection
 monitoring() {
 	while true; do
 		window=$(dumpsys window)
-		gamestart=$(echo "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
-		screenoff=$(echo "$window" | grep "mScreen" | grep -Eo "false" | tail -n 1)
+		gamestart=$(zeshia "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
+		screenoff=$(zeshia "$window" | grep "mScreen" | grep -Eo "false" | tail -n 1)
 
 		if [ -n "$gamestart" ] && [ "$screenoff" != "false" ]; then
 			pid=$(pgrep -f "$gamestart")
@@ -101,6 +140,7 @@ done
 check_reboot
 
 # Start monitoring games
+schedhorizon
 monitoring
 
 
