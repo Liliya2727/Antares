@@ -1,1 +1,111 @@
-#system/bin/sh
+#!/bin/sh
+
+# Generate game list filter
+game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/ZepassCharge/gamelist.txt")"
+
+# Path to reboot flag
+REBOOT_FLAG="/data/local/tmp/reboot_flag"
+
+check_reboot() {
+    if [ ! -f "$REBOOT_FLAG" ]; then
+        sleep 40
+        su -lp 2000 -c "/system/bin/cmd notification post -S bigtext -t \"ZEPASSCHARGE\" \"$NOTIF_TAG\" \"Bypass Charging Applied!\""
+
+        touch "$REBOOT_FLAG"
+        sleep 3
+        rm -rf "$REBOOT_FLAG"
+    fi
+}
+
+# Function to get battery percentage
+BatteryPercentage() {
+    dumpsys battery | grep -m 1 "level:" | awk '{print $2}'
+}
+
+# Function to check if the phone is charging
+isCharging() {
+    dumpsys battery | grep -m 1 "status:" | awk '{print $2}'
+}
+
+# Function to write values to sysfs/proc files
+apply() {
+	if [ -f $2 ]; then
+		chmod 644 $2 >/dev/null 2>&1
+		echo $1 >$2 2>/dev/null
+		chmod 444 $2 >/dev/null 2>&1
+	fi
+}
+
+# Enable bypass charging
+startBypass() {
+	apply 1 /sys/devices/platform/charger/bypass_charger
+}
+
+# Disable bypass charging
+disableBypass() {
+	apply 0 /sys/devices/platform/charger/bypass_charger
+}
+
+# Apply mode based on game detection
+apply_mode() {
+    battery_level=$(BatteryPercentage)
+    charging_status=$(isCharging)
+
+    # Ensure cur_mode is initialized
+    if [ -z "$cur_mode" ]; then
+        export cur_mode=0
+    fi
+    
+    # Disable bypass if not charging
+    if [ "$charging_status" -ne 2 ]; then
+        if [ "$cur_mode" -ne 0 ]; then
+            export cur_mode=0
+            disableBypass
+        fi
+        return
+    fi
+
+        if [ "$1" -eq 1 ] && [ "$cur_mode" -ne 1 ]; then
+            export cur_mode=1
+            /system/bin/am start -a android.intent.action.MAIN -e toasttext "Applying Bypass..." -n bellavita.toast/.MainActivity
+            sleep 2
+            startBypass 
+        fi
+
+    if [ "$1" -eq 0 ] && [ "$cur_mode" -ne 0 ]; then
+        export cur_mode=0
+        /system/bin/am start -a android.intent.action.MAIN -e toasttext "No apps active, disabling bypass.." -n bellavita.toast/.MainActivity
+        sleep 1
+        disableBypass
+    fi
+}
+
+# Monitoring function for game detection
+monitoring() {
+	while true; do
+		window=$(dumpsys window)
+		gamestart=$(echo "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
+		screenoff=$(echo "$window" | grep "mScreen" | grep -Eo "false" | tail -n 1)
+
+		if [ -n "$gamestart" ] && [ "$screenoff" != "false" ]; then
+			pid=$(pgrep -f "$gamestart")
+			apply_mode 1 # Enable Bypass Charge
+		else
+			apply_mode 0 # Disable Bypass Charge
+		fi
+	sleep 5
+done		
+}
+
+# Run reboot check before starting monitoring
+check_reboot
+
+# Start monitoring games
+monitoring
+
+
+
+
+
+
+#This Shell Script is OpenSource, you can edit it if you want don't forget to Credit @Zexshia
