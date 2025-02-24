@@ -19,6 +19,33 @@ check_reboot() {
     fi
 }
 
+# Path to store default governor before modifying
+DEFAULT_GOV_FILE="/data/local/tmp/default_cpu_gov"
+
+# Function to retrieve current CPU governor
+get_default_governor() {
+    for path in /sys/devices/system/cpu/cpufreq/policy*; do
+        cat "$path/scaling_governor"
+        break  # Only store the governor from the first policy (assuming they are all the same)
+    done
+}
+
+# Function to store the default governor
+store_default_governor() {
+    if [ ! -f "$DEFAULT_GOV_FILE" ]; then
+        get_default_governor > "$DEFAULT_GOV_FILE"
+    fi
+}
+
+# Function to retrieve the stored governor
+load_default_governor() {
+    if [ -f "$DEFAULT_GOV_FILE" ]; then
+        cat "$DEFAULT_GOV_FILE"
+    else
+        echo "schedutil"  # Fallback to a common default governor
+    fi
+}
+
 # Function to write values to sysfs/proc files
 zeshia() {
 	if [ -f $2 ]; then
@@ -28,23 +55,75 @@ zeshia() {
 	fi
 }
 
+change_permission() {
+	if [ -f $2 ]; then
+		chmod $1 $2
+	fi
+}
+
 # Enable Tweak
 startgamemode() {
-	cpu=0
-	while [ $cpu -lt $cpu_cores ]; do
-		cpu_dir="/sys/devices/system/cpu/cpu${cpu}"
-		if [ -d "$cpu_dir" ]; then
-			echo "performance" >"${cpu_dir}/cpufreq/scaling_governor"
-		fi
-		cpu=$((cpu + 1))
+    store_default_governor  # Store default governor before modifying
+
+    # Force CPU to Performance mode
+    for path in /sys/devices/system/cpu/cpufreq/policy*; do
+        zeshia performance "$path/scaling_governor"
+    done &
+    
+	zeshia 1 /sys/devices/system/cpu/cpu1/online
+
+	if [ -d /proc/ppm ]; then
+		cluster=0
+		for path in /sys/devices/system/cpu/cpufreq/policy*; do
+			cpu_maxfreq=$(cat $path/cpuinfo_max_freq)
+			zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
+			zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
+			((cluster++))
+		done
+	fi
+
+	change_permission 644 /sys/devices/virtual/thermal/thermal_message/cpu_limits
+	for path in /sys/devices/system/cpu/*/cpufreq; do
+		cpu_maxfreq=$(cat $path/cpuinfo_max_freq)
+		zeshia "$cpu_maxfreq" $path/scaling_max_freq
+		zeshia "$cpu_maxfreq" $path/scaling_min_freq
+		zeshia "cpu$(awk '{print $1}' $path/affected_cpus) $cpu_maxfreq" /sys/devices/virtual/thermal/thermal_message/cpu_limits
 	done
-	
+	change_permission 000 /sys/devices/virtual/thermal/thermal_message/cpu_limits
+
+	# GPU Frequency
+	if [ -d /proc/gpufreq ]; then
+		gpu_freq="$(cat /proc/gpufreq/gpufreq_opp_dump | grep -o 'freq = [0-9]*' | sed 's/freq = //' | sort -nr | head -n 1)"
+		zeshia "$gpu_freq" /proc/gpufreq/gpufreq_opp_freq
+	elif [ -d /proc/gpufreqv2 ]; then
+		zeshia 0 /proc/gpufreqv2/fix_target_opp_index
+	fi
+
+	# Disable GPU Power limiter
+	if [ -f "/proc/gpufreq/gpufreq_power_limited" ]; then
+		zeshia "ignore_batt_oc 1" /proc/gpufreq/gpufreq_power_limited
+		zeshia "ignore_batt_percent 1" /proc/gpufreq/gpufreq_power_limited
+		zeshia "ignore_low_batt 1" /proc/gpufreq/gpufreq_power_limited
+		zeshia "ignore_thermal_protect 1" /proc/gpufreq/gpufreq_power_limited
+		zeshia "ignore_pbm_limited 1" /proc/gpufreq/gpufreq_power_limited
+	fi
+
 	# DRAM Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
 		echo 0 >/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
 	else
 		echo 0 >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
 	fi
+		# Memory tweak
+	zeshia 80 /proc/sys/vm/vfs_cache_pressure
+
+	# eMMC and UFS governor
+	for path in /sys/class/devfreq/*.ufshc; do
+		zeshia performance $path/governor
+	done &
+	for path in /sys/class/devfreq/mmc*; do
+		zeshia performance $path/governor
+	done &
 	
 zeshia -8 /proc/eem/EEM_DET_B/eem_offset
 zeshia -8 /proc/eem/EEM_DET_BL/eem_offset
@@ -56,20 +135,59 @@ zeshia -1 /proc/eemg/EEMG_DET_GPU_HI/eemg_offset
 
 # Disable Tweak
 stopgamemode() {
-	cpu=0
-	while [ $cpu -lt $cpu_cores ]; do
-		cpu_dir="/sys/devices/system/cpu/cpu${cpu}"
-		if [ -d "$cpu_dir" ]; then
-			echo "schedhorizon" >"${cpu_dir}/cpufreq/scaling_governor"
-		fi
-		cpu=$((cpu + 1))
+    default_cpu_gov=$(load_default_governor)  # Retrieve stored governor
+
+    # Restore original CPU governor
+    for path in /sys/devices/system/cpu/cpufreq/policy*; do
+        zeshia "$default_cpu_gov" "$path/scaling_governor"
+    done &
+    
+    # Cleanup stored governor file
+    rm -f "$DEFAULT_GOV_FILE"
+   
+   zeshia 1 /sys/devices/system/cpu/cpu1/online
+
+	if [ -d /proc/ppm ]; then
+		cluster=0
+		for path in /sys/devices/system/cpu/cpufreq/policy*; do
+			cpu_maxfreq=$(cat $path/cpuinfo_max_freq)
+			cpu_minfreq=$(cat $path/cpuinfo_min_freq)
+			zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
+			zeshia "$cluster $cpu_minfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
+			((cluster++))
+		done
+	fi
+
+	# GPU Frequency
+	if [ -d /proc/gpufreq ]; then
+		zeshia "0" /proc/gpufreq/gpufreq_opp_freq 2>/dev/null
+	elif [ -d /proc/gpufreqv2 ]; then
+		zeshia -1 /proc/gpufreqv2/fix_target_opp_index
+	fi
+
+	# Disable GPU Power limiter
+	if [ -f "/proc/gpufreq/gpufreq_power_limited" ]; then
+		zeshia "ignore_batt_oc 0" /proc/gpufreq/gpufreq_power_limited
+		zeshia "ignore_batt_percent 0" /proc/gpufreq/gpufreq_power_limited
+		zeshia "ignore_low_batt 0" /proc/gpufreq/gpufreq_power_limited
+		zeshia "ignore_thermal_protect 0" /proc/gpufreq/gpufreq_power_limited
+		zeshia "ignore_pbm_limited 0" /proc/gpufreq/gpufreq_power_limited
+	fi
+	
+
+	for path in /sys/devices/system/cpu/*/cpufreq; do
+		cpu_maxfreq=$(cat $path/cpuinfo_max_freq)
+		cpu_minfreq=$(cat $path/cpuinfo_min_freq)
+		zeshia "$cpu_maxfreq" $path/scaling_max_freq
+		zeshia "$cpu_minfreq" $path/scaling_min_freq
 	done
+	change_permission 644 /sys/devices/virtual/thermal/thermal_message/cpu_limits
 
 	# Disable Power Budget management for new 5.x kernels
-	write_val "stop 0" /proc/pbm/pbm_stop
+	zeshia "stop 0" /proc/pbm/pbm_stop
 
 	# Disable battery current limiter
-	write_val "stop 0" /proc/mtk_batoc_throttling/battery_oc_protect_stop
+	zeshia "stop 0" /proc/mtk_batoc_throttling/battery_oc_protect_stop
 
 	# DRAM Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
@@ -78,6 +196,17 @@ stopgamemode() {
 		echo -1 >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
 	fi
 
+	# Memory Tweaks
+	zeshia 120 /proc/sys/vm/vfs_cache_pressure
+
+	# eMMC and UFS governor
+	for path in /sys/class/devfreq/*.ufshc; do
+		zeshia simple_ondemand $path/governor
+	done &
+	for path in /sys/class/devfreq/mmc*; do
+		zeshia simple_ondemand $path/governor
+	done &
+	
 zeshia -14 /proc/eem/EEM_DET_B/eem_offset
 zeshia -14 /proc/eem/EEM_DET_BL/eem_offset
 zeshia -14 /proc/eem/EEM_DET_L/eem_offset
@@ -86,7 +215,7 @@ zeshia -2 /proc/eemg/EEMG_DET_GPU/eemg_offset
 zeshia -2 /proc/eemg/EEMG_DET_GPU_HI/eemg_offset
 }
 
-# Apply mode based on game detection
+# apply mode based on game detection
 apply_mode() {
 
     # Ensure cur_mode is initialized
@@ -104,8 +233,8 @@ apply_mode() {
             startgamemode 
     elif [ "$1" -eq 0 ] && [ "$cur_mode" -ne 0 ]; then
         export cur_mode=0
-        sleep 5
-        /system/bin/am start -a android.intent.action.MAIN -e toasttext "Disable gamemode" -n bellavita.toast/.MainActivity
+        sleep 10
+        /system/bin/am start -a android.intent.action.MAIN -e toasttext "Disable Gamemode..." -n bellavita.toast/.MainActivity
         sleep 2
         stopgamemode
     fi
@@ -115,6 +244,7 @@ zeshtweak() {
 echo "schedhorizon" > "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor"
 echo "schedhorizon" > "/sys/devices/system/cpu/cpufreq/policy4/scaling_governor"
 echo "schedhorizon" > "/sys/devices/system/cpu/cpufreq/policy7/scaling_governor"
+
 
 # Ged Optimisation
 echo "1" > /sys/module/ged/parameters/gx_game_mode
