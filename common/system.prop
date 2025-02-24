@@ -35,14 +35,6 @@ debug.hwui.level=1
 # Dalvik Thermal
 dalvik.vm.dexopt.thermal-cutoff=0
 
-# Renderer
-debug.hwui.renderer=vulkan
-debug.renderengine.backend=vulkan
-vendor.debug.renderengine.backend=vulkan
-ro.hwui.use_vulkan=true
-renderthread.vulkan.reduceopstasksplitting=true
-ro.config.hw_quickpoweron=true
-
 # Smooth Touch
 ro.vendor.qti.sys.fw.touch_smoothing_level=5
 ro.vendor.qti.sys.fw.touch_smoothing_ms=5
