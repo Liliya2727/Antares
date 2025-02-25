@@ -197,7 +197,7 @@ stopgamemode() {
 	fi
 
 	# Memory Tweaks
-	zeshia 120 /proc/sys/vm/vfs_cache_pressure
+	zeshia 100 /proc/sys/vm/vfs_cache_pressure
 
 	# UFS governor
 	for path in /sys/class/devfreq/*.ufshc; do
@@ -378,7 +378,7 @@ echo "659000 1108000 1370000 1632000 1820000 2284000" > /sys/devices/system/cpu/
 # Mediatek 5.10 kernel tweaks
 echo "simple_ondemand" > "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor"
 
-### Based on Encore tweaks
+# Another Kernel Tweaks
 echo "0 0 0 0" > "/proc/sys/kernel/printk"
 echo "off" > "/proc/sys/kernel/printk_devkmsg"
 echo "0" > "/proc/sys/kernel/sched_schedstats"
