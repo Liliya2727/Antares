@@ -11,7 +11,7 @@ REBOOT_FLAG="/data/local/tmp/reboot_flag"
 check_reboot() {
     if [ ! -f "$REBOOT_FLAG" ]; then
         sleep 15
-        su -lp 2000 -c "/system/bin/cmd notification post -t 'ANTARES!' -i file:///data/local/tmp/antares.png -I file:///data/local/tmp/antares.png 'antares' 'tweak is applied!'" >/dev/null &
+        su -lp 2000 -c "/system/bin/cmd notification post -t '𝐀𝐍𝐓𝐀𝐑𝐄𝐒!' -i file:///data/local/tmp/antares.png -I file:///data/local/tmp/antares.png 'antares' '𝙏𝙬𝙚𝙖𝙠 𝙞𝙨 𝘼𝙥𝙥𝙡𝙞𝙚𝙙!'" >/dev/null &
 
         touch "$REBOOT_FLAG"
         sleep 3
@@ -117,7 +117,7 @@ startgamemode() {
 		# Memory tweak
 	zeshia 80 /proc/sys/vm/vfs_cache_pressure
 
-	# eMMC and UFS governor
+	# UFS governor
 	for path in /sys/class/devfreq/*.ufshc; do
 		zeshia performance $path/governor
 	done &
@@ -199,7 +199,7 @@ stopgamemode() {
 	# Memory Tweaks
 	zeshia 120 /proc/sys/vm/vfs_cache_pressure
 
-	# eMMC and UFS governor
+	# UFS governor
 	for path in /sys/class/devfreq/*.ufshc; do
 		zeshia simple_ondemand $path/governor
 	done &
@@ -237,6 +237,7 @@ apply_mode() {
         /system/bin/am start -a android.intent.action.MAIN -e toasttext "Disable Gamemode..." -n bellavita.toast/.MainActivity
         sleep 2
         stopgamemode
+        zeshtweak
     fi
 }
 
@@ -245,6 +246,50 @@ echo "schedhorizon" > "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor"
 echo "schedhorizon" > "/sys/devices/system/cpu/cpufreq/policy4/scaling_governor"
 echo "schedhorizon" > "/sys/devices/system/cpu/cpufreq/policy7/scaling_governor"
 
+# Core Ctl Optimisation
+echo "1" > /sys/devices/system/cpu/cpu0/core_ctl/enable
+echo "6" > /sys/devices/system/cpu/cpu0/core_ctl/min_cpus
+echo "6" > /sys/devices/system/cpu/cpu0/core_ctl/max_cpus
+echo "10" > /sys/devices/system/cpu/cpu0/core_ctl/offline_throttle_ms
+echo "1" > /sys/devices/system/cpu/cpu4/core_ctl/enable
+echo "4" > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
+echo "4" > /sys/devices/system/cpu/cpu4/core_ctl/max_cpus
+echo "10" > /sys/devices/system/cpu/cpu4/core_ctl/offline_throttle_ms
+echo "10" > /sys/devices/system/cpu/cpu4/core_ctl/btask_up_thresh
+echo "2" > /sys/devices/system/cpu/cpu4/core_ctl/btask_down_thresh
+echo "1" > /sys/devices/system/cpu/cpu7/core_ctl/enable
+echo "2" > /sys/devices/system/cpu/cpu7/core_ctl/min_cpus
+echo "2" > /sys/devices/system/cpu/cpu7/core_ctl/max_cpus
+echo "10" > /sys/devices/system/cpu/cpu7/core_ctl/offline_throttle_ms
+echo "10" > /sys/devices/system/cpu/cpu7/core_ctl/btask_up_thresh
+echo "2" > /sys/devices/system/cpu/cpu7/core_ctl/btask_down_thresh
+echo "90" > /sys/devices/system/cpu/cpu7/core_ctl/cpu_tj_btask_thresh
+
+# FPSGO Configuration 
+echo "2" > /sys/power/pnpmgr/fpsgo_boost/boost_enable
+echo "5" > /sys/module/fbt_cpu/parameters/bhr_opp
+echo "5" > /sys/module/fbt_cpu/parameters/bhr_opp_l
+echo "5" > /sys/module/fbt_cpu/parameters/boost_affinity
+echo "240" > /sys/module/fbt_cpu/parameters/fps_level_range
+echo "2" > /sys/module/xgf/parameters/xgf_uboost
+echo "180" > /sys/module/fbt_cpu/parameters/uboost_enhance_f
+echo "5" > /sys/module/fbt_cpu/parameters/gcc_fps_margin
+echo "100" > /sys/module/fbt_cpu/parameters/rescue_enhance_f
+echo "2" > /sys/module/fbt_cpu/parameters/qr_mod_frame
+echo "240" > /sys/power/pnpmgr/fpsgo_boost/fstb/fstb_fix_fps
+echo "90" > /sys/kernel/fpsgo/fstb/fstb_tune_quantile
+echo "0" > /sys/power/pnpmgr/fpsgo_boost/fstb/fstb_tune_error_threshold
+echo "2" > /sys/power/pnpmgr/fpsgo_boost/fstb/margin_mode
+echo "5" > /sys/power/pnpmgr/fpsgo_boost/fbt/bhr_opp
+echo "2" > /sys/power/pnpmgr/fpsgo_boost/fbt/adjust_loading
+echo "2" > /sys/power/pnpmgr/fpsgo_boost/fbt/dyn_tgt_time_en
+echo "5" > /sys/power/pnpmgr/fpsgo_boost/fbt/floor_opp
+echo "50" > /sys/power/pnpmgr/fpsgo_boost/fbt/rescue_enhance_f
+echo "30" > /sys/module/fbt_cpu/parameters/rescue_opp_c
+echo "20" > /sys/module/fbt_cpu/parameters/rescue_opp_f
+echo "90" > /sys/module/fbt_cpu/parameters/rescue_percent
+echo "2" > /sys/power/pnpmgr/fpsgo_boost/fbt/ultra_rescue
+echo "2" > /sys/kernel/fpsgo/fbt/boost_ta
 
 # Ged Optimisation
 echo "1" > /sys/module/ged/parameters/gx_game_mode
@@ -288,8 +333,8 @@ echo "0" > /sys/block/mmcblk0/queue/iostats
 echo "0" > /sys/block/mmcblk0/queue/nomerges
 echo "0" > /sys/block/mmcblk0/queue/rotational
 echo "2" > /sys/block/mmcblk0/queue/rq_affinity
-echo "256" > /sys/block/mmcblk0/queue/nr_requests
-echo "2048" > /sys/block/mmcblk0/queue/read_ahead_kb
+echo "128" > /sys/block/mmcblk0/queue/nr_requests
+echo "512" > /sys/block/mmcblk0/queue/read_ahead_kb
 
 # Sda
 echo "0" > /sys/block/sda/queue/add_random
@@ -297,8 +342,8 @@ echo "0" > /sys/block/sda/queue/iostats
 echo "0" > /sys/block/sda/queue/nomerges
 echo "0" > /sys/block/sda/queue/rotational
 echo "2" > /sys/block/sda/queue/rq_affinity
-echo "256" > /sys/block/sda/queue/nr_requests
-echo "2048" > /sys/block/sda/queue/read_ahead_kb
+echo "128" > /sys/block/sda/queue/nr_requests
+echo "1024" > /sys/block/sda/queue/read_ahead_kb
 
 # Sdb
 echo "0" > /sys/block/sdb/queue/add_random
@@ -306,8 +351,8 @@ echo "0" > /sys/block/sdb/queue/iostats
 echo "0" > /sys/block/sdb/queue/nomerges
 echo "0" > /sys/block/sdb/queue/rotational
 echo "2" > /sys/block/sdb/queue/rq_affinity
-echo "256" > /sys/block/sdb/queue/nr_requests
-echo "2048" > /sys/block/sdb/queue/read_ahead_kb
+echo "128" > /sys/block/sdb/queue/nr_requests
+echo "1024" > /sys/block/sdb/queue/read_ahead_kb
 
 # Sdc
 echo "0" > /sys/block/sdc/queue/add_random
@@ -316,7 +361,7 @@ echo "0" > /sys/block/sdc/queue/nomerges
 echo "0" > /sys/block/sdc/queue/rotational
 echo "2" > /sys/block/sdc/queue/rq_affinity
 echo "256" > /sys/block/sdc/queue/nr_requests
-echo "2048" > /sys/block/sdc/queue/read_ahead_kb
+echo "1024" > /sys/block/sdc/queue/read_ahead_kb
 
 # SET FREQ VOLTAGE
 echo "6000000" > /sys/class/power_supply/battery/voltage_now
@@ -330,6 +375,14 @@ echo "437000 902000 1162000 1451000 1740000 1985000" > /sys/devices/system/cpu/c
 echo "30 50 150 300 500 700" > /sys/devices/system/cpu/cpufreq/policy7/schedhorizon/up_delay
 echo "659000 1108000 1370000 1632000 1820000 2284000" > /sys/devices/system/cpu/cpufreq/policy7/schedhorizon/efficient_freq
 
+# Mediatek 5.10 kernel tweaks
+echo "simple_ondemand" > "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor"
+
+### Based on Encore tweaks
+echo "0 0 0 0" > "/proc/sys/kernel/printk"
+echo "off" > "/proc/sys/kernel/printk_devkmsg"
+echo "0" > "/proc/sys/kernel/sched_schedstats"
+echo "20" > "/proc/sys/kernel/perf_cpu_time_max_percent"
 }
 
 # Monitoring function for game detection
@@ -352,8 +405,10 @@ done
 # Run reboot check before starting monitoring
 check_reboot
 
-# Start monitoring games
+# Start Applying Tweak
 zeshtweak
+
+# Start monitoring games
 monitoring
 
 
