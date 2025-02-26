@@ -37,16 +37,6 @@ ro.vendor.qti.sys.fw.touch_smoothing_level=5
 ro.vendor.qti.sys.fw.touch_smoothing_ms=5
 ro.vendor.qti.sys.fw.use-smooth-touch=true
 
-# Fps Enhancements
-debug.sf.showupdates=0 
-debug.sf.showcpu=0
-debug.sf.showbackground=0
-debug.sf.showfps=0
-debug.gr.swapinterval=1
-debug.egl.swapinterval=0
-ro.vendor.dfps.enable=false
-ro.vendor.smart_dfps.enable=false
-
 # Cpu Core Control
 ro.vendor.qti.core.ctl_max_cpu=8
 ro.vendor.qti.core.ctl_min_cpu=8
