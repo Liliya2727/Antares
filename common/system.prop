@@ -1,8 +1,11 @@
 # This file will be read by resetprop
+# Example=Change dpi
+# ro.sf.lcd_density=320
+# Gpu Optimization
 # Enable SkiaGL threaded mode
 debug.hwui.render_thread=true
 
-# Hypothetical advanced settings (only if such properties are supported)
+# Hypothetical advanced settings 
 debug.skia.threaded_mode=true
 debug.hwui.render_thread_count=1
 debug.skia.num_render_threads=1
@@ -64,16 +67,6 @@ ro.vendor.gpu.optimize.max_job_count=4
 ro.vendor.gpu.optimize.max_target_duration=10
 ro.vendor.gpu.optimize.min_target_size=200
 
-# Surface Flinger Optimisation
-debug.sf.use_phase_offsets_as_durations=1
-debug.sf.late.sf.duration=20000000
-debug.sf.late.app.duration=15000000
-debug.sf.early.sf.duration=20000000
-debug.sf.early.app.duration=15000000
-debug.sf.earlyGl.sf.duration=20000000
-debug.sf.earlyGl.app.duration=15000000
-debug.sf.hwc.min.duration=15000000
-
 # Random Configuration
 video.accelerate.hw=1
 hw3d.force=1
@@ -119,18 +112,18 @@ dalvik.vm.systemuicompilerfilter=speed
 dalvik.vm.dexopt-flags=m=y
 
 # Dexopt
-pm.dexopt.first-boot=speed
-pm.dexopt.boot=speed
-pm.dexopt.boot-after-ota=speed
+pm.dexopt.first-boot=quicken
+pm.dexopt.boot=quicken
+pm.dexopt.boot-after-ota=quicken
 pm.dexopt.post-boot=extract
 pm.dexopt.install=speed
-pm.dexopt.install-fast=skip
+pm.dexopt.install-fast=quicken
 pm.dexopt.install-bulk=speed-profile
-pm.dexopt.install-bulk-secondary=verify
-pm.dexopt.install-bulk-downgraded=verify
+pm.dexopt.install-bulk-secondary=quicken
+pm.dexopt.install-bulk-downgraded=extract
 pm.dexopt.install-bulk-secondary-downgraded=extract
-pm.dexopt.bg-dexopt=speed
+pm.dexopt.bg-dexopt=quicken
 pm.dexopt.ab-ota=speed
-pm.dexopt.inactive=speed
+pm.dexopt.inactive=quicken
 pm.dexopt.cmdline=verify
 pm.dexopt.shared=speed
