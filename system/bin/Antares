@@ -1,13 +1,15 @@
-    #!/bin/sh
+#!/bin/sh
 
 # Generate game list filter
 game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/Antares/gamelist.txt")"
 
+# CHECK CPU CORES
 cpu_cores=$(($(nproc --all) - 1))
 
 # Path to reboot flag
 REBOOT_FLAG="/data/local/tmp/reboot_flag"
 
+# Prevent Repeating Messages
 check_reboot() {
     if [ ! -f "$REBOOT_FLAG" ]; then
         sleep 15
@@ -92,14 +94,14 @@ startgamemode() {
 	change_permission 000 /sys/devices/virtual/thermal/thermal_message/cpu_limits
 
 	# Memory tweak
-	apply 80 /proc/sys/vm/vfs_cache_pressure
+	zeshia 80 /proc/sys/vm/vfs_cache_pressure
 
 	# eMMC and UFS governor
 	for path in /sys/class/devfreq/*.ufshc; do
-		apply performance $path/governor
+		zeshia performance $path/governor
 	done &
 	for path in /sys/class/devfreq/mmc*; do
-		apply performance $path/governor
+		zeshia performance $path/governor
 	done &
 	
 	#Volt Optimizer  
@@ -113,43 +115,41 @@ startgamemode() {
 	# PPM policies
 	if [ -d /proc/ppm ]; then
 		for idx in $(cat /proc/ppm/policy_status | grep -E 'PWR_THRO|THERMAL' | awk -F'[][]' '{print $2}'); do
-			apply "$idx 0" /proc/ppm/policy_status
+			zeshia "$idx 0" /proc/ppm/policy_status
 		done
 	fi
 
 	# MTK Power and CCI mode
-	apply "1" /proc/cpufreq/cpufreq_cci_mode
-	apply "3" /proc/cpufreq/cpufreq_power_mode
+	zeshia "1" /proc/cpufreq/cpufreq_cci_mode
+	zeshia "3" /proc/cpufreq/cpufreq_power_mode
 
 	# EAS/HMP Switch
-	apply "0" /sys/devices/system/cpu/eas/enable
+	zeshia "0" /sys/devices/system/cpu/eas/enable
 
 	# GPU Frequency
 	if [ -d /proc/gpufreq ]; then
 		gpu_freq="$(cat /proc/gpufreq/gpufreq_opp_dump | grep -o 'freq = [0-9]*' | sed 's/freq = //' | sort -nr | head -n 1)"
-		apply "$gpu_freq" /proc/gpufreq/gpufreq_opp_freq
+		zeshia "$gpu_freq" /proc/gpufreq/gpufreq_opp_freq
 	elif [ -d /proc/gpufreqv2 ]; then
-		apply 0 /proc/gpufreqv2/fix_target_opp_index
+		zeshia 0 /proc/gpufreqv2/fix_target_opp_index
 	fi
 
 	# Disable GPU Power limiter
 	[ -f "/proc/gpufreq/gpufreq_power_limited" ] && {
 		for setting in ignore_batt_oc ignore_batt_percent ignore_low_batt ignore_thermal_protect ignore_pbm_limited; do
-			apply "$setting 1" /proc/gpufreq/gpufreq_power_limited
+			zeshia "$setting 1" /proc/gpufreq/gpufreq_power_limited
 		done
 	}
 
 	# Disable battery current limiter
-	apply "stop 1" /proc/mtk_batoc_throttling/battery_oc_protect_stop
+	zeshia "stop 1" /proc/mtk_batoc_throttling/battery_oc_protect_stop
 
 	# DRAM Frequency
-	apply "0" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
-	apply "0" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
-	apply "performance" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
-	apply "performance" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
+	zeshia "0" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+	zeshia "0" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+	zeshia "performance" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
+	zeshia "performance" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
 
-	# Eara Thermal
-	apply "0" /sys/kernel/eara_thermal/enable
 }
 
 # Disable Tweak
@@ -186,14 +186,14 @@ stopgamemode() {
 	change_permission 644 /sys/devices/virtual/thermal/thermal_message/cpu_limits
 
 	# Memory Tweaks
-	apply 120 /proc/sys/vm/vfs_cache_pressure
+	zeshia 120 /proc/sys/vm/vfs_cache_pressure
 
 	# eMMC and UFS governor
 	for path in /sys/class/devfreq/*.ufshc; do
-		apply simple_ondemand $path/governor
+		zeshia simple_ondemand $path/governor
 	done &
 	for path in /sys/class/devfreq/mmc*; do
-		apply simple_ondemand $path/governor
+		zeshia simple_ondemand $path/governor
 	done &
 	
     zeshia -14 /proc/eem/EEM_DET_B/eem_offset
@@ -206,45 +206,144 @@ stopgamemode() {
     # PPM policies
 	if [ -d /proc/ppm ]; then
 		for idx in $(cat /proc/ppm/policy_status | grep -E 'PWR_THRO|THERMAL' | awk -F'[][]' '{print $2}'); do
-			apply "$idx 1" /proc/ppm/policy_status
+			zeshia "$idx 1" /proc/ppm/policy_status
 		done
 	fi
 
 	# MTK Power and CCI mode
-	apply "0" /proc/cpufreq/cpufreq_cci_mode
-	apply "0" /proc/cpufreq/cpufreq_power_mode
+	zeshia "0" /proc/cpufreq/cpufreq_cci_mode
+	zeshia "0" /proc/cpufreq/cpufreq_power_mode
 
 	# EAS/HMP Switch
-	apply "1" /sys/devices/system/cpu/eas/enable
+	zeshia "1" /sys/devices/system/cpu/eas/enable
 
 	# GPU Frequency
 	if [ -d /proc/gpufreq ]; then
-		apply "0" /proc/gpufreq/gpufreq_opp_freq 2>/dev/null
+		zeshia "0" /proc/gpufreq/gpufreq_opp_freq 2>/dev/null
 	elif [ -d /proc/gpufreqv2 ]; then
-		apply -1 /proc/gpufreqv2/fix_target_opp_index
+		zeshia -1 /proc/gpufreqv2/fix_target_opp_index
 	fi
 
 	# GPU Power limiter
 	[ -f "/proc/gpufreq/gpufreq_power_limited" ] && {
 		for setting in ignore_batt_oc ignore_batt_percent ignore_low_batt ignore_thermal_protect ignore_pbm_limited; do
-			apply "$setting 0" /proc/gpufreq/gpufreq_power_limited
+			zeshia "$setting 0" /proc/gpufreq/gpufreq_power_limited
 		done
 	}
 
 	# Enable Power Budget management for new 5.x mtk kernels
-	apply "stop 0" /proc/pbm/pbm_stop
+	zeshia "stop 0" /proc/pbm/pbm_stop
 
 	# Enable battery current limiter
-	apply "stop 0" /proc/mtk_batoc_throttling/battery_oc_protect_stop
+	zeshia "stop 0" /proc/mtk_batoc_throttling/battery_oc_protect_stop
 
 	# DRAM Frequency
-	apply "-1" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
-	apply "-1" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
-	apply "userspace" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
-	apply "userspace" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
+	zeshia "-1" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+	zeshia "-1" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+	zeshia "userspace" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
+	zeshia "userspace" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
 
-	# Eara Thermal
-	apply "1" /sys/kernel/eara_thermal/enable
+}
+
+zeshtweak() {
+    zeshia "schedhorizon" "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor"
+    zeshia "schedhorizon" "/sys/devices/system/cpu/cpufreq/policy4/scaling_governor"
+    zeshia "schedhorizon" "/sys/devices/system/cpu/cpufreq/policy7/scaling_governor"
+
+# Core Ctl Optimisation
+    zeshia "1" "/sys/devices/system/cpu/cpu0/core_ctl/enable"
+    zeshia "6" "/sys/devices/system/cpu/cpu0/core_ctl/min_cpus"
+    zeshia "6" "/sys/devices/system/cpu/cpu0/core_ctl/max_cpus"
+    zeshia "10" "/sys/devices/system/cpu/cpu0/core_ctl/offline_throttle_ms"
+    zeshia "1" "/sys/devices/system/cpu/cpu4/core_ctl/enable"
+    zeshia "4" "/sys/devices/system/cpu/cpu4/core_ctl/min_cpus"
+    zeshia "4" "/sys/devices/system/cpu/cpu4/core_ctl/max_cpus"
+    zeshia "10" "/sys/devices/system/cpu/cpu4/core_ctl/offline_throttle_ms"
+    zeshia "10" "/sys/devices/system/cpu/cpu4/core_ctl/btask_up_thresh"
+    zeshia "2" "/sys/devices/system/cpu/cpu4/core_ctl/btask_down_thresh"
+    zeshia "1" "/sys/devices/system/cpu/cpu7/core_ctl/enable"
+    zeshia "2" "/sys/devices/system/cpu/cpu7/core_ctl/min_cpus"
+    zeshia "2" "/sys/devices/system/cpu/cpu7/core_ctl/max_cpus"
+    zeshia "10" "/sys/devices/system/cpu/cpu7/core_ctl/offline_throttle_ms"
+    zeshia "10" "/sys/devices/system/cpu/cpu7/core_ctl/btask_up_thresh"
+    zeshia "2" "/sys/devices/system/cpu/cpu7/core_ctl/btask_down_thresh"
+    zeshia "90" "/sys/devices/system/cpu/cpu7/core_ctl/cpu_tj_btask_thresh"
+
+# Ged Optimisation
+    zeshia "1" "/sys/module/ged/parameters/gx_game_mode"
+    zeshia "1" "/sys/module/ged/parameters/ged_smart_boost"
+    zeshia "1" "/sys/module/ged/parameters/cpu_boost_policy"
+    zeshia "1" "/sys/module/ged/parameters/boost_extra"
+    zeshia "886000" "/sys/module/ged/parameters/gpu_cust_upbound_freq"    
+    zeshia "1" "/sys/module/ged/parameters/enable_gpu_boost"
+    zeshia "1" "/sys/module/ged/parameters/ged_boost_enable"
+    zeshia "1" "/sys/module/ged/parameters/gx_boost_on"
+    zeshia "1" "/sys/module/ged/parameters/boost_gpu_enable"
+    zeshia "1" "/sys/module/ged/parameters/ged_monitor_3D_fence_systrace"
+    zeshia "90" "/sys/module/ged/parameters/g_fb_dvfs_threshold"
+    zeshia "1" "/sys/module/ged/parameters/g_gpu_timer_based_emu"
+    zeshia "1" "/sys/module/ged/parameters/gpu_cust_boost_freq"
+    zeshia "1" "/sys/kernel/ged/hal/gpu_boost_level"
+
+# Volt Optimizer
+    zeshia "-14" "/proc/eem/EEM_DET_B/eem_offset"
+    zeshia "-14" "/proc/eem/EEM_DET_BL/eem_offset"
+    zeshia "-14" "/proc/eem/EEM_DET_L/eem_offset"
+    zeshia "-9" "/proc/eem/EEM_DET_CCI/eem_offset"
+    zeshia "-2" "/proc/eemg/EEMG_DET_GPU/eemg_offset"
+    zeshia "-2" "/proc/eemg/EEMG_DET_GPU_HI/eemg_offset"
+
+# Scheduler Optimisation
+    zeshia "500000" "/proc/sys/kernel/sched_migration_cost_ns"
+    zeshia "30" "/proc/sys/kernel/perf_cpu_time_max_percent"
+    zeshia "3" "/proc/sys/vm/drop_caches"
+    zeshia "256" "/proc/sys/kernel/sched_nr_migrate"
+    zeshia "10000000" "/proc/sys/kernel/sched_latency_ns"
+    zeshia "1024" "/proc/sys/kernel/sched_util_clamp_max"
+    zeshia "1024" "/proc/sys/kernel/sched_util_clamp_min"
+    zeshia "1" "/proc/sys/kernel/sched_child_runs_first"
+    zeshia "1" "/proc/sys/kernel/sched_tunable_scaling"
+    zeshia "0" "/proc/sys/kernel/sched_energy_aware"
+
+# mmcblk0
+        for path in /sys/block/mmcblk0/queue/{add_random,iostats,nomerges,rotational,rq_affinity}; do
+            zeshia "0" "$path"
+        done
+        zeshia "128" "/sys/block/mmcblk0/queue/nr_requests"
+        zeshia "512" "/sys/block/mmcblk0/queue/read_ahead_kb"
+
+        # Apply same settings for sda, sdb, sdc
+        for block in sda sdb sdc; do
+            for param in add_random iostats nomerges rotational rq_affinity; do
+                zeshia "0" "/sys/block/$block/queue/$param"
+            done
+            zeshia "128" "/sys/block/$block/queue/nr_requests"
+            zeshia "512" "/sys/block/$block/queue/read_ahead_kb"
+        done
+
+# Set frequency voltage
+    zeshia "6000000" "/sys/class/power_supply/battery/voltage_now"
+    zeshia "1" "/sys/devices/system/cpu/perf/enable"
+
+# Schedhorizon Tunes
+    zeshia "50 100 200 400 600" "/sys/devices/system/cpu/cpufreq/policy0/schedhorizon/up_delay"
+    zeshia "500000 850000 1250000 1450000 1800000" "/sys/devices/system/cpu/cpufreq/policy0/schedhorizon/efficient_freq"
+    zeshia "50 100 200 400 600 800" "/sys/devices/system/cpu/cpufreq/policy4/schedhorizon/up_delay"
+    zeshia "437000 902000 1162000 1451000 1740000 1985000" "/sys/devices/system/cpu/cpufreq/policy4/schedhorizon/efficient_freq"
+    zeshia "30 50 150 300 500 700" "/sys/devices/system/cpu/cpufreq/policy7/schedhorizon/up_delay"
+    zeshia "480000 1200000 1600000 1800000 2200000 2400000" "/sys/devices/system/cpu/cpufreq/policy7/schedhorizon/efficient_freq"
+
+
+# Another Kernel Tweaks
+    zeshia "0 0 0 0" "/proc/sys/kernel/printk"
+    zeshia "off" "/proc/sys/kernel/printk_devkmsg"
+    zeshia "0" "/proc/sys/kernel/sched_schedstats"
+    zeshia "20" "/proc/sys/kernel/perf_cpu_time_max_percent"
+        
+    zeshia "1" /sys/pnpmgr/fpsgo_boost/boost_enable
+    zeshia "1" /sys/pnpmgr/fpsgo_boost/boost_mode
+    zeshia "1" /sys/kernel/fpsgo/common/fpsgo_enable
+    
 }
 
 # apply mode based on game detection
@@ -257,6 +356,8 @@ apply_mode() {
 
         if [ "$1" -eq 1 ] && [ "$cur_mode" -ne 1 ]; then
             export cur_mode=1
+            renice -n -20 -p $pid
+		    ionice -c 2 -n 0 -p $pid
 		    sleep 5
             /system/bin/am start -a android.intent.action.MAIN -e toasttext "Applying Antares!" -n bellavita.toast/.MainActivity
             sleep 2
@@ -268,121 +369,6 @@ apply_mode() {
         sleep 2
         stopgamemode
     fi
-}
-
-zeshtweak() {
-echo "schedhorizon" > "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor"
-echo "schedhorizon" > "/sys/devices/system/cpu/cpufreq/policy4/scaling_governor"
-echo "schedhorizon" > "/sys/devices/system/cpu/cpufreq/policy7/scaling_governor"
-
-# Core Ctl Optimisation
-echo "1" > /sys/devices/system/cpu/cpu0/core_ctl/enable
-echo "6" > /sys/devices/system/cpu/cpu0/core_ctl/min_cpus
-echo "6" > /sys/devices/system/cpu/cpu0/core_ctl/max_cpus
-echo "10" > /sys/devices/system/cpu/cpu0/core_ctl/offline_throttle_ms
-echo "1" > /sys/devices/system/cpu/cpu4/core_ctl/enable
-echo "4" > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
-echo "4" > /sys/devices/system/cpu/cpu4/core_ctl/max_cpus
-echo "10" > /sys/devices/system/cpu/cpu4/core_ctl/offline_throttle_ms
-echo "10" > /sys/devices/system/cpu/cpu4/core_ctl/btask_up_thresh
-echo "2" > /sys/devices/system/cpu/cpu4/core_ctl/btask_down_thresh
-echo "1" > /sys/devices/system/cpu/cpu7/core_ctl/enable
-echo "2" > /sys/devices/system/cpu/cpu7/core_ctl/min_cpus
-echo "2" > /sys/devices/system/cpu/cpu7/core_ctl/max_cpus
-echo "10" > /sys/devices/system/cpu/cpu7/core_ctl/offline_throttle_ms
-echo "10" > /sys/devices/system/cpu/cpu7/core_ctl/btask_up_thresh
-echo "2" > /sys/devices/system/cpu/cpu7/core_ctl/btask_down_thresh
-echo "90" > /sys/devices/system/cpu/cpu7/core_ctl/cpu_tj_btask_thresh
-
-# Ged Optimisation
-echo "1" > /sys/module/ged/parameters/gx_game_mode
-echo "1" > /sys/module/ged/parameters/ged_smart_boost
-echo "1" > /sys/module/ged/parameters/cpu_boost_policy
-echo "1" > /sys/module/ged/parameters/boost_extra
-echo "886000" > /sys/module/ged/parameters/gpu_cust_upbound_freq
-echo "1" > /sys/module/ged/parameters/enable_gpu_boost
-echo "1" > /sys/module/ged/parameters/ged_boost_enable
-echo "1" > /sys/module/ged/parameters/gx_boost_on
-echo "1" > /sys/module/ged/parameters/boost_gpu_enable
-echo "1" > /sys/module/ged/parameters/ged_monitor_3D_fence_systrace
-echo "90" > /sys/module/ged/parameters/g_fb_dvfs_threshold
-echo "1" > /sys/module/ged/parameters/g_gpu_timer_based_emu
-echo "1" > /sys/module/ged/parameters/gpu_cust_boost_freq
-echo "1" > /sys/kernel/ged/hal/gpu_boost_level
-
-# Volt Optimizer
-echo "-14" > /proc/eem/EEM_DET_B/eem_offset
-echo "-14" > /proc/eem/EEM_DET_BL/eem_offset
-echo "-14" > /proc/eem/EEM_DET_L/eem_offset
-echo "-9" > /proc/eem/EEM_DET_CCI/eem_offset
-echo "-2" > /proc/eemg/EEMG_DET_GPU/eemg_offset
-echo "-2" > /proc/eemg/EEMG_DET_GPU_HI/eemg_offset
-
-# Schedul Optimisation
-echo "500000" > /proc/sys/kernel/sched_migration_cost_ns
-echo "30" > /proc/sys/kernel/perf_cpu_time_max_percent
-echo "3" > /proc/sys/vm/drop_caches
-echo "256" > /proc/sys/kernel/sched_nr_migrate
-echo "10000000" > /proc/sys/kernel/sched_latency_ns
-echo "1024" > /proc/sys/kernel/sched_util_clamp_max
-echo "1024" > /proc/sys/kernel/sched_util_clamp_min
-echo "1" > /proc/sys/kernel/sched_child_runs_first
-echo "1" > /proc/sys/kernel/sched_tunable_scaling
-echo "0" > /proc/sys/kernel/sched_energy_aware
-
-# mmcblk0
-echo "0" > /sys/block/mmcblk0/queue/add_random
-echo "0" > /sys/block/mmcblk0/queue/iostats
-echo "0" > /sys/block/mmcblk0/queue/nomerges
-echo "0" > /sys/block/mmcblk0/queue/rotational
-echo "2" > /sys/block/mmcblk0/queue/rq_affinity
-echo "128" > /sys/block/mmcblk0/queue/nr_requests
-echo "512" > /sys/block/mmcblk0/queue/read_ahead_kb
-
-# Sda
-echo "0" > /sys/block/sda/queue/add_random
-echo "0" > /sys/block/sda/queue/iostats
-echo "0" > /sys/block/sda/queue/nomerges
-echo "0" > /sys/block/sda/queue/rotational
-echo "2" > /sys/block/sda/queue/rq_affinity
-echo "128" > /sys/block/sda/queue/nr_requests
-echo "512" > /sys/block/sda/queue/read_ahead_kb
-
-# Sdb
-echo "0" > /sys/block/sdb/queue/add_random
-echo "0" > /sys/block/sdb/queue/iostats
-echo "0" > /sys/block/sdb/queue/nomerges
-echo "0" > /sys/block/sdb/queue/rotational
-echo "2" > /sys/block/sdb/queue/rq_affinity
-echo "128" > /sys/block/sdb/queue/nr_requests
-echo "512" > /sys/block/sdb/queue/read_ahead_kb
-
-# Sdc
-echo "0" > /sys/block/sdc/queue/add_random
-echo "0" > /sys/block/sdc/queue/iostats
-echo "0" > /sys/block/sdc/queue/nomerges
-echo "0" > /sys/block/sdc/queue/rotational
-echo "2" > /sys/block/sdc/queue/rq_affinity
-echo "128" > /sys/block/sdc/queue/nr_requests
-echo "512" > /sys/block/sdc/queue/read_ahead_kb
-
-# SET FREQ VOLTAGE
-echo "6000000" > /sys/class/power_supply/battery/voltage_now
-echo "1" > /sys/devices/system/cpu/perf/enable
-
-# Schedhorizon Tunes
-echo "50 100 200 400 600" > /sys/devices/system/cpu/cpufreq/policy0/schedhorizon/up_delay
-echo "500000 850000 1250000 1450000 1800000" > /sys/devices/system/cpu/cpufreq/policy0/schedhorizon/efficient_freq
-echo "50 100 200 400 600 800" > /sys/devices/system/cpu/cpufreq/policy4/schedhorizon/up_delay
-echo "437000 902000 1162000 1451000 1740000 1985000" > /sys/devices/system/cpu/cpufreq/policy4/schedhorizon/efficient_freq
-echo "30 50 150 300 500 700" > /sys/devices/system/cpu/cpufreq/policy7/schedhorizon/up_delay
-echo "659000 1108000 1370000 1632000 1820000 2284000" > /sys/devices/system/cpu/cpufreq/policy7/schedhorizon/efficient_freq
-
-# Another Kernel Tweaks
-echo "0 0 0 0" > "/proc/sys/kernel/printk"
-echo "off" > "/proc/sys/kernel/printk_devkmsg"
-echo "0" > "/proc/sys/kernel/sched_schedstats"
-echo "20" > "/proc/sys/kernel/perf_cpu_time_max_percent"
 }
 
 # Monitoring function for game detection
@@ -416,4 +402,5 @@ monitoring
 
 
 
-#This Shell Script is OpenSource, you can edit it if you want don't forget to Credit @Zexshia
+
+#This Shell Script is OpenSource, you can edit it if you want don't forget to Credit @Zexshia>
