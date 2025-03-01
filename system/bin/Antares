@@ -1,25 +1,23 @@
 #!/bin/sh
 
+# Log file path
+LOG_FILE="/data/local/tmp/antares.log"
+
+# Function for structured logging
+log_message() {
+    local level="$1"
+    local message="$2"
+    local timestamp
+    timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+    echo "[$timestamp] [$level] $message" | tee -a "$LOG_FILE"
+}
+
 # Generate game list filter
 game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/Antares/gamelist.txt")"
 
 # CHECK CPU CORES
 cpu_cores=$(($(nproc --all) - 1))
-
-# Path to reboot flag
-REBOOT_FLAG="/data/local/tmp/reboot_flag"
-
-# Prevent Repeating Messages
-check_reboot() {
-    if [ ! -f "$REBOOT_FLAG" ]; then
-        sleep 15
-        su -lp 2000 -c "/system/bin/cmd notification post -t '𝐀𝐍𝐓𝐀𝐑𝐄𝐒!' -i file:///data/local/tmp/antares.png -I file:///data/local/tmp/antares.png 'antares' '𝙏𝙬𝙚𝙖𝙠 𝙞𝙨 𝘼𝙥𝙥𝙡𝙞𝙚𝙙!'" >/dev/null &
-
-        touch "$REBOOT_FLAG"
-        sleep 3
-        rm -rf "$REBOOT_FLAG"
-    fi
-}
+log_message "Detected cpu cores: $cpu_cores"
 
 # Path to store default governor before modifying
 DEFAULT_GOV_FILE="/data/local/tmp/default_cpu_gov"
@@ -63,269 +61,313 @@ change_permission() {
 	fi
 }
 
-# Enable Tweak
+		
+# Enable Game Mode
 startgamemode() {
+    log_message "INFO" "Enabling Game Mode: $gamestart"
+    
     store_default_governor  # Store default governor before modifying
+    sleep 2
 
-    # Force CPU to Performance mode
+    # Force CPU to Performance Mode
+    log_message "INFO" "Setting CPU governor to 'performance' mode"
     for path in /sys/devices/system/cpu/cpufreq/policy*; do
         zeshia performance "$path/scaling_governor"
     done &
     
-	zeshia 1 /sys/devices/system/cpu/cpu1/online
+    log_message "INFO" "Setting CPU to maximum frequency..."
+    if [ -d /proc/ppm ]; then
+        cluster=0
+        for path in /sys/devices/system/cpu/cpufreq/policy*; do
+            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+            zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
+            zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
+            ((cluster++))
+        done
+    fi
+    sleep 4
 
-	if [ -d /proc/ppm ]; then
-		cluster=0
-		for path in /sys/devices/system/cpu/cpufreq/policy*; do
-			cpu_maxfreq=$(cat $path/cpuinfo_max_freq)
-			zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
-			zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
-			((cluster++))
-		done
-	fi
+    change_permission 644 /sys/devices/virtual/thermal/thermal_message/cpu_limits
+    for path in /sys/devices/system/cpu/*/cpufreq; do
+        cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+        zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
+        zeshia "$cpu_maxfreq" "$path/scaling_min_freq"
+        zeshia "cpu$(awk '{print $1}' "$path/affected_cpus") $cpu_maxfreq" /sys/devices/virtual/thermal/thermal_message/cpu_limits
+    done
+    change_permission 000 /sys/devices/virtual/thermal/thermal_message/cpu_limits
+    log_message "INFO" "CPU max frequency set successfully."
 
-	change_permission 644 /sys/devices/virtual/thermal/thermal_message/cpu_limits
-	for path in /sys/devices/system/cpu/*/cpufreq; do
-		cpu_maxfreq=$(cat $path/cpuinfo_max_freq)
-		zeshia "$cpu_maxfreq" $path/scaling_max_freq
-		zeshia "$cpu_maxfreq" $path/scaling_min_freq
-		zeshia "cpu$(awk '{print $1}' $path/affected_cpus) $cpu_maxfreq" /sys/devices/virtual/thermal/thermal_message/cpu_limits
-	done
-	change_permission 000 /sys/devices/virtual/thermal/thermal_message/cpu_limits
+    # Memory Tweaks
+    log_message "INFO" "Applying memory optimizations..."
+    zeshia 80 /proc/sys/vm/vfs_cache_pressure
 
-	# Memory tweak
-	zeshia 80 /proc/sys/vm/vfs_cache_pressure
+    # UFS Governor
+    for path in /sys/class/devfreq/*.ufshc; do
+        zeshia performance "$path/governor"
+    done &
+    log_message "INFO" "UFS Governor set to 'performance' mode"
 
-	# eMMC and UFS governor
-	for path in /sys/class/devfreq/*.ufshc; do
-		zeshia performance $path/governor
-	done &
-	for path in /sys/class/devfreq/mmc*; do
-		zeshia performance $path/governor
-	done &
-	
-	#Volt Optimizer  
-    zeshia -8 /proc/eem/EEM_DET_B/eem_offset
-    zeshia -8 /proc/eem/EEM_DET_BL/eem_offset
-    zeshia -8 /proc/eem/EEM_DET_L/eem_offset
-    zeshia -4 /proc/eem/EEM_DET_CCI/eem_offset
-    zeshia -1 /proc/eemg/EEMG_DET_GPU/eemg_offset
-    zeshia -1 /proc/eemg/EEMG_DET_GPU_HI/eemg_offset
+    # EEM and EEMG Tweaks
+    log_message "INFO" "Disabling EEM and EEMG offsets..."
+    for eem in EEM_DET_B EEM_DET_BL EEM_DET_L; do
+        zeshia "0" "/proc/eem/$eem/eem_offset"
+        zeshia "0" "/proc/eem/EEM_DET_CCI/eem_offset"
+        zeshia "0" "/proc/eemg/EEMG_DET_GPU/eemg_offset"
+        zeshia "0" "/proc/eemg/EEMG_DET_GPU_HI/eemg_offset"
+    done
+    log_message "INFO" "EEM and EEMG offsets set to low"
 
-	# PPM policies
-	if [ -d /proc/ppm ]; then
-		for idx in $(cat /proc/ppm/policy_status | grep -E 'PWR_THRO|THERMAL' | awk -F'[][]' '{print $2}'); do
-			zeshia "$idx 0" /proc/ppm/policy_status
-		done
-	fi
+    # PPM Policies
+    if [ -d /proc/ppm ]; then
+        log_message "INFO" "Disabling power and thermal throttling in PPM policies..."
+        for idx in $(grep -E 'PWR_THRO|THERMAL' /proc/ppm/policy_status | awk -F'[][]' '{print $2}'); do
+            zeshia "$idx 0" /proc/ppm/policy_status
+        done
+    fi
+    log_message "INFO" "PPM policies disabled"
 
-	# MTK Power and CCI mode
-	zeshia "1" /proc/cpufreq/cpufreq_cci_mode
-	zeshia "3" /proc/cpufreq/cpufreq_power_mode
+    # MTK Power and CCI Mode
+    log_message "INFO" "Optimizing MTK Power and CCI mode..."
+    zeshia "1" /proc/cpufreq/cpufreq_cci_mode
+    zeshia "3" /proc/cpufreq/cpufreq_power_mode
+    log_message "INFO" "MTK Power and CCI mode set to performance"
 
-	# EAS/HMP Switch
-	zeshia "0" /sys/devices/system/cpu/eas/enable
+    # GPU Frequency
+    if [ -d /proc/gpufreqv2 ]; then
+        log_message "INFO" "Setting GPU frequency to maximum..."
+        zeshia 0 /proc/gpufreqv2/fix_target_opp_index
+    fi
+    log_message "INFO" "GPU frequency set to max"
 
-	# GPU Frequency
-	if [ -d /proc/gpufreq ]; then
-		gpu_freq="$(cat /proc/gpufreq/gpufreq_opp_dump | grep -o 'freq = [0-9]*' | sed 's/freq = //' | sort -nr | head -n 1)"
-		zeshia "$gpu_freq" /proc/gpufreq/gpufreq_opp_freq
-	elif [ -d /proc/gpufreqv2 ]; then
-		zeshia 0 /proc/gpufreqv2/fix_target_opp_index
-	fi
+    # DRAM Frequency
+    log_message "INFO" "Optimizing DRAM frequency..."
+    zeshia "0" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+    zeshia "0" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+    zeshia "performance" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
+    zeshia "performance" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
+    log_message "INFO" "DRAM frequency and governor set to performance"
 
-	# Disable GPU Power limiter
-	[ -f "/proc/gpufreq/gpufreq_power_limited" ] && {
-		for setting in ignore_batt_oc ignore_batt_percent ignore_low_batt ignore_thermal_protect ignore_pbm_limited; do
-			zeshia "$setting 1" /proc/gpufreq/gpufreq_power_limited
-		done
-	}
+    # I/O Tweaks
+    log_message "INFO" "Applying I/O performance tweaks..."
+    for dir in /sys/block/mmcblk0 /sys/block/mmcblk1 /sys/block/sd*; do
+        zeshia 32 "$dir/queue/read_ahead_kb"
+    done &
+    log_message "INFO" "I/O Tweaks applied"
 
-	# Disable battery current limiter
-	zeshia "stop 1" /proc/mtk_batoc_throttling/battery_oc_protect_stop
+    # Refresh Rate
+    log_message "INFO" "Setting refresh rate to 120Hz..."
+    service call SurfaceFlinger 1035 i32 0
+    log_message "INFO" "Refresh rate set to 120Hz"
 
-	# DRAM Frequency
-	zeshia "0" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
-	zeshia "0" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
-	zeshia "performance" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
-	zeshia "performance" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
+    # Cache Optimization
+    log_message "INFO" "Clearing unnecessary caches..."
+    zeshia 3 /proc/sys/vm/drop_caches
+    log_message "INFO" "Cache cleared"
 
+    # Final Log
+    log_message "INFO" "Game Mode Optimization Process Completed!"
+    log_message "INFO" "-------------------------------------"
 }
 
-# Disable Tweak
-stopgamemode() {
-    default_cpu_gov=$(load_default_governor)  # Retrieve stored governor
 
-    # Restore original CPU governor
+# Disable Game Mode
+stopgamemode() {
+    log_message "INFO" "Disabling Game Mode..."
+
+    # Restore default CPU governor
+    default_cpu_gov=$(load_default_governor)
+    log_message "INFO" "Restoring default CPU governor: $default_cpu_gov"
+    
     for path in /sys/devices/system/cpu/cpufreq/policy*; do
         zeshia "$default_cpu_gov" "$path/scaling_governor"
     done &
     
     # Cleanup stored governor file
     rm -f "$DEFAULT_GOV_FILE"
-   
-   zeshia 1 /sys/devices/system/cpu/cpu1/online
 
-	if [ -d /proc/ppm ]; then
-		cluster=0
-		for path in /sys/devices/system/cpu/cpufreq/policy*; do
-			cpu_maxfreq=$(cat $path/cpuinfo_max_freq)
-			cpu_minfreq=$(cat $path/cpuinfo_min_freq)
-			zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
-			zeshia "$cluster $cpu_minfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
-			((cluster++))
-		done
-	fi
+    # Restore CPU Frequency
+    log_message "INFO" "Restoring CPU frequency..."
+    if [ -d /proc/ppm ]; then
+        cluster=0
+        for path in /sys/devices/system/cpu/cpufreq/policy*; do
+            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+            cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+            zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
+            zeshia "$cluster $cpu_minfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
+            ((cluster++))
+        done
+    fi
+    sleep 1
 
-	for path in /sys/devices/system/cpu/*/cpufreq; do
-		cpu_maxfreq=$(cat $path/cpuinfo_max_freq)
-		cpu_minfreq=$(cat $path/cpuinfo_min_freq)
-		zeshia "$cpu_maxfreq" $path/scaling_max_freq
-		zeshia "$cpu_minfreq" $path/scaling_min_freq
-	done
-	change_permission 644 /sys/devices/virtual/thermal/thermal_message/cpu_limits
+    for path in /sys/devices/system/cpu/*/cpufreq; do
+        cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+        cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+        zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
+        zeshia "$cpu_minfreq" "$path/scaling_min_freq"
+    done
 
-	# Memory Tweaks
-	zeshia 120 /proc/sys/vm/vfs_cache_pressure
+    change_permission 644 /sys/devices/virtual/thermal/thermal_message/cpu_limits
+    log_message "INFO" "CPU frequency restored successfully."
 
-	# eMMC and UFS governor
-	for path in /sys/class/devfreq/*.ufshc; do
-		zeshia simple_ondemand $path/governor
-	done &
-	for path in /sys/class/devfreq/mmc*; do
-		zeshia simple_ondemand $path/governor
-	done &
-	
-    zeshia -14 /proc/eem/EEM_DET_B/eem_offset
-    zeshia -14 /proc/eem/EEM_DET_BL/eem_offset
-    zeshia -14 /proc/eem/EEM_DET_L/eem_offset
-    zeshia -9 /proc/eem/EEM_DET_CCI/eem_offset
-    zeshia -2 /proc/eemg/EEMG_DET_GPU/eemg_offset
-    zeshia -2 /proc/eemg/EEMG_DET_GPU_HI/eemg_offset
-    
-    # PPM policies
-	if [ -d /proc/ppm ]; then
-		for idx in $(cat /proc/ppm/policy_status | grep -E 'PWR_THRO|THERMAL' | awk -F'[][]' '{print $2}'); do
-			zeshia "$idx 1" /proc/ppm/policy_status
-		done
-	fi
+    # Memory Tweaks
+    log_message "INFO" "Restoring memory optimizations..."
+    zeshia 120 /proc/sys/vm/vfs_cache_pressure
 
-	# MTK Power and CCI mode
-	zeshia "0" /proc/cpufreq/cpufreq_cci_mode
-	zeshia "0" /proc/cpufreq/cpufreq_power_mode
+    # UFS Governor
+    log_message "INFO" "Restoring UFS Governor..."
+    for path in /sys/class/devfreq/*.ufshc; do
+        zeshia simple_ondemand "$path/governor"
+    done &
 
-	# EAS/HMP Switch
-	zeshia "1" /sys/devices/system/cpu/eas/enable
+    # Voltage Optimization (EEM & EEMG)
+    log_message "INFO" "Applying voltage optimizer settings..."
+    for eem in EEM_DET_B EEM_DET_BL EEM_DET_L; do
+        zeshia "-9" "/proc/eem/$eem/eem_offset"
+        zeshia "-7" "/proc/eem/EEM_DET_CCI/eem_offset"
+        zeshia "-1" "/proc/eemg/EEMG_DET_GPU/eemg_offset"
+        zeshia "-1" "/proc/eemg/EEMG_DET_GPU_HI/eemg_offset"
+    done
 
-	# GPU Frequency
-	if [ -d /proc/gpufreq ]; then
-		zeshia "0" /proc/gpufreq/gpufreq_opp_freq 2>/dev/null
-	elif [ -d /proc/gpufreqv2 ]; then
-		zeshia -1 /proc/gpufreqv2/fix_target_opp_index
-	fi
+    # Restore PPM Policies
+    log_message "INFO" "Restoring PPM policy status..."
+    if [ -d /proc/ppm ]; then
+        for idx in $(grep -E 'PWR_THRO|THERMAL' /proc/ppm/policy_status | awk -F'[][]' '{print $2}'); do
+            zeshia "$idx 1" /proc/ppm/policy_status
+        done
+    fi
 
-	# GPU Power limiter
-	[ -f "/proc/gpufreq/gpufreq_power_limited" ] && {
-		for setting in ignore_batt_oc ignore_batt_percent ignore_low_batt ignore_thermal_protect ignore_pbm_limited; do
-			zeshia "$setting 0" /proc/gpufreq/gpufreq_power_limited
-		done
-	}
+    # Restore MTK Power and CCI Mode
+    log_message "INFO" "Restoring MTK Power and CCI mode to default..."
+    zeshia "0" /proc/cpufreq/cpufreq_cci_mode
+    zeshia "1" /proc/cpufreq/cpufreq_power_mode
 
-	# Enable Power Budget management for new 5.x mtk kernels
-	zeshia "stop 0" /proc/pbm/pbm_stop
+    # Restore GPU Frequency
+    if [ -d /proc/gpufreqv2 ]; then
+        log_message "INFO" "Restoring GPU frequency..."
+        zeshia -1 /proc/gpufreqv2/fix_target_opp_index
+    fi
 
-	# Enable battery current limiter
-	zeshia "stop 0" /proc/mtk_batoc_throttling/battery_oc_protect_stop
+    # Restore DRAM Frequency
+    log_message "INFO" "Restoring DRAM frequency and governor..."
+    zeshia "-1" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+    zeshia "-1" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+    zeshia "userspace" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
+    zeshia "userspace" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
 
-	# DRAM Frequency
-	zeshia "-1" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
-	zeshia "-1" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
-	zeshia "userspace" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
-	zeshia "userspace" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
+    # Restore I/O Tweaks
+    log_message "INFO" "Restoring I/O tweaks to default..."
+    for dir in /sys/block/mmcblk0 /sys/block/mmcblk1 /sys/block/sd*; do
+        zeshia 128 "$dir/queue/read_ahead_kb"
+    done &
 
+    # Restore Refresh Rate
+    log_message "INFO" "Setting refresh rate back to 60Hz..."
+    service call SurfaceFlinger 1035 i32 2
+
+    # Final Log
+    log_message "INFO" "Game Mode Deactivation Process Completed!"
+    log_message "INFO" "-------------------------------------"
 }
 
-zeshtweak() {
-    zeshia "schedhorizon" "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor"
-    zeshia "schedhorizon" "/sys/devices/system/cpu/cpufreq/policy4/scaling_governor"
-    zeshia "schedhorizon" "/sys/devices/system/cpu/cpufreq/policy7/scaling_governor"
+# apply mode based on game detection
+apply_mode() {
+    # Ensure cur_mode is initialized
+    if [ -z "$cur_mode" ]; then
+        export cur_mode=0
+    fi
+    gameenabled="/data/Antares/perfflagtmp"
 
-# Core Ctl Optimisation
-    zeshia "1" "/sys/devices/system/cpu/cpu0/core_ctl/enable"
+    if [ -f "$gameenabled" ]; then
+        if [ "$1" -eq 1 ] && [ "$cur_mode" -ne 1 ]; then
+            export cur_mode=1
+            log_message "GAME DETECTED..."
+            renice -20 -p "$pid"
+            ionice -c 1 -n 0 -p "$pid"
+            chrt -f -p 99 "$pid"
+            sleep 2
+            /system/bin/am start -a android.intent.action.MAIN -e toasttext "Applying Antares!" -n bellavita.toast/.MainActivity
+            sleep 2
+            startgamemode 
+        elif [ "$1" -eq 0 ] && [ "$cur_mode" -ne 0 ]; then
+            export cur_mode=0
+            log_message "NO GAME DETECTED"
+            sleep 5
+            /system/bin/am start -a android.intent.action.MAIN -e toasttext "Disabling Performance Mode..." -n bellavita.toast/.MainActivity
+            sleep 2
+            stopgamemode
+        fi
+    fi
+}
+
+# Apply Zeshia Tweaks
+zeshtweak() {
+    log_message "INFO" "Applying Schedhorizon Tunes..."
+    for policy in 0 4 7; do
+        zeshia "schedhorizon" "/sys/devices/system/cpu/cpufreq/policy$policy/scaling_governor"
+    done
+
+    # CPU Core Control Tweaks
+    log_message "INFO" "Applying CPU Core Control..."
+    for cpu in 0 4 7; do
+        zeshia "1" "/sys/devices/system/cpu/cpu$cpu/core_ctl/enable"
+        zeshia "10" "/sys/devices/system/cpu/cpu$cpu/core_ctl/offline_throttle_ms"
+    done
+
     zeshia "6" "/sys/devices/system/cpu/cpu0/core_ctl/min_cpus"
     zeshia "6" "/sys/devices/system/cpu/cpu0/core_ctl/max_cpus"
-    zeshia "10" "/sys/devices/system/cpu/cpu0/core_ctl/offline_throttle_ms"
-    zeshia "1" "/sys/devices/system/cpu/cpu4/core_ctl/enable"
     zeshia "4" "/sys/devices/system/cpu/cpu4/core_ctl/min_cpus"
     zeshia "4" "/sys/devices/system/cpu/cpu4/core_ctl/max_cpus"
-    zeshia "10" "/sys/devices/system/cpu/cpu4/core_ctl/offline_throttle_ms"
     zeshia "10" "/sys/devices/system/cpu/cpu4/core_ctl/btask_up_thresh"
     zeshia "2" "/sys/devices/system/cpu/cpu4/core_ctl/btask_down_thresh"
-    zeshia "1" "/sys/devices/system/cpu/cpu7/core_ctl/enable"
     zeshia "2" "/sys/devices/system/cpu/cpu7/core_ctl/min_cpus"
     zeshia "2" "/sys/devices/system/cpu/cpu7/core_ctl/max_cpus"
-    zeshia "10" "/sys/devices/system/cpu/cpu7/core_ctl/offline_throttle_ms"
     zeshia "10" "/sys/devices/system/cpu/cpu7/core_ctl/btask_up_thresh"
     zeshia "2" "/sys/devices/system/cpu/cpu7/core_ctl/btask_down_thresh"
     zeshia "90" "/sys/devices/system/cpu/cpu7/core_ctl/cpu_tj_btask_thresh"
 
-# Ged Optimisation
-    zeshia "1" "/sys/module/ged/parameters/gx_game_mode"
-    zeshia "1" "/sys/module/ged/parameters/ged_smart_boost"
-    zeshia "1" "/sys/module/ged/parameters/cpu_boost_policy"
-    zeshia "1" "/sys/module/ged/parameters/boost_extra"
-    zeshia "886000" "/sys/module/ged/parameters/gpu_cust_upbound_freq"    
-    zeshia "1" "/sys/module/ged/parameters/enable_gpu_boost"
-    zeshia "1" "/sys/module/ged/parameters/ged_boost_enable"
-    zeshia "1" "/sys/module/ged/parameters/gx_boost_on"
-    zeshia "1" "/sys/module/ged/parameters/boost_gpu_enable"
-    zeshia "1" "/sys/module/ged/parameters/ged_monitor_3D_fence_systrace"
-    zeshia "90" "/sys/module/ged/parameters/g_fb_dvfs_threshold"
-    zeshia "1" "/sys/module/ged/parameters/g_gpu_timer_based_emu"
-    zeshia "1" "/sys/module/ged/parameters/gpu_cust_boost_freq"
-    zeshia "1" "/sys/kernel/ged/hal/gpu_boost_level"
+    # Kernel Panic Tweaks
+    log_message "INFO" "Disabling Kernel Panic..."
+    for param in panic panic_on_oops panic_on_warn softlockup_panic; do
+        zeshia 0 "/proc/sys/kernel/$param"
+    done
 
-# Volt Optimizer
-    zeshia "-14" "/proc/eem/EEM_DET_B/eem_offset"
-    zeshia "-14" "/proc/eem/EEM_DET_BL/eem_offset"
-    zeshia "-14" "/proc/eem/EEM_DET_L/eem_offset"
-    zeshia "-9" "/proc/eem/EEM_DET_CCI/eem_offset"
-    zeshia "-2" "/proc/eemg/EEMG_DET_GPU/eemg_offset"
-    zeshia "-2" "/proc/eemg/EEMG_DET_GPU_HI/eemg_offset"
+    # Voltage Optimizer
+    log_message "INFO" "Applying Voltage Optimizer..."
+    for eem in EEM_DET_B EEM_DET_BL EEM_DET_L; do
+        zeshia "-9" "/proc/eem/$eem/eem_offset"
+        zeshia "-7" "/proc/eem/EEM_DET_CCI/eem_offset"
+        zeshia "-1" "/proc/eemg/EEMG_DET_GPU/eemg_offset"
+        zeshia "-1" "/proc/eemg/EEMG_DET_GPU_HI/eemg_offset"
+    done
 
-# Scheduler Optimisation
-    zeshia "500000" "/proc/sys/kernel/sched_migration_cost_ns"
-    zeshia "30" "/proc/sys/kernel/perf_cpu_time_max_percent"
-    zeshia "3" "/proc/sys/vm/drop_caches"
-    zeshia "256" "/proc/sys/kernel/sched_nr_migrate"
-    zeshia "10000000" "/proc/sys/kernel/sched_latency_ns"
-    zeshia "1024" "/proc/sys/kernel/sched_util_clamp_max"
-    zeshia "1024" "/proc/sys/kernel/sched_util_clamp_min"
-    zeshia "1" "/proc/sys/kernel/sched_child_runs_first"
-    zeshia "1" "/proc/sys/kernel/sched_tunable_scaling"
-    zeshia "0" "/proc/sys/kernel/sched_energy_aware"
+    # Scheduler Tweaks
+    log_message "INFO" "Applying Kernel Scheduler Tweaks..."
+    zeshia 32 /proc/sys/kernel/sched_nr_migrate
+    zeshia 50000 /proc/sys/kernel/sched_migration_cost_ns
+    zeshia 1000000 /proc/sys/kernel/sched_min_granularity_ns
+    zeshia 1500000 /proc/sys/kernel/sched_wakeup_granularity_ns
+    zeshia 500000 /proc/sys/kernel/sched_migration_cost_ns
+    zeshia 30 /proc/sys/kernel/perf_cpu_time_max_percent
+    zeshia 256 /proc/sys/kernel/sched_nr_migrate
+    zeshia 10000000 /proc/sys/kernel/sched_latency_ns
+    zeshia 1024 /proc/sys/kernel/sched_util_clamp_max
+    zeshia 1024 /proc/sys/kernel/sched_util_clamp_min
+    zeshia 1 /proc/sys/kernel/sched_child_runs_first
+    zeshia 1 /proc/sys/kernel/sched_tunable_scaling
+    zeshia 0 /proc/sys/kernel/sched_energy_aware
 
-# mmcblk0
-        for path in /sys/block/mmcblk0/queue/{add_random,iostats,nomerges,rotational,rq_affinity}; do
-            zeshia "0" "$path"
+    # Block Device Tweaks
+    log_message "INFO" "Applying I/O Scheduler Tweaks..."
+    for block in mmcblk0 mmcblk1 sda sdb sdc; do
+        for param in add_random iostats nomerges rotational rq_affinity; do
+            zeshia "0" "/sys/block/$block/queue/$param"
         done
-        zeshia "128" "/sys/block/mmcblk0/queue/nr_requests"
-        zeshia "512" "/sys/block/mmcblk0/queue/read_ahead_kb"
+        zeshia "64" "/sys/block/$block/queue/nr_requests"
+        zeshia "128" "/sys/block/$block/queue/read_ahead_kb"
+    done
 
-        # Apply same settings for sda, sdb, sdc
-        for block in sda sdb sdc; do
-            for param in add_random iostats nomerges rotational rq_affinity; do
-                zeshia "0" "/sys/block/$block/queue/$param"
-            done
-            zeshia "128" "/sys/block/$block/queue/nr_requests"
-            zeshia "512" "/sys/block/$block/queue/read_ahead_kb"
-        done
-
-# Set frequency voltage
-    zeshia "6000000" "/sys/class/power_supply/battery/voltage_now"
-    zeshia "1" "/sys/devices/system/cpu/perf/enable"
-
-# Schedhorizon Tunes
+    # Schedhorizon Tweaks
+    log_message "INFO" "Applying Schedhorizon Frequency Tuning..."
     zeshia "50 100 200 400 600" "/sys/devices/system/cpu/cpufreq/policy0/schedhorizon/up_delay"
     zeshia "500000 850000 1250000 1450000 1800000" "/sys/devices/system/cpu/cpufreq/policy0/schedhorizon/efficient_freq"
     zeshia "50 100 200 400 600 800" "/sys/devices/system/cpu/cpufreq/policy4/schedhorizon/up_delay"
@@ -333,42 +375,26 @@ zeshtweak() {
     zeshia "30 50 150 300 500 700" "/sys/devices/system/cpu/cpufreq/policy7/schedhorizon/up_delay"
     zeshia "480000 1200000 1600000 1800000 2200000 2400000" "/sys/devices/system/cpu/cpufreq/policy7/schedhorizon/efficient_freq"
 
-
-# Another Kernel Tweaks
+    # Additional Kernel Tweaks
+    log_message "INFO" "Applying Additional Kernel Tweaks..."
     zeshia "0 0 0 0" "/proc/sys/kernel/printk"
     zeshia "off" "/proc/sys/kernel/printk_devkmsg"
     zeshia "0" "/proc/sys/kernel/sched_schedstats"
     zeshia "20" "/proc/sys/kernel/perf_cpu_time_max_percent"
-        
-    zeshia "1" /sys/pnpmgr/fpsgo_boost/boost_enable
-    zeshia "1" /sys/pnpmgr/fpsgo_boost/boost_mode
-    zeshia "1" /sys/kernel/fpsgo/common/fpsgo_enable
-    
-}
 
-# apply mode based on game detection
-apply_mode() {
+    # Disable FPSGO
+    log_message "INFO" "Disabling FPSGO..."
+    zeshia 0 /sys/kernel/fpsgo/common/fpsgo_enable
 
-    # Ensure cur_mode is initialized
-    if [ -z "$cur_mode" ]; then
-        export cur_mode=0
-    fi
+    # Notification Push
+    log_message "INFO" "Sending Notification: Tweak Applied!"
+    sleep 3
+    su -lp 2000 -c "/system/bin/cmd notification post -t 'ANTARES!' -i file:///data/local/tmp/antares.png -I file:///data/local/tmp/antares.png 'antares' 'Tweak is Applied!'"
 
-        if [ "$1" -eq 1 ] && [ "$cur_mode" -ne 1 ]; then
-            export cur_mode=1
-            renice -n -20 -p $pid
-		    ionice -c 2 -n 0 -p $pid
-		    sleep 5
-            /system/bin/am start -a android.intent.action.MAIN -e toasttext "Applying Antares!" -n bellavita.toast/.MainActivity
-            sleep 2
-            startgamemode 
-    elif [ "$1" -eq 0 ] && [ "$cur_mode" -ne 0 ]; then
-        export cur_mode=0
-        sleep 10
-        /system/bin/am start -a android.intent.action.MAIN -e toasttext "Disable Gamemode..." -n bellavita.toast/.MainActivity
-        sleep 2
-        stopgamemode
-    fi
+    # Final Log
+    log_message "INFO" "All Tweaks Applied Successfully!"
+    log_message "INFO" "Monitoring Games Started!"
+    log_message "INFO" "-------------------------------------"
 }
 
 # Monitoring function for game detection
@@ -378,7 +404,7 @@ monitoring() {
 		gamestart=$(echo "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
 		screenoff=$(echo "$window" | grep "mScreen" | grep -Eo "false" | tail -n 1)
 
-		if [ -n "$gamestart" ] && [ "$screenoff" != "false" ]; then
+		if [ -n "$gamestart" ] && [ "$screenoff" != "false" ]; then		
 			pid=$(pgrep -f "$gamestart")
 			apply_mode 1 # Enable Tweak
 		else
@@ -388,19 +414,13 @@ monitoring() {
 done		
 }
 
-# Run reboot check before starting monitoring
-check_reboot
-
 # Start Applying Tweak
 zeshtweak
-
+sleep 3
 # Start monitoring games
 monitoring
 
 
 
 
-
-
-
-#This Shell Script is OpenSource, you can edit it if you want don't forget to Credit @Zexshia>
+#This Shell Script is OpenSource, you can edit it if you want don't forget to Credit @Zexshia
