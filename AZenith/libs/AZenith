@@ -1,1 +1,75 @@
+#!/bin/sh
 
+
+
+# Generate game list filter
+game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/AZenith/gamelist.txt")"
+
+startgamemode() {
+nohup sh /data/adb/modules/AZenith/system/bin/AZenith_Performance
+}
+
+stopgamemode() {
+pkill -f AZenith_Performance
+sleep 1
+sh /data/adb/modules/AZenith/system/bin/AZenith_Normal
+}
+
+mltweak() {
+    mltwk="com.mobile.legends"
+    pidml=$(pidof "$mltwk") 
+
+    if [ "$gamestart" = "$mltwk" ]; then
+        if [[ -n "$pidml" ]]; then 
+            for pid in $pidml; do
+                sleep 1
+                /system/bin/am start -a android.intent.action.MAIN -e toasttext "ML High Prior!" -n bellavita.toast/.MainActivity    
+                renice -20 -p "$pid" 
+                ionice -c 1 -n 0 -p "$pid"  
+                chrt -f -p 99 "$pid"           
+            done
+        fi
+    fi
+
+    # Clear cache if directory exists
+    [ -d "/data/data/$mltwk/cache" ] && find "/data/data/$mltwk/cache/" -type f -mtime +1 -delete
+    [ -d "/data/media/0/Android/data/$mltwk/cache" ] && find "/data/media/0/Android/data/$mltwk/cache/" -type f -mtime +1 -delete
+}
+
+runmltwk() {
+if [ "$(cat /data/AZenith/mltweak)" -eq 1 ]; then
+     mltweak&
+     fi
+}
+    
+applychange() {
+    # Ensure current_state is initialized
+    if [ -z "$current_state" ]; then
+        export current_state=0
+    fi
+        if [ "$1" -eq 1 ] && [ "$current_state" -ne 1 ]; then    
+            export current_state=1            
+            /system/bin/am start -a android.intent.action.MAIN -e toasttext "Tweak Applied!" -n bellavita.toast/.MainActivity 
+            cmd package force-dex-opt ${gamestart} >/dev/null 2>&1
+            runmltwk           
+            startgamemode 
+        elif [ "$1" -eq 0 ] && [ "$current_state" -ne 0 ]; then       
+            export current_state=0           
+            /system/bin/am start -a android.intent.action.MAIN -e toasttext "Disabling Performance Mode..." -n bellavita.toast/.MainActivity
+            stopgamemode
+        fi
+}
+
+while true; do
+    window=$(dumpsys window)
+    gamestart=$(echo "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
+    screenoff=$(echo "$window" | grep "mScreen" | grep -Eo "false" | tail -n 1)
+    pid=$(pgrep -f "$gamestart")
+
+    if [ -n "$gamestart" ] && [ "$screenoff" != "false" ]; then
+            applychange 1
+        else
+            applychange 0               
+    fi
+    sleep 10
+done&
