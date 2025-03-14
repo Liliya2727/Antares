@@ -1,0 +1,79 @@
+#!/bin/sh
+
+zeshia() {
+	if [ -f $2 ]; then
+		chmod 644 $2 >/dev/null 2>&1
+		echo $1 >$2 2>/dev/null
+		chmod 444 $2 >/dev/null 2>&1
+	fi
+}
+   
+                                                     
+
+# Activate bypass charge
+    if [ "$(cat /data/AZenith/bypass_charge)" -eq 1 ]; then
+    zeshia "1" "/sys/devices/platform/charger/bypass_charger"
+    fi
+# Set DND
+    if [ "$(cat /data/AZenith/dnd)" -eq 1 ]; then
+    cmd notification set_dnd 1
+    fi
+    # Scaling Governor
+    for path in /sys/devices/system/cpu/cpufreq/policy*; do
+        zeshia performance "$path/scaling_governor"
+    done &
+    
+    
+    # PPM Policy
+if [ "$(cat /data/AZenith/cpulimit)" -eq 1 ]; then
+    if [ -d /proc/ppm ]; then
+        cluster=0
+        for path in /sys/devices/system/cpu/cpufreq/policy*; do
+            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+            zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
+            zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
+            ((cluster++))
+        done
+    fi
+    for path in /sys/devices/system/cpu/*/cpufreq; do
+        cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+        zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
+        zeshia "$cpu_maxfreq" "$path/scaling_min_freq"
+        zeshia "cpu$(awk '{print $1}' "$path/affected_cpus") $cpu_maxfreq" /sys/devices/virtual/thermal/thermal_message/cpu_limits
+    done
+fi
+    
+    zeshia 80 /proc/sys/vm/vfs_cache_pressure
+
+    for path in /sys/class/devfreq/*.ufshc; do
+        zeshia performance "$path/governor"
+    done &
+    
+    if [ "$(cat /data/AZenith/VoltOpt)" -eq 1 ]; then
+    for eem in EEM_DET_B EEM_DET_BL EEM_DET_L; do
+    zeshia "0" "/proc/eem/$eem/eem_offset"
+    done
+    zeshia "0" "/proc/eem/EEM_DET_CCI/eem_offset"
+    zeshia "0" "/proc/eemg/EEMG_DET_GPU/eemg_offset"
+    zeshia "0" "/proc/eemg/EEMG_DET_GPU_HI/eemg_offset"
+    fi
+    if [ -d /proc/ppm ]; then
+        for idx in $(grep -E 'PWR_THRO|THERMAL' /proc/ppm/policy_status | awk -F'[][]' '{print $2}'); do
+            zeshia "$idx 0" /proc/ppm/policy_status
+        done
+    fi
+
+    zeshia "1" /proc/cpufreq/cpufreq_cci_mode
+    zeshia "3" /proc/cpufreq/cpufreq_power_mode
+
+    if [ -d /proc/gpufreqv2 ]; then
+        zeshia 0 /proc/gpufreqv2/fix_target_opp_index
+    fi
+
+    zeshia "0" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+    zeshia "0" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+    zeshia "performance" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
+    zeshia "performance" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
+
+    zeshia 3 /proc/sys/vm/drop_caches
+    cmd power set-fixed-performance-mode-enabled true

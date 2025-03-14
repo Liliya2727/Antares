@@ -1,1 +1,87 @@
+#!/bin/sh
 
+DEFAULT_GOV_FILE="/data/AZenith/custom_default_cpu_gov"
+
+
+# Function to retrieve the stored governor
+load_default_governor() {
+    if [ -f "$DEFAULT_GOV_FILE" ]; then
+        cat "$DEFAULT_GOV_FILE"
+    else
+        echo "schedutil"  
+    fi
+}
+
+zeshia() {
+	if [ -f $2 ]; then
+		chmod 644 $2 >/dev/null 2>&1
+		echo $1 >$2 2>/dev/null
+		chmod 444 $2 >/dev/null 2>&1
+	fi
+}
+
+    default_cpu_gov=$(load_default_governor)
+
+# Activate bypass charge
+    if [ "$(cat /data/AZenith/bypass_charge)" -eq 1 ]; then
+    zeshia "0" "/sys/devices/platform/charger/bypass_charger"
+    fi
+# Set DND
+    if [ "$(cat /data/AZenith/dnd)" -eq 1 ]; then
+    cmd notification set_dnd 0
+    fi
+    for path in /sys/devices/system/cpu/cpufreq/policy*; do
+        zeshia "$default_cpu_gov" "$path/scaling_governor"
+    done &
+    
+
+    if [ -d /proc/ppm ]; then
+        cluster=0
+        for path in /sys/devices/system/cpu/cpufreq/policy*; do
+            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+            cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+            zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
+            zeshia "$cluster $cpu_minfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
+            ((cluster++))
+        done
+    fi
+
+    for path in /sys/devices/system/cpu/*/cpufreq; do
+        cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+        cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+        zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
+        zeshia "$cpu_minfreq" "$path/scaling_min_freq"
+    done
+
+    zeshia 120 /proc/sys/vm/vfs_cache_pressure
+
+    for path in /sys/class/devfreq/*.ufshc; do
+        zeshia simple_ondemand "$path/governor"
+    done &
+
+    for eem in EEM_DET_B EEM_DET_BL EEM_DET_L; do
+        zeshia "$(cat /data/AZenith/default_$eem)" "/proc/eem/$eem/eem_offset"
+    done
+    zeshia "$(cat /data/AZenith/default_EEM_DET_CCI)" "/proc/eem/EEM_DET_CCI/eem_offset"
+    zeshia "$(cat /data/AZenith/default_EEMG_DET_GPU)" "/proc/eemg/EEMG_DET_GPU/eemg_offset"
+    zeshia "$(cat /data/AZenith/default_EEMG_DET_GPU_HI)" "/proc/eemg/EEMG_DET_GPU_HI/eemg_offset"
+
+
+    if [ -d /proc/ppm ]; then
+        for idx in $(grep -E 'PWR_THRO|THERMAL' /proc/ppm/policy_status | awk -F'[][]' '{print $2}'); do
+            zeshia "$idx 1" /proc/ppm/policy_status
+        done
+    fi
+
+    zeshia "0" /proc/cpufreq/cpufreq_cci_mode
+    zeshia "1" /proc/cpufreq/cpufreq_power_mode
+
+    if [ -d /proc/gpufreqv2 ]; then
+        zeshia -1 /proc/gpufreqv2/fix_target_opp_index
+    fi
+
+    zeshia "-1" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+    zeshia "-1" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+    zeshia "userspace" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
+    zeshia "userspace" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
+    cmd power set-fixed-performance-mode-enabled false

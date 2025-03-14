@@ -1,0 +1,116 @@
+#!/bin/sh
+
+FSTrim() {
+fstrim -v /system
+fstrim -v /vendor
+fstrim -v /data
+fstrim -v /cache
+fstrim -v /metadata
+fstrim -v /odm
+fstrim -v /system_ext
+fstrim -v /product
+}
+
+SFL() {
+resetprop -n ro.surface_flinger.max_frame_buffer_acquired_buffers=5
+resetprop -n debug.sf.early_phase_offset_ns=500000
+resetprop -n debug.sf.early_app_phase_offset_ns=500000
+resetprop -n debug.sf.early_gl_phase_offset_ns=1000000
+resetprop -n debug.sf.early_gl_app_phase_offset_ns=1000000
+resetprop -n debug.sf.high_fps_early_phase_offset_ns=1000000
+resetprop -n debug.sf.high_fps_early_gl_phase_offset_ns=1000000
+resetprop -n debug.sf.high_fps_late_app_phase_offset_ns=1000000
+resetprop -n debug.sf.phase_offset_threshold_for_next_vsync_ns=1000000
+}
+
+DThermal() {
+thermal() {
+    find /system/etc/init /vendor/etc/init /odm/etc/init -type f 2>/dev/null | xargs grep -h "^service" | awk '{print $2}' | grep thermal
+}
+
+propfile() {
+    # List of properties to reset
+    while read -r key value; do
+        resetprop -n "$key" "$value"
+    done <<EOF
+debug.thermal.throttle.support no
+ro.vendor.mtk_thermal_2_0 0
+persist.thermal_config.mitigation 0
+ro.mtk_thermal_monitor.enabled false
+ro.vendor.tran.hbm.thermal.temp.clr 49000
+ro.vendor.tran.hbm.thermal.temp.trig 46000
+vendor.thermal.link_ready 0
+dalvik.vm.dexopt.thermal-cutoff 0
+persist.vendor.thermal.engine.enable 0
+persist.vendor.thermal.config 0
+EOF
+
+# Check and stop thermal services
+    [ -f /vendor/bin/hw/android.hardware.thermal-service.mediatek ] && resetprop -n init.svc.android.hardware.thermal-service.mediatek stopped
+    [ -f /vendor/bin/hw/android.hardware.thermal@2.0-service.mtk ] && resetprop -n init.svc.android.hardware.thermal@2.0-service.mtk stopped
+}
+propfile
+
+stop thermal_core
+stop vendor.thermal-hal-2-0.mtk
+
+# Stop all detected thermal services
+for svc in $(thermal); do
+    stop "$svc"
+done
+
+# Freeze running thermal processes
+for thermalpr in $(pgrep thermal); do
+    kill -SIGSTOP "$thermalpr"
+done
+
+for thermalinit in $(getprop | awk -F '[][]' '/init\.svc_.*thermal/ {print $2}'); do
+    [ -n "$thermalinit" ] && resetprop -n "$thermalinit" ""
+done
+
+# Stop specific services and freeze their processes
+for kill in android.hardware.thermal-service.mediatek android.hardware.thermal@2.0-service.mtk; do
+    getprop | grep -q "$kill" && stop "$kill"
+
+    thermalhwsvc=$(pidof "$kill")
+    [ -n "$thermalhwsvc" ] && kill -9 "$thermalhwsvc"
+done
+
+# Check and disable thermal binaries using alternative methods
+for kill2 in /vendor/bin/hw/android.hardware.thermal-service.mediatek /vendor/bin/hw/android.hardware.thermal@2.0-service.mtk; do
+    if [ -f "$kill2" ]; then
+        mv "$kill2" "$kill2.bak"
+        echo "" > "$kill2"
+        chmod 000 "$kill2"
+    fi
+done
+
+# Reset thermal properties
+for thermalprop in $(getprop | grep thermal | cut -f1 -d] | cut -f2 -d[ | grep -F init.svc.); do
+    resetprop "$thermalprop" stopped
+done
+
+# Disable thermal zones
+if [ -d "/sys/class/thermal" ]; then
+    chmod 644 /sys/class/thermal/thermal_zone*/mode
+    for thermalzone in /sys/class/thermal/thermal_zone*/mode; do
+        [ -f "$thermalzone" ] && echo "disabled" > "$thermalzone"
+    done
+fi
+
+# Hide and disable monitoring of thermal zones
+[ -d "/sys/devices/virtual/thermal" ] && find /sys/devices/virtual/thermal -type f -exec chmod 000 {} +
+
+# Disable Thermal Stats
+cmd thermalservice override-status 0
+}
+
+if [ "$(cat /data/AZenith/DThermal)" -eq 1 ]; then
+  DThermal
+  fi
+if [ "$(cat /data/AZenith/SFL)" -eq 1 ]; then
+  SFL
+  fi
+if [ "$(cat /data/AZenith/FSTrim)" -eq 1 ]; then
+  FSTrim
+  fi
