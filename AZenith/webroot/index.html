@@ -1,1 +1,267 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link href="/ov542ly.css" rel="stylesheet">
+    <script type="module" src="/fn762ag.js"></script>
+</head>
+<body class="bg-black-500 flex flex-col min-h-screen text-white">
+    <header class="backdrop-blur-md ml-3 mt-3 p-4 sticky top-0 z-50">
+        <div style="position: relative;">
+            <img src="/zx246av.gif" alt="Profile Avatar" class="avatar-kanan">
+        </div>
+        <h1 class="font-bold text-2xl text-transparent">AZenith!</h1>
+        <p class="text-sm text-pink-400">Special Performance module for D8050</p>
+        <span id="moduleVer" class="text-pink-400 text-sm"></span>
+    </header>
+    <main class="flex-grow pt-1">
+        <div class="p-6">
+            <div class="bg-displaybanner flex items-start justify-between mb-4 p-4 rounded-lg">
+                <div>
+                    <div class="image-container">
+                        <img src="/zx768ly.gif" alt="Banner.img">
+                        <div class="overlay"></div>
+                        <span id="serviceStatus" class="overlay-text">Hibernating~</span>
+                        <span id="servicePID" class="overlay-textcppt">Service is Stopped</span>
+                    </div>
+                    <span id="msg" class="block mt-2 text-gray-400 text-xsss">"Pid null"</span>
+                </div>
+            </div>
+            <div class="bg-gray-900 mb-4 p-4 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <h2 class="font-semibold mb-4 text-lg text-black-69">CPU Settings</h2>
+                </div>
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-sm text-white">Default CPU Governor</p>
+                    <select id="cpuGovernor" class="bg-gray-700 border-none outline-none p-2 rounded-md shadow-none text-white text-xs">
+                        <option value="schedutil" selected>schedhorizon</option>
+                    </select>
+                </div>  
+                <div class="flex items-center justify-between mb-3">
+                <label class="cursor-pointer inline-flex items-center w-full">
+                    <p class="text-sm text-white">Lock to highest Freq</p>
+                    <div class="ml-auto">
+                        <input type="checkbox" id="OPPIndex" class="peer sr-only">
+                        <div class="relative w-11 h-6 bg-gray-200 dark:bg-gray-700 dark:border-gray-600 
+                                    peer-checked:bg-blue-600 rounded-full after:absolute after:bg-white after:border 
+                                    after:border-gray-300 after:content-[''] after:h-5 after:left-[2px] 
+                                    after:rounded-full after:top-0.5 after:transition-all after:w-5 
+                                    peer-checked:after:border-white peer-checked:after:translate-x-full">
+                        </div>           
+                      </div>
+                     </label>
+                   </div>
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-sm text-white">GameList</p>
+                    <button id="editGamelistButton" class="bg-gray-700 hover:bg-gray-600 px-10 py-1 rounded-md text-sm text-white">edit</button>
+                </div>
+            </div>
+        </div>
+    </main>
+    <div class="p-6">
+        <div class="bg-gray-900 mt-211 mb-4 p-4 rounded-lg">
+            <div class="flex items-center justify-between">
+                <h2 class="font-semibold mb-4 text-lg text-black-69">Additional Settings</h2>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+                <label class="cursor-pointer inline-flex items-center w-full">
+                    <p class="text-sm text-white">Disable Volt Optimizer</p>
+                    <div class="ml-auto">
+                        <input type="checkbox" id="VoltOpt" class="peer sr-only">
+                        <div class="relative w-11 h-6 bg-gray-200 dark:bg-gray-700 dark:border-gray-600 
+                                    peer-checked:bg-blue-600 rounded-full after:absolute after:bg-white after:border 
+                                    after:border-gray-300 after:content-[''] after:h-5 after:left-[2px] 
+                                    after:rounded-full after:top-0.5 after:transition-all after:w-5 
+                                    peer-checked:after:border-white peer-checked:after:translate-x-full">
+                        </div>
+                    </div>
+                </label>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+                <label class="cursor-pointer inline-flex items-center w-full">
+                    <p class="text-sm text-white">Do Not Disturb</p>
+                    <div class="ml-auto">
+                        <input type="checkbox" id="DoNoDis" class="peer sr-only">
+                        <div class="relative w-11 h-6 bg-gray-200 dark:bg-gray-700 dark:border-gray-600 
+                                    peer-checked:bg-blue-600 rounded-full after:absolute after:bg-white after:border 
+                                    after:border-gray-300 after:content-[''] after:h-5 after:left-[2px] 
+                                    after:rounded-full after:top-0.5 after:transition-all after:w-5 
+                                    peer-checked:after:border-white peer-checked:after:translate-x-full">
+                        </div>
+                    </div>
+                </label>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+                <label class="cursor-pointer inline-flex items-center w-full">
+                    <p class="text-sm text-white">Use Bypass Charge</p>
+                    <div class="ml-auto">
+                        <input type="checkbox" id="Zepass" class="peer sr-only">
+                        <div class="relative w-11 h-6 bg-gray-200 dark:bg-gray-700 dark:border-gray-600 
+                                    peer-checked:bg-blue-600 rounded-full after:absolute after:bg-white after:border 
+                                    after:border-gray-300 after:content-[''] after:h-5 after:left-[2px] 
+                                    after:rounded-full after:top-0.5 after:transition-all after:w-5 
+                                    peer-checked:after:border-white peer-checked:after:translate-x-full">
+                        </div>
+                    </div>
+                </label>
+            </div>            
+            <div class="flex items-center justify-between mb-3">
+                <label class="cursor-pointer inline-flex items-center w-full">
+                    <p class="text-sm text-white">Screen Enhance</p>
+                    <div class="ml-auto">
+                        <input type="checkbox" id="ScreenEnh" class="peer sr-only">
+                        <div class="relative w-11 h-6 bg-gray-200 dark:bg-gray-700 dark:border-gray-600 
+                                    peer-checked:bg-blue-600 rounded-full after:absolute after:bg-white after:border 
+                                    after:border-gray-300 after:content-[''] after:h-5 after:left-[2px] 
+                                    after:rounded-full after:top-0.5 after:transition-all after:w-5 
+                                    peer-checked:after:border-white peer-checked:after:translate-x-full">
+                        </div>
+                    </div>
+                </label>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+                <label class="cursor-pointer inline-flex items-center w-full">
+                    <p class="text-sm text-white">SurfaceFlinger Latency</p>
+                    <div class="ml-auto">
+                        <input type="checkbox" id="SFL" class="peer sr-only">
+                        <div class="relative w-11 h-6 bg-gray-200 dark:bg-gray-700 dark:border-gray-600 
+                                    peer-checked:bg-blue-600 rounded-full after:absolute after:bg-white after:border 
+                                    after:border-gray-300 after:content-[''] after:h-5 after:left-[2px] 
+                                    after:rounded-full after:top-0.5 after:transition-all after:w-5 
+                                    peer-checked:after:border-white peer-checked:after:translate-x-full">
+                        </div>
+                    </div>
+                </label>
+            </div>
+        </div>
+    </div>
+    <div class="p-6">
+        <div class="bg-gray-900 mt-211 mb-4 p-4 rounded-lg">
+            <div class="flex items-center justify-between">
+                <h2 class="font-semibold mb-4 text-lg text-black-69">Other Settings</h2>
+            </div>           
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-sm text-white">Disable Vsync</p>
+                <button id="disablevsync" class="bg-gray-700 hover:bg-gray-600 px-7 py-1 rounded-md text-sm text-white">
+                    Apply
+                </button>
+            </div> 
+            <div class="flex items-center justify-between mb-3">
+                <label class="cursor-pointer inline-flex items-center w-full">
+                    <p class="text-sm text-white">FSTrim Partition</p>
+                    <div class="ml-auto">
+                        <input type="checkbox" id="FSTrim" class="peer sr-only">
+                        <div class="relative w-11 h-6 bg-gray-200 dark:bg-gray-700 dark:border-gray-600 
+                                    peer-checked:bg-blue-600 rounded-full after:absolute after:bg-white after:border 
+                                    after:border-gray-300 after:content-[''] after:h-5 after:left-[2px] 
+                                    after:rounded-full after:top-0.5 after:transition-all after:w-5 
+                                    peer-checked:after:border-white peer-checked:after:translate-x-full">
+                        </div>
+                    </div>
+                </label>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+                <label class="cursor-pointer inline-flex items-center w-full">
+                    <p class="text-sm text-white">ML High Priority</p>
+                    <div class="ml-auto">
+                        <input type="checkbox" id="MLTweak" class="peer sr-only">
+                        <div class="relative w-11 h-6 bg-gray-200 dark:bg-gray-700 dark:border-gray-600 
+                                    peer-checked:bg-blue-600 rounded-full after:absolute after:bg-white after:border 
+                                    after:border-gray-300 after:content-[''] after:h-5 after:left-[2px] 
+                                    after:rounded-full after:top-0.5 after:transition-all after:w-5 
+                                    peer-checked:after:border-white peer-checked:after:translate-x-full">
+                        </div>
+                    </div>
+                </label>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+                <label class="cursor-pointer inline-flex items-center w-full">
+                    <p class="text-sm text-white">Use Zenith Thermal</p>
+                    <div class="ml-auto">
+                        <input type="checkbox" id="DThermal" class="peer sr-only">
+                        <div class="relative w-11 h-6 bg-gray-200 dark:bg-gray-700 dark:border-gray-600 
+                                    peer-checked:bg-blue-600 rounded-full after:absolute after:bg-white after:border 
+                                    after:border-gray-300 after:content-[''] after:h-5 after:left-[2px] 
+                                    after:rounded-full after:top-0.5 after:transition-all after:w-5 
+                                    peer-checked:after:border-white peer-checked:after:translate-x-full">
+                        </div>
+                    </div>
+                </label>
+            </div>
+        </div>
+    </div>
+    <div class="p-6">
+        <div class="bg-gray-900 mt-211 mb-4 p-4 rounded-lg">
+            <div class="flex items-center justify-between">
+                <h2 class="font-semibold mb-4 text-lg text-black-69">Service Settings</h2>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+                <label class="cursor-pointer inline-flex items-center w-full">
+                    <p class="text-sm text-white">Kill Logger</p>
+                    <div class="ml-auto">
+                        <input type="checkbox" id="logd" class="peer sr-only">
+                        <div class="relative w-11 h-6 bg-gray-200 dark:bg-gray-700 dark:border-gray-600 
+                                    peer-checked:bg-blue-600 rounded-full after:absolute after:bg-white after:border 
+                                    after:border-gray-300 after:content-[''] after:h-5 after:left-[2px] 
+                                    after:rounded-full after:top-0.5 after:transition-all after:w-5 
+                                    peer-checked:after:border-white peer-checked:after:translate-x-full">
+                        </div>
+                    </div>
+                </label>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+                <label class="cursor-pointer inline-flex items-center w-full">
+                    <p class="text-sm text-white">Force Perf Mode</p>
+                    <div class="ml-auto">
+                        <input type="checkbox" id="perfmode" class="peer sr-only">
+                        <div class="relative w-11 h-6 bg-gray-200 dark:bg-gray-700 dark:border-gray-600 
+                                    peer-checked:bg-blue-600 rounded-full after:absolute after:bg-white after:border 
+                                    after:border-gray-300 after:content-[''] after:h-5 after:left-[2px] 
+                                    after:rounded-full after:top-0.5 after:transition-all after:w-5 
+                                    peer-checked:after:border-white peer-checked:after:translate-x-full">
+                        </div>
+                    </div>
+                </label>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-sm text-white">Start Service</p>
+                <button id="startButton" class="bg-gray-700 hover:bg-gray-600 px-7 py-1 rounded-md text-sm text-white">
+                    Restart
+                </button>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-sm text-white">Kill Service</p>
+                <button id="killService" class="bg-gray-700 hover:bg-gray-600 px-7 py-1 rounded-md text-sm text-white">
+                    Kill
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="gamelistModal" class="bg-gray-900 bg-opacity-75 fixed flex hidden inset-0 items-center justify-center z-50">
+        <div class="bg-gray-800 max-w-md p-6 rounded-lg w-11/12">
+            <h3 class="font-semibold mb-2 text-lg">Game List</h3>
+            <p class="mb-4 text-slate-300 text-xs">
+                Any Apps and Games listed here will trigger Game profile
+            </p>
+            <textarea id="gamelistInput" class="bg-gray-600 border-none outline-none p-2 resize-none rounded-md 
+                        shadow-none text-sm text-white w-full" rows="16">
+            </textarea>
+            <div class="flex justify-end mt-4">
+                <button id="cancelButton" class="bg-gray-600 hover:bg-gray-500 mr-2 px-4 py-1 rounded-md text-sm text-white">
+                    Cancel
+                </button>
+                <button id="saveGamelistButton" class="bg-blue-600 hover:bg-blue-500 px-4 py-1 rounded-md text-sm text-white">
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+    <footer class="mb-1 mt-auto py-3 text-center text-gray-600 text-xs">
+        <p>"Zenith your game, Zenith your performance"</p>
+    </footer>
+        <footer class="mb-3 mt-auto py-3 text-center text-gray-600 text-xs">
+        <p>Designed by : @kanaochar | Modified by : @Zexshia</p>
+    </footer>
+</body>
+</html>
