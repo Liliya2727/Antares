@@ -21,7 +21,7 @@ zeshia() {
     fi
 }
 
-AZLog "Starting tweaks... (de sure dek de)"
+AZLog "Starting tweaks..."
 
 # **Activate Bypass Charge**
 if [ "$(cat /data/AZenith/bypass_charge 2>/dev/null)" -eq 1 ]; then
