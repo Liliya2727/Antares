@@ -132,5 +132,10 @@ fi
 if [ -f /data/AZenith/FSTrim ] && [ "$(cat /data/AZenith/FSTrim)" -eq 1 ]; then
     FSTrim
 fi
+if [ -f /data/AZenith/logd ] && [ "$(cat /data/AZenith/logd)" -eq 1 ]; then
+    stop logd
+    else
+    start logd
+fi
 
 AZLog  "AZenith Utility Completed."
