@@ -695,6 +695,18 @@ video {
   line-height: 1rem;
 }
 
+.text-sss {
+  font-size: 0.60rem;
+  line-height: 0.7rem;
+  margin-top: 0.2px;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 200px;
+  display: block;
+}
+
+
 .text-xsss {
   font-size: 0.65rem;
   line-height: 1rem;
