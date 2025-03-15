@@ -159,10 +159,10 @@ async function checkServiceStatus() {
   if (errno === 0) {
     let statusElement = document.getElementById("serviceStatus");
     if (stdout.trim() !== "0") {
-      statusElement.textContent = "Running!✨";
+      statusElement.textContent = "Zenithed⚡";
       document.getElementById("servicePID").textContent = "Service PID: " + stdout.trim();
     } else {
-      statusElement.textContent = "Hibernating~";
+      statusElement.textContent = "Suspended💤";
       document.getElementById("servicePID").textContent = "Service PID: null";
     }
   }
@@ -280,12 +280,13 @@ async function setMLTweak(enabled) {
 
 async function startService() {
   showToast("Restarting Services...");
-  await executeCommand("pkill -f AZenith; sleep 2; sh /data/adb/modules/AZenith/service.sh");
+  await executeCommand("sh /data/adb/modules/AZenith/service.sh");
   await checkServiceStatus();
 }
 
 async function stopService() {
   showToast("Killing Service!");
+  await executeCommand("pkill -f AZenith_Performance");
   await executeCommand("pkill -f AZenith");
   await checkServiceStatus();
 }
