@@ -17,7 +17,7 @@ REPLACE=""
 ui_print
 ui_print "              AZenith              "
 ui_print
-ui_print "- Release Date  : 14/03/2025"
+ui_print "- Release Date  : 16/03/2025"
 ui_print "- Author          : ${AUTHOR}"
 ui_print "- Version         : ${MODVER}"
 ui_print "- Device          : $(getprop ro.product.board) $(getprop ro.product.cpu.abi)"
