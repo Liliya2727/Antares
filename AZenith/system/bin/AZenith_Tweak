@@ -1,38 +1,77 @@
 #!/bin/sh
 
-zeshia() {
-	if [ -f $2 ]; then
-		chmod 644 $2 >/dev/null 2>&1
-		echo $1 >$2 2>/dev/null
-		chmod 444 $2 >/dev/null 2>&1
-	fi
+MODDIR=${0%/*}
+logpath="/data/AZenith/AZenith.log"
+
+AZLog() {
+    local timestamp
+    timestamp=$(date +'%Y-%m-%d %H:%M:%S')
+    local message="$1"
+    echo "$timestamp - $message" >> "$logpath"
+    echo "$timestamp - $message"
 }
 
+zeshia() {
+    if [ -f "$2" ]; then
+        chmod 644 "$2" >/dev/null 2>&1
+        echo "$1" >"$2" 2>/dev/null && AZLog "Set $2 to $1" || AZLog "Failed to set $2 to $1"
+        chmod 444 "$2" >/dev/null 2>&1
+    else
+        AZLog "File $2 not found, skipping..."
+    fi
+}
+
+# Define important variables
 lib="UnityMain, libunity.so, libil2ccp.so, libmain.so"
 
-    for eem in EEM_DET_B EEM_DET_BL EEM_DET_L; do
-        echo "$(cat /proc/eem/$eem/eem_offset)" "/data/AZenith/default_$eem"
-    done
-    echo "$(cat /proc/eem/EEM_DET_CCI/eem_offset)" "/data/AZenith/default_EEM_DET_CCI"
-    echo "$(cat /proc/eemg/EEMG_DET_GPU/eemg_offset)" "/data/AZenith/default_EEMG_DET_GPU"
-    echo "$(cat /proc/eemg/EEMG_DET_GPU_HI/eemg_offset)" "/data/AZenith/default_EEMG_DET_GPU_HI"
-    
-for sw in /dev/memcg; do
-    zeshia 20 "$sw/memory.swappiness"
-    zeshia 30 "$sw/apps/memory.swappiness"
-    zeshia 60 "$sw/system/memory.swappiness"
+# Save EEM values
+for eem in EEM_DET_B EEM_DET_BL EEM_DET_L EEM_DET_CCI; do
+    eem_path="/proc/eem/$eem/eem_offset"
+    eem_save_path="/data/AZenith/default_$eem"
+
+    if [ -f "$eem_path" ]; then
+        eem_value=$(cat "$eem_path")
+        echo "$eem_value" > "$eem_save_path"
+        AZLog "Saved $eem value: $eem_value"
+    else
+        AZLog "$eem_path not found, skipping..."
+    fi
 done
 
-zeshia 20 /proc/sys/vm/swappiness
-for policy in 0 4 7; do
-    zeshia "schedhorizon" "/sys/devices/system/cpu/cpufreq/policy$policy/scaling_governor"
+# Save EEMG values
+for eemg in EEMG_DET_GPU EEMG_DET_GPU_HI; do
+    eemg_path="/proc/eemg/$eemg/eemg_offset"
+    eemg_save_path="/data/AZenith/default_$eemg"
+
+    if [ -f "$eemg_path" ]; then
+        eemg_value=$(cat "$eemg_path")
+        echo "$eemg_value" > "$eemg_save_path"
+        AZLog "Saved $eemg value: $eemg_value"
+    else
+        AZLog "$eemg_path not found, skipping..." >> /data/AZenith/AZenith.log
+    fi
 done
 
+# CPU Core Ctl Optimization with delay for stability
 for cpu in 0 4 7; do
     zeshia "1" "/sys/devices/system/cpu/cpu$cpu/core_ctl/enable"
+    sleep 0.1
     zeshia "10" "/sys/devices/system/cpu/cpu$cpu/core_ctl/offline_throttle_ms"
 done
 
+# **Schedhorizon Frequency Tuning**
+AZLog "Applying Schedhorizon Frequency Tuning..."
+zeshia "50 100 200 400 600" "/sys/devices/system/cpu/cpufreq/policy0/schedhorizon/up_delay"
+zeshia "500000 850000 1250000 1450000 1800000" "/sys/devices/system/cpu/cpufreq/policy0/schedhorizon/efficient_freq"
+zeshia "50 100 200 400 600 800" "/sys/devices/system/cpu/cpufreq/policy4/schedhorizon/up_delay"
+zeshia "437000 902000 1162000 1451000 1740000 1985000" "/sys/devices/system/cpu/cpufreq/policy4/schedhorizon/efficient_freq"
+zeshia "30 50 150 300 500 700" "/sys/devices/system/cpu/cpufreq/policy7/schedhorizon/up_delay"
+zeshia "480000 1200000 1600000 1800000 2200000 2400000" "/sys/devices/system/cpu/cpufreq/policy7/schedhorizon/efficient_freq"
+
+# Memory optimizations
+zeshia 20 /proc/sys/vm/swappiness
+
+# Block I/O optimizations with reduced redundant operations
 for block in mmcblk0 mmcblk1 sda sdb sdc; do
     for param in add_random iostats nomerges rotational rq_affinity; do
         zeshia "0" "/sys/block/$block/queue/$param"
@@ -41,114 +80,25 @@ for block in mmcblk0 mmcblk1 sda sdb sdc; do
     zeshia "128" "/sys/block/$block/queue/read_ahead_kb"
 done
 
+# Network settings with logging
 zeshia "cubic" /proc/sys/net/ipv4/tcp_congestion_control
 zeshia 1 /proc/sys/net/ipv4/tcp_low_latency
-zeshia 1 /proc/sys/net/ipv4/tcp_ecn
-zeshia 1 /proc/sys/net/ipv4/tcp_sack
-zeshia 3 /proc/sys/net/ipv4/tcp_fastopen
 
-for sch in /proc/sys/kernel
-do
-    zeshia 100000 "$sch/sched_migration_cost_ns"
-    zeshia 100000 "$sch/sched_latency_ns"
-    zeshia 1024 "$sch/sched_util_clamp_max"
-    zeshia 1 "$sch/sched_util_clamp_min"
-    zeshia 1 "$sch/sched_child_runs_first"
-    zeshia 16 "$sch/sched_nr_migrate"
-    zeshia 0 "$sch/sched_schedstats"
-    zeshia 100000 "$sch/sched_wakeup_granularity_ns"
-    zeshia 1000000 "$sch/sched_min_granularity_ns"
-    zeshia 950000 "$sch/sched_rt_runtime_us"
-    zeshia 1000000 "$sch/sched_rt_period_us"
-    zeshia 0 "$sch/sched_autogroup_enabled"
+# CPU Stune Configuration
+for stune in top-app foreground background; do
+    zeshia "0" "/dev/stune/$stune/schedtune.prefer_idle"
+    zeshia "0" "/dev/stune/$stune/schedtune.boost"
 done
 
-# Virtual memory settings
-zeshia "always" /sys/kernel/mm/transparent_hugepage/shmem_enabled
-zeshia "always" /sys/kernel/mm/transparent_hugepage/defrag
-zeshia "always" /sys/kernel/mm/transparent_hugepage/enabled
-
-
-zeshia "50 100 200 400 600" "/sys/devices/system/cpu/cpufreq/policy0/schedhorizon/up_delay"
-zeshia "500000 850000 1250000 1450000 1800000" "/sys/devices/system/cpu/cpufreq/policy0/schedhorizon/efficient_freq"
-zeshia "50 100 200 400 600 800" "/sys/devices/system/cpu/cpufreq/policy4/schedhorizon/up_delay"
-zeshia "437000 902000 1162000 1451000 1740000 1985000" "/sys/devices/system/cpu/cpufreq/policy4/schedhorizon/efficient_freq"
-zeshia "30 50 150 300 500 700" "/sys/devices/system/cpu/cpufreq/policy7/schedhorizon/up_delay"
-zeshia "480000 1200000 1600000 1800000 2200000 2400000" "/sys/devices/system/cpu/cpufreq/policy7/schedhorizon/efficient_freq"
-
-entropy=$(cat /proc/sys/kernel/random/poolsize)
-# Cpu Stune Configuration
-zeshia "0-7" /dev/cpuset/foreground/cpus 
-zeshia "0-7" /dev/cpuset/foreground/boost/cpus 
-zeshia "0-7" /dev/cpuset/top-app/cpus  
-zeshia "0-3" /dev/cpuset/background/cpus 
-zeshia "0-7" /dev/cpuset/camera-daemon/cpus 
-zeshia "0-7" /dev/cpuset/rt/cpus 
-zeshia "1" /dev/stune/top-app/schedtune.colocate
-zeshia "1" /dev/stune/top-app/schedtune.sched_boost_enabled
-zeshia "1" /dev/stune/top-app/schedtune.sched_boost_no_override
-zeshia "0" /dev/stune/top-app/schedtune.prefer_idle
-zeshia "0" /dev/stune/top-app/schedtune.boost
-zeshia "0" /dev/stune/foreground/schedtune.colocate
-zeshia "1" /dev/stune/foreground/schedtune.sched_boost_enabled
-zeshia "0" /dev/stune/foreground/schedtune.sched_boost_no_override
-zeshia "0" /dev/stune/foreground/schedtune.prefer_idle
-zeshia "0" /dev/stune/foreground/schedtune.boost
-zeshia "0" /dev/stune/background/schedtune.colocate
-zeshia "1" /dev/stune/background/schedtune.sched_boost_enabled
-zeshia "0" /dev/stune/background/schedtune.sched_boost_no_override
-zeshia "0" /dev/stune/background/schedtune.prefer_idle
-zeshia "0" /dev/stune/background/schedtune.boost
-
-# Ged Optimisation
-zeshia "1" /sys/module/ged/parameters/gx_game_mode
-zeshia "1" /sys/module/ged/parameters/ged_smart_boost
-zeshia "1" /sys/module/ged/parameters/cpu_boost_policy
-zeshia "1" /sys/module/ged/parameters/boost_extra
-zeshia "886000" /sys/module/ged/parameters/gpu_cust_upbound_freq
-zeshia "1" /sys/module/ged/parameters/enable_gpu_boost
-zeshia "1" /sys/module/ged/parameters/ged_boost_enable
-zeshia "1" /sys/module/ged/parameters/gx_boost_on
-zeshia "1" /sys/module/ged/parameters/boost_gpu_enable
-zeshia "1" /sys/module/ged/parameters/ged_monitor_3D_fence_systrace
-zeshia "90" /sys/module/ged/parameters/g_fb_dvfs_threshold
-zeshia "1" /sys/module/ged/parameters/g_gpu_timer_based_emu
-zeshia "1" /sys/module/ged/parameters/gpu_cust_boost_freq
-zeshia "1" /sys/kernel/ged/hal/gpu_boost_level
-
-# Core Ctl Optimisation
-zeshia "1" /sys/devices/system/cpu/cpu0/core_ctl/enable
-zeshia "6" /sys/devices/system/cpu/cpu0/core_ctl/min_cpus
-zeshia "6" /sys/devices/system/cpu/cpu0/core_ctl/max_cpus
-zeshia "10" /sys/devices/system/cpu/cpu0/core_ctl/offline_throttle_ms
-zeshia "1" /sys/devices/system/cpu/cpu4/core_ctl/enable
-zeshia "4" /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
-zeshia "4" /sys/devices/system/cpu/cpu4/core_ctl/max_cpus
-zeshia "10" /sys/devices/system/cpu/cpu4/core_ctl/offline_throttle_ms
-zeshia "10" /sys/devices/system/cpu/cpu4/core_ctl/btask_up_thresh
-zeshia "2" /sys/devices/system/cpu/cpu4/core_ctl/btask_down_thresh
-zeshia "1" /sys/devices/system/cpu/cpu7/core_ctl/enable
-zeshia "2" /sys/devices/system/cpu/cpu7/core_ctl/min_cpus
-zeshia "2" /sys/devices/system/cpu/cpu7/core_ctl/max_cpus
-zeshia "10" /sys/devices/system/cpu/cpu7/core_ctl/offline_throttle_ms
-zeshia "10" /sys/devices/system/cpu/cpu7/core_ctl/btask_up_thresh
-zeshia "2" /sys/devices/system/cpu/cpu7/core_ctl/btask_down_thresh
-zeshia "90" /sys/devices/system/cpu/cpu7/core_ctl/cpu_tj_btask_thresh
-
-#entropy
-zeshia 1024 /proc/sys/kernel/random/read_wakeup_threshold
-zeshia "$entropy" /proc/sys/kernel/random/write_wakeup_threshold
-zeshia "$entropy" /proc/sys/kernel/random/entropy_avail
-
+# Disable FPSGO for gaming boost
 zeshia 0 /sys/kernel/fpsgo/common/fpsgo_enable
 
-# Disable all kernel-panic
-zeshia "0" /proc/sys/kernel/hung_task_timeout_secs
-zeshia "0" /proc/sys/vm/panic_on_oom
-zeshia "0" /proc/sys/kernel/panic_on_oops
-zeshia "0" /proc/sys/kernel/panic
-zeshia "0" /proc/sys/kernel/softlockup_panic
+# Disable all kernel panic mechanisms
+for param in hung_task_timeout_secs panic_on_oom panic_on_oops panic softlockup_panic; do
+    zeshia "0" "/proc/sys/kernel/$param"
+done
 
+# Set library names for scheduler optimization
 zeshia "$lib" "/proc/sys/kernel/sched_lib_name"
-sleep 2
-su -lp 2000 -c "/system/bin/cmd notification post -t 'AZenith!' -i file:///data/local/tmp/AZenith_icon.png -I file:///data/local/tmp/AZenith_icon.png 'AZenith' 'Tweak is Applied!'"
+
+AZLog "AZenith tweak execution completed successfully!"
