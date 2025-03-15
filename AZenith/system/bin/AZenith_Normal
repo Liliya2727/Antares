@@ -11,6 +11,18 @@ AZLog() {
     echo "$timestamp - $message"
 }
 
+DEFAULT_GOV_FILE="/data/AZenith/custom_default_cpu_gov"
+
+
+# Function to retrieve the stored governor
+load_default_governor() {
+    if [ -f "$DEFAULT_GOV_FILE" ]; then
+        cat "$DEFAULT_GOV_FILE"
+    else
+        echo "schedutil"  
+    fi
+}
+
 zeshia() {
     if [ -f "$2" ]; then
         chmod 644 "$2" >/dev/null 2>&1
