@@ -1,75 +1,127 @@
 #!/bin/sh
 
+MODDIR=${0%/*}
+logpath="/data/AZenith/AZenith.log"
 
+AZLog() {
+    local timestamp
+    timestamp=$(date +'%Y-%m-%d %H:%M:%S')
+    local message="$1"
+    echo "$timestamp - $message" >> "$logpath"
+    echo "$timestamp - $message"
+}
 
-# Generate game list filter
+AZLog "Script started - Monitoring Game Mode"
+
+if [ "$(pgrep -f "$(basename "$0")" | grep -v "$$" | wc -l)" -ge 1 ]; then
+    AZLog "Script already running, exiting..."
+    exit 0
+fi
+
+# Load game list filter dynamically from file
 game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/AZenith/gamelist.txt")"
 
+# Functions for applying & reverting performance tweaks
 startgamemode() {
-nohup sh /data/adb/modules/AZenith/system/bin/AZenith_Performance
+    AZLog "Start Game Mode"
+    nohup sh /data/adb/modules/AZenith/system/bin/AZenith_Performance >/dev/null 2>&1 &
 }
 
 stopgamemode() {
-pkill -f AZenith_Performance
-sleep 1
-sh /data/adb/modules/AZenith/system/bin/AZenith_Normal
+    AZLog "Restoring Normal Profile"
+    pkill -f AZenith_Performance
+    sleep 1
+    sh /data/adb/modules/AZenith/system/bin/AZenith_Normal
 }
 
 mltweak() {
     mltwk="com.mobile.legends"
-    pidml=$(pidof "$mltwk") 
+    pidml=$(pidof "$mltwk")
 
-    if [ "$gamestart" = "$mltwk" ]; then
-        if [[ -n "$pidml" ]]; then 
-            for pid in $pidml; do
-                sleep 1
-                /system/bin/am start -a android.intent.action.MAIN -e toasttext "ML High Prior!" -n bellavita.toast/.MainActivity    
-                renice -20 -p "$pid" 
-                ionice -c 1 -n 0 -p "$pid"  
-                chrt -f -p 99 "$pid"           
-            done
-        fi
+    if [ "$gamestart" = "$mltwk" ] && [ -n "$pidml" ]; then
+        log "Applying ML optimizations..."
+        for pid in $pidml; do
+            sleep 1
+            find "/data/data/$mltwk/cache/" -type f -mtime +1 -exec rm -f {} +
+            AZLog "Cleared ML cache in /data/data"
+            find "/data/media/0/Android/data/$mltwk/cache/" -type f -mtime +1 -exec rm -f {} +
+            AZLog "Cleared ML cache in /data/media/0"
+            /system/bin/am start -a android.intent.action.MAIN -e toasttext "ML High Prior!" -n bellavita.toast/.MainActivity    
+            renice -n -10 -p "$pid"
+            ionice -c 1 -n 0 -p "$pid"
+            chrt -f -p 99 "$pid"
+        done
+    else
+        AZLog "ML tweak not executed - Mobile Legends is not running."
     fi
-
-    # Clear cache if directory exists
-    [ -d "/data/data/$mltwk/cache" ] && find "/data/data/$mltwk/cache/" -type f -mtime +1 -delete
-    [ -d "/data/media/0/Android/data/$mltwk/cache" ] && find "/data/media/0/Android/data/$mltwk/cache/" -type f -mtime +1 -delete
 }
 
 runmltwk() {
-if [ "$(cat /data/AZenith/mltweak)" -eq 1 ]; then
-     mltweak&
-     fi
+    if [ "$(cat /data/AZenith/mltweak 2>/dev/null)" -eq 1 ]; then
+        AZLog "ML tweak enabled, executing..."
+        mltweak
+    else
+        AZLog "ML tweak not enabled, skipping..."
+    fi
 }
-    
+
 applychange() {
-    # Ensure current_state is initialized
     if [ -z "$current_state" ]; then
         export current_state=0
     fi
-        if [ "$1" -eq 1 ] && [ "$current_state" -ne 1 ]; then    
-            export current_state=1            
-            /system/bin/am start -a android.intent.action.MAIN -e toasttext "Tweak Applied!" -n bellavita.toast/.MainActivity 
-            cmd package force-dex-opt ${gamestart} >/dev/null 2>&1
-            runmltwk           
-            startgamemode 
-        elif [ "$1" -eq 0 ] && [ "$current_state" -ne 0 ]; then       
-            export current_state=0           
-            /system/bin/am start -a android.intent.action.MAIN -e toasttext "Disabling Performance Mode..." -n bellavita.toast/.MainActivity
-            stopgamemode
-        fi
+
+    if [ "$1" -eq 1 ] && [ "$current_state" -ne 1 ]; then    
+        export current_state=1
+        AZLog "Starting Game Mode..."
+        /system/bin/am start -a android.intent.action.MAIN -e toasttext "Tweak Applied to $gamestart" -n bellavita.toast/.MainActivity
+        cmd package force-dex-opt "$gamestart" >/dev/null 2>&1
+        runmltwk
+        startgamemode
+    elif [ "$1" -eq 0 ] && [ "$current_state" -ne 0 ]; then
+        export current_state=0
+        AZLog "Starting Normal Mode..."
+        /system/bin/am start -a android.intent.action.MAIN -e toasttext "Disabling Performance Mode..." -n bellavita.toast/.MainActivity
+        stopgamemode
+    fi
 }
 
-while true; do
-    window=$(dumpsys window)
-    gamestart=$(echo "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
-    screenoff=$(echo "$window" | grep "mScreen" | grep -Eo "false" | tail -n 1)
-    pid=$(pgrep -f "$gamestart")
 
-    if [ -n "$gamestart" ] && [ "$screenoff" != "false" ]; then
+# monitoring 
+monitoring() {
+    while true; do
+        AZLog "Monitoring Games..."
+
+        window=$(dumpsys window)
+        gamestart=$(echo "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
+        screenstate=$(dumpsys power | grep -i "mHoldingDisplaySuspendBlocker" | grep -Eo "true|false")
+
+        AZLog "Detected Game: $gamestart"
+        AZLog "ScreenOn: $screenstate"
+
+        if [ -n "$gamestart" ]; then
+            gamebg="$gamestart"
+        fi
+
+        if [ -n "$gamebg" ]; then
+            game_pids=$(pgrep -f -e "$gamebg")
+        else
+            game_pids=""
+        fi
+
+        if [ -n "$gamestart" ] && [ "$screenstate" = "true" ]; then
+            log "Game detected in foreground & Screen On: $gamestart"
+            applychange 1
+        elif [ -n "$game_pids" ] && [ "$screenstate" = "true" ]; then
+            log "Game running in background & Screen On: $gamebg"
             applychange 1
         else
-            applychange 0               
-    fi
-    sleep 10
-done&
+            log "No active game detected or screen is off - Stopping tweaks"
+            applychange 0
+            gamebg=""
+        fi
+
+        sleep 10
+    done
+}
+# Start monitoring
+monitoring
