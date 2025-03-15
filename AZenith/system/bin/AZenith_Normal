@@ -1,87 +1,121 @@
 #!/bin/sh
 
-DEFAULT_GOV_FILE="/data/AZenith/custom_default_cpu_gov"
+MODDIR=${0%/*}
+logpath="/data/AZenith/AZenith.log"
 
-
-# Function to retrieve the stored governor
-load_default_governor() {
-    if [ -f "$DEFAULT_GOV_FILE" ]; then
-        cat "$DEFAULT_GOV_FILE"
-    else
-        echo "schedutil"  
-    fi
+AZLog() {
+    local timestamp
+    timestamp=$(date +'%Y-%m-%d %H:%M:%S')
+    local message="$1"
+    echo "$timestamp - $message" >> "$logpath"
+    echo "$timestamp - $message"
 }
 
 zeshia() {
-	if [ -f $2 ]; then
-		chmod 644 $2 >/dev/null 2>&1
-		echo $1 >$2 2>/dev/null
-		chmod 444 $2 >/dev/null 2>&1
-	fi
+    if [ -f "$2" ]; then
+        chmod 644 "$2" >/dev/null 2>&1
+        echo "$1" >"$2" 2>/dev/null && AZLog "Set $2 to $1" || AZLog "Failed to set $2 to $1"
+        chmod 444 "$2" >/dev/null 2>&1
+    else
+        AZLog "File $2 not found, skipping..."
+    fi
 }
 
-    default_cpu_gov=$(load_default_governor)
+default_cpu_gov=$(load_default_governor)
+AZLog "Default CPU Governor: $default_cpu_gov"
 
-# Activate bypass charge
-    if [ "$(cat /data/AZenith/bypass_charge)" -eq 1 ]; then
+# **Deactivate Bypass Charge**
+if [ "$(cat /data/AZenith/bypass_charge 2>/dev/null)" -eq 1 ]; then
     zeshia "0" "/sys/devices/platform/charger/bypass_charger"
-    fi
-# Set DND
-    if [ "$(cat /data/AZenith/dnd)" -eq 1 ]; then
-    cmd notification set_dnd 0
-    fi
+else
+    AZLog "Bypass charge already disabled."
+fi
+
+# **Disable DND Mode**
+if [ "$(cat /data/AZenith/dnd 2>/dev/null)" -eq 1 ]; then
+    cmd notification set_dnd 0 && AZLog "DND disabled" || AZLog "Failed to disable DND"
+else
+    AZLog "DND was already off."
+fi
+
+# **Restore CPU Scaling Governor**
+for path in /sys/devices/system/cpu/cpufreq/policy*; do
+    zeshia "$default_cpu_gov" "$path/scaling_governor"
+    sleep 0.5
+done
+
+# **Restore PPM Policy**
+if [ -d /proc/ppm ]; then
+    cluster=0
     for path in /sys/devices/system/cpu/cpufreq/policy*; do
-        zeshia "$default_cpu_gov" "$path/scaling_governor"
-    done &
-    
-
-    if [ -d /proc/ppm ]; then
-        cluster=0
-        for path in /sys/devices/system/cpu/cpufreq/policy*; do
-            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-            cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-            zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
-            zeshia "$cluster $cpu_minfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
-            ((cluster++))
-        done
-    fi
-
-    for path in /sys/devices/system/cpu/*/cpufreq; do
         cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
         cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-        zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
-        zeshia "$cpu_minfreq" "$path/scaling_min_freq"
+        zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+        zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+        ((cluster++))
+        sleep 0.5
     done
+fi
 
-    zeshia 120 /proc/sys/vm/vfs_cache_pressure
+# **Restore CPU Frequency Limits**
+for path in /sys/devices/system/cpu/*/cpufreq; do
+    cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+    cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+    zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
+    zeshia "$cpu_minfreq" "$path/scaling_min_freq"
+    sleep 0.5
+done
 
-    for path in /sys/class/devfreq/*.ufshc; do
-        zeshia simple_ondemand "$path/governor"
-    done &
+zeshia "120" "/proc/sys/vm/vfs_cache_pressure"
 
-    for eem in EEM_DET_B EEM_DET_BL EEM_DET_L; do
+# **Restore UFS Governor**
+for path in /sys/class/devfreq/*.ufshc; do
+    zeshia "simple_ondemand" "$path/governor"
+    sleep 0.5
+done
+
+# **Restore Voltage Optimization Settings**
+for eem in EEM_DET_B EEM_DET_BL EEM_DET_L; do
+    if [ -f "/data/AZenith/default_$eem" ]; then
         zeshia "$(cat /data/AZenith/default_$eem)" "/proc/eem/$eem/eem_offset"
+        sleep 0.5
+    fi
+done
+zeshia "$(cat /data/AZenith/default_EEM_DET_CCI 2>/dev/null)" "/proc/eem/EEM_DET_CCI/eem_offset"
+zeshia "$(cat /data/AZenith/default_EEMG_DET_GPU 2>/dev/null)" "/proc/eemg/EEMG_DET_GPU/eemg_offset"
+zeshia "$(cat /data/AZenith/default_EEMG_DET_GPU_HI 2>/dev/null)" "/proc/eemg/EEMG_DET_GPU_HI/eemg_offset"
+
+# **Restore Power & Thermal Policies**
+if [ -d /proc/ppm ]; then
+    for idx in $(grep -E 'PWR_THRO|THERMAL' /proc/ppm/policy_status | awk -F'[][]' '{print $2}'); do
+        zeshia "$idx 1" "/proc/ppm/policy_status"
+        sleep 0.5
     done
-    zeshia "$(cat /data/AZenith/default_EEM_DET_CCI)" "/proc/eem/EEM_DET_CCI/eem_offset"
-    zeshia "$(cat /data/AZenith/default_EEMG_DET_GPU)" "/proc/eemg/EEMG_DET_GPU/eemg_offset"
-    zeshia "$(cat /data/AZenith/default_EEMG_DET_GPU_HI)" "/proc/eemg/EEMG_DET_GPU_HI/eemg_offset"
+fi
 
+# **Restore CPU Performance Settings**
+zeshia "0" "/proc/cpufreq/cpufreq_cci_mode"
+sleep 0.5
+zeshia "1" "/proc/cpufreq/cpufreq_power_mode"
+sleep 0.5
 
-    if [ -d /proc/ppm ]; then
-        for idx in $(grep -E 'PWR_THRO|THERMAL' /proc/ppm/policy_status | awk -F'[][]' '{print $2}'); do
-            zeshia "$idx 1" /proc/ppm/policy_status
-        done
-    fi
+# **Restore GPU Settings**
+if [ -d /proc/gpufreqv2 ]; then
+    zeshia "-1" "/proc/gpufreqv2/fix_target_opp_index"
+    sleep 0.5
+fi
 
-    zeshia "0" /proc/cpufreq/cpufreq_cci_mode
-    zeshia "1" /proc/cpufreq/cpufreq_power_mode
+# **Restore DDR & VCore Settings**
+zeshia "-1" "/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp"
+sleep 0.5
+zeshia "-1" "/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp"
+sleep 0.5
+zeshia "userspace" "/sys/class/devfreq/mtk-dvfsrc-devfreq/governor"
+sleep 0.5
+zeshia "userspace" "/sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor"
+sleep 0.5
 
-    if [ -d /proc/gpufreqv2 ]; then
-        zeshia -1 /proc/gpufreqv2/fix_target_opp_index
-    fi
+# **Disable Fixed Performance Mode**
+cmd power set-fixed-performance-mode-enabled false && AZLog " Performance Mode disabled" || AZLog "Failed to disable Performance Mode"
 
-    zeshia "-1" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
-    zeshia "-1" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
-    zeshia "userspace" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
-    zeshia "userspace" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
-    cmd power set-fixed-performance-mode-enabled false
+AZLog "Normal mode applied successfully!"
