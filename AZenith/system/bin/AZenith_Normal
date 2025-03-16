@@ -4,11 +4,13 @@ MODDIR=${0%/*}
 logpath="/data/AZenith/AZenith.log"
 
 AZLog() {
-    local timestamp
-    timestamp=$(date +'%Y-%m-%d %H:%M:%S')
-    local message="$1"
-    echo "$timestamp - $message" >> "$logpath"
-    echo "$timestamp - $message"
+    if [ "$(cat /data/AZenith/logger 2>/dev/null)" = "1" ]; then
+        local timestamp
+        timestamp=$(date +'%Y-%m-%d %H:%M:%S')
+        local message="$1"
+        echo "$timestamp - $message" >> "$logpath"
+        echo "$timestamp - $message"
+    fi
 }
 
 DEFAULT_GOV_FILE="/data/AZenith/custom_default_cpu_gov"
