@@ -2,8 +2,8 @@
 
 # Configuration flags
 SKIPMOUNT=false
-PROPFILE=false
-POSTFSDATA=true
+PROPFILE=true
+POSTFSDATA=false
 LATESTARTSERVICE=true
 
 # Get module version and author from module.prop
@@ -32,6 +32,9 @@ mkdir -p /data/AZenith
 
 ui_print "- Extracting system files..."
 extract -o "$ZIPFILE" 'system/*' -d "$MODPATH" >&2
+
+ui_print "- Extracting system.prop..."
+extract -o "$ZIPFILE" 'system.prop*' -d "$MODPATH" >&2
 
 ui_print "- Extracting libs files..."
 extract -o "$ZIPFILE" 'libs/*' -d "$MODPATH" >&2
