@@ -1,1 +1,107 @@
+#!/system/bin/sh
 
+MODDIR=${0%/*}
+logpath="/data/AZenith/AZenith.log"
+
+
+AZLog() {
+    if [ "$(cat /data/AZenith/logger 2>/dev/null)" = "1" ]; then
+        local timestamp
+        timestamp=$(date +'%Y-%m-%d %H:%M:%S')
+        local message="$1"
+        echo "$timestamp - $message" >> "$logpath"
+        echo "$timestamp - $message"
+    fi
+}
+
+AZLog "Script started - Monitoring Games"
+
+game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/AZenith/gamelist.txt")"
+
+startgamemode() {
+    AZLog "Applying Performance Profile"
+    sh /data/adb/modules/AZenith/libs/AZenith_Performance
+}
+
+stopgamemode() {
+    AZLog "Applying Normal Profile"
+    sh /data/adb/modules/AZenith/libs/AZenith_Normal
+}
+
+applychange() {
+    if [ -z "$current_state" ]; then
+        export current_state=0
+    fi
+    if [ "$1" -eq 1 ] && [ "$current_state" -ne 1 ]; then    
+        export current_state=1
+        AZLog "Starting Game Mode..."
+        /system/bin/am start -a android.intent.action.MAIN -e toasttext "Applying Tweak to $gamestart" -n bellavita.toast/.MainActivity
+        cmd package force-dex-opt "$gamestart" >/dev/null 2>&1
+        startgamemode
+    elif [ "$1" -eq 0 ] && [ "$current_state" -ne 0 ]; then
+        export current_state=0
+        AZLog "Starting Normal Mode..."
+        /system/bin/am start -a android.intent.action.MAIN -e toasttext "Applying Normal Profile..." -n bellavita.toast/.MainActivity
+        stopgamemode
+    fi
+}
+
+# Monitoring 
+monitoring() {
+    mltwk="com.mobile.legends"  
+    bgtime=0 
+    timeout=35 
+
+    while true; do
+        AZLog "Monitoring Games..."
+
+        window=$(dumpsys window)
+        gamestart=$(echo "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
+        screenstate=$(dumpsys power | grep -i "mHoldingDisplaySuspendBlocker" | grep -Eo "true|false")
+
+        AZLog "Detected Game: $gamestart"
+        AZLog "ScreenOn: $screenstate"
+
+        if [ -n "$gamestart" ]; then
+            gamebg="$gamestart"
+            if [ "$gamebg" = "$mltwk" ]; then
+                bgtime=0  
+            fi
+        fi
+
+        if [ -n "$gamebg" ]; then
+            game_pids=$(pgrep -f -e "$gamebg")
+        else
+            game_pids=""
+        fi
+
+        if [ -n "$gamestart" ] && [ "$screenstate" = "true" ]; then
+            AZLog "Game detected in foreground & Screen On: $gamestart"
+            applychange 1
+        elif [ -n "$game_pids" ] && [ "$screenstate" = "true" ]; then
+            AZLog "Game running in background: $gamebg"
+            applychange 1
+            
+
+            if [ "$gamebg" = "$mltwk" ]; then
+                bgtime=$((bgtime + 10))  # Increment timeout only for MLBB
+            fi
+        else
+            AZLog "No active game detected or screen is off - Stopping tweaks"
+            applychange 0
+            gamebg=""
+            bgtime=0  
+        fi
+
+        if [ "$bgtime" -ge "$timeout" ] && [ -n "$game_pids" ] && [ "$gamebg" = "$mltwk" ]; then
+            AZLog "Mobile Legends has been in background for too long - Killing process..."
+            pkill -9 -f "$gamebg"
+            bgtime=0  # Reset timer after killing
+        fi
+
+        sleep 10
+    done
+}
+monitoring 
+    
+exit 0
