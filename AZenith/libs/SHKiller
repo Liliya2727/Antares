@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# ServiceKiller
+pkill -f AZenith

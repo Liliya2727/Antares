@@ -1,0 +1,100 @@
+#!/bin/sh
+
+MODDIR=${0%/*}
+logpath="/data/AZenith/AZenith.log"
+
+AZLog() {
+    if [ "$(cat /data/AZenith/logger 2>/dev/null)" = "1" ]; then
+        local timestamp
+        timestamp=$(date +'%Y-%m-%d %H:%M:%S')
+        local message="$1"
+        echo "$timestamp - $message" >> "$logpath"
+        echo "$timestamp - $message"
+    fi
+}
+
+zeshia() {
+    if [ -f "$2" ]; then
+        chmod 644 "$2" >/dev/null 2>&1
+        echo "$1" >"$2" 2>/dev/null && AZLog "Set $2 to $1" || AZLog "Failed to set $2 to $1"
+        chmod 444 "$2" >/dev/null 2>&1
+    else
+        AZLog "File $2 not found, skipping..."
+    fi
+}
+
+
+# Bypass Charge
+enableBypass() {
+if [ "$(cat /data/AZenith/bypass_charge 2>/dev/null)" -eq 1 ]; then
+applypath() {
+        if [ -e "$2" ]; then  
+            zeshia "$1" "$2"
+            return 0
+        fi
+        return 1       
+}
+	applypath "1" "/sys/class/power_supply/battery/batt_slate_mode" && return
+	applypath "1" "/sys/class/power_supply/battery/battery_input_suspend" && return
+	applypath "1" "/sys/class/power_supply/battery/bd_trickle_cnt" && return
+	applypath "0" "/sys/class/power_supply/battery/device/Charging_Enable" && return
+	applypath "0" "/sys/class/power_supply/battery/charging_enabled" && return
+	applypath "1" "/sys/class/power_supply/battery/op_disable_charge" && return
+	applypath "1" "/sys/class/power_supply/battery/store_mode" && return
+	applypath "1" "/sys/class/power_supply/battery/test_mode" && return
+	applypath "1" "/sys/class/power_supply/battery/battery_ext/smart_charging_interruption" && return
+	applypath "0" "/sys/class/power_supply/battery/siop_level" && return
+	applypath "0" "/sys/class/power_supply/battery/battery_charging_enabled" && return 
+	applypath "0" "/sys/class/power_supply/battery/mmi_charging_enable" && return
+	applypath "1" "/sys/class/power_supply/battery/stop_charging_enable" && return
+	applypath "1" "/sys/class/power_supply/battery/store_mode" && return
+	applypath "0" "/sys/class/hw_power/charger/charge_data/enable_charger" && return
+	applypath "1" "/sys/devices/platform/charger/bypass_charger" && return
+	applypath "0 1" "/proc/mtk_battery_cmd/current_cmd" && return
+	applypath "1" "/sys/devices/platform/charger/tran_aichg_disable_charger" && return
+	applypath "1" "/sys/devices/platform/mt-battery/disable_charger" && return
+else
+    AZLog "Bypass charge not enabled."
+fi
+}
+disableBypass() {
+# Disable Bypass Charge
+if [ "$(cat /data/AZenith/bypass_charge 2>/dev/null)" -eq 1 ]; then
+applypath() {
+        if [ -e "$2" ]; then  
+            zeshia "$1" "$2"
+            return 0
+        fi
+        return 1       
+}
+    applypath "0" "/sys/class/power_supply/battery/batt_slate_mode" && return
+    applypath "0" "/sys/class/power_supply/battery/battery_input_suspend" && return
+    applypath "0" "/sys/class/power_supply/battery/bd_trickle_cnt" && return
+    applypath "1" "/sys/class/power_supply/battery/device/Charging_Enable" && return
+    applypath "1" "/sys/class/power_supply/battery/charging_enabled" && return
+    applypath "0" "/sys/class/power_supply/battery/op_disable_charge" && return
+    applypath "0" "/sys/class/power_supply/battery/store_mode" && return
+    applypath "0" "/sys/class/power_supply/battery/test_mode" && return
+    applypath "0" "/sys/class/power_supply/battery/battery_ext/smart_charging_interruption" && return
+    applypath "1" "/sys/class/power_supply/battery/siop_level" && return
+    applypath "1" "/sys/class/power_supply/battery/battery_charging_enabled" && return
+    applypath "1" "/sys/class/power_supply/battery/mmi_charging_enable" && return
+    applypath "0" "/sys/class/power_supply/battery/stop_charging_enable" && return
+    applypath "0" "/sys/class/power_supply/battery/store_mode" && return
+    applypath "1" "/sys/class/hw_power/charger/charge_data/enable_charger" && return
+    applypath "0" "/sys/devices/platform/charger/bypass_charger" && return
+    applypath "0 0" "/proc/mtk_battery_cmd/current_cmd" && return
+    applypath "0" "/sys/devices/platform/charger/tran_aichg_disable_charger" && return
+    applypath "0" "/sys/devices/platform/mt-battery/disable_charger" && return
+else
+    AZLog "Bypass charge already disabled."
+fi
+}
+
+profiler="$(cat /data/AZenith/profiler 2>/dev/null)"
+if [ "$profiler" = "Performance" ]; then
+    enableBypass
+fi
+if [ "$profiler" = "Normal" ]; then
+    disableBypass
+fi
