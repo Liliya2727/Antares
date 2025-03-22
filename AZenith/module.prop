@@ -1,6 +1,7 @@
 id=AZenith
 name=AZenith火
-version=v1.2 Release (1216)
-versionCode=1216
+version=v1.7 (1723)
+versionCode=1723
 author=@Zexshia X @kanaochar
-description=Performance module designed for D8050/D8020
+description=Performance module designed for MediaTek
+updateJson=https://raw.githubusercontent.com/Liliya2727/Antares/main/update.json

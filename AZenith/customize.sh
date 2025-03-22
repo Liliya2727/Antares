@@ -9,15 +9,46 @@ LATESTARTSERVICE=true
 # Get module version and author from module.prop
 MODVER=$(grep "^version=" "$MODPATH/module.prop" | cut -d '=' -f2)
 AUTHOR=$(grep "^author=" "$MODPATH/module.prop" | cut -d '=' -f2)
+device_codename=$(getprop ro.product.board)
+chip=$(getprop ro.hardware)
 
 # List of system paths to replace (if any)
 REPLACE=""
+
+zepasspath() {
+    if [ -e "$1" ]; then
+        return 0  
+    fi
+    return 1  
+}
+
+# List of paths
+bypasslist="
+/sys/class/power_supply/battery/batt_slate_mode
+/sys/class/power_supply/battery/battery_input_suspend
+/sys/class/power_supply/battery/bd_trickle_cnt
+/sys/class/power_supply/battery/device/Charging_Enable
+/sys/class/power_supply/battery/charging_enabled
+/sys/class/power_supply/battery/op_disable_charge
+/sys/class/power_supply/battery/store_mode
+/sys/class/power_supply/battery/test_mode
+/sys/class/power_supply/battery/battery_ext/smart_charging_interruption
+/sys/class/power_supply/battery/siop_level
+/sys/class/power_supply/battery/battery_charging_enabled
+/sys/class/power_supply/battery/mmi_charging_enable
+/sys/class/power_supply/battery/stop_charging_enable
+/sys/class/hw_power/charger/charge_data/enable_charger
+/sys/devices/platform/charger/bypass_charger
+/proc/mtk_battery_cmd/current_cmd
+/sys/devices/platform/charger/tran_aichg_disable_charger
+/sys/devices/platform/mt-battery/disable_charger
+"
 
 # Display banner
 ui_print
 ui_print "              AZenith              "
 ui_print
-ui_print "- Release Date  : 16/03/2025"
+ui_print "- Release Date   : 23 / 03 / 2025"
 ui_print "- Author          : ${AUTHOR}"
 ui_print "- Version         : ${MODVER}"
 ui_print "- Device          : $(getprop ro.product.board) $(getprop ro.product.cpu.abi)"
@@ -39,9 +70,6 @@ extract -o "$ZIPFILE" 'system.prop*' -d "$MODPATH" >&2
 ui_print "- Extracting libs files..."
 extract -o "$ZIPFILE" 'libs/*' -d "$MODPATH" >&2
 
-ui_print "- Extracting webroot files..."
-extract -o "$ZIPFILE" 'webroot/*' -d "$MODPATH" >&2
-
 ui_print "- Extracting service script..."
 unzip -o "$ZIPFILE" 'service.sh' -d "$MODPATH" >&2
 
@@ -51,6 +79,24 @@ unzip -qo "$ZIPFILE" 'gamelist.txt' -d "/data/AZenith" >&2
 ui_print "- Extracting icon..."
 unzip -qo "$ZIPFILE" 'AZenith_icon.png' -d "/data/local/tmp" >&2
 sleep 1
+
+# Checking path
+ui_print "- Checking device compatibility..."
+sleep 2
+# Check if at least one valid path exists
+check=""
+for path in $bypasslist; do
+    if zepasspath "$path"; then
+        bypasslist="$path"
+        break  
+    fi
+done
+
+if [ -z "$bypasslist" ]; then
+    ui_print "- Bypass unsupported"
+fi
+
+ui_print "- Bypass Charging is Supported!"
 
 # Installing toast notification
 if pm list packages | grep -q bellavita.toast; then
@@ -63,16 +109,43 @@ else
     rm "$MODPATH/toast.apk"
 fi
 
-# Setting permissions
-ui_print "- Setting permissions..."
-set_perm_recursive "$MODPATH/system/bin/*" 0 0 0777 0755
-set_perm_recursive "$MODPATH/libs/*" 0 0 0777 0755
-set_perm_recursive "/data/AZenith" 0 0 0777 0755
+# Determine Chipset
+chipset=$(grep "Hardware" /proc/cpuinfo | uniq | cut -d ':' -f 2 | sed 's/^[ \t]*//')
+[ -z "$chipset" ] && chipset="$(getprop ro.board.platform) $(getprop ro.hardware)"
+
+case "$chipset" in
+    *mt* | *MT*) 
+        soc=1
+        ui_print "- Implementing tweaks for MediaTek $chip"
+        
+        ;;
+    *)  
+        ui_print "! Unsupported chipset detected: $chipset"
+        ui_print "! This is Only for MediaTek."
+        abort
+        ;;
+esac
+
+# Cihuy
+mv "$MODPATH/assets/availableFreq" "/data/AZenith/availableFreq"
+mv "$MODPATH/assets/customFreqOffset" "/data/AZenith/customFreqOffset"
+# Extract WebUI
+ui_print "- Extracting WebUI"
+mv "$MODPATH/assets/indexhtml" "$MODPATH/webroot/index.html"
+sleep 2
+
+# Remove File
+rm -rf "$MODPATH/assets"
 
 # Final permission setup
-ui_print "- Finalizing installation..."
-set_perm_recursive "$MODPATH" 0 0 0777 0777
+ui_print "- Setting Permissions..."
+set_perm_recursive "$MODPATH" 0 0 0755 0644
 sleep 2
+
+# Setting permissions
+ui_print "- Finalizing Installations..."
+set_perm_recursive "$MODPATH/system/bin" 0 2000 0777 0777
+chmod +x "$MODPATH/system/bin/AZenith" 
 
 ui_print "- Installation complete!"
 

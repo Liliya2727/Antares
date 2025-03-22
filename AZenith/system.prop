@@ -89,3 +89,6 @@ ro.dar.thermal_core.support=0
 
 # Enable Transsion freezer
 ro.tran.hide.freezer=0
+
+# Disable Limit 60Fps while Gaming on AOSP 15.0
+debug.graphics.game_default_frame_rate.disabled=true
