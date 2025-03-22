@@ -1,5 +1,0 @@
-#!/bin/sh
-
-# ServiceKiller
-pkill -f "^/adb/modules/AZenith/system/bin/AZenith_Performance$"
-pkill -f "^/adb/modules/AZenith/libs/AZenith$"
