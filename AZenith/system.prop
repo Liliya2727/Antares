@@ -5,7 +5,7 @@
 # Dalvik Thermal
 dalvik.vm.dexopt.thermal-cutoff=0
 
-# Commontweak
+# Common Tweak
 ro.vendor.sleep.state=s2idle
 ro.config.low_ram=false
 ro.ril.disable.power.collapse=0
@@ -24,7 +24,7 @@ PERF_RES_NET_NETD_BOOST_UID=1
 PERF_RES_NET_MD_HSR_MODE=1
 
 # Dalvik
-dalvik.vm.systemuicompilerfilter=speed-profile 
+dalvik.vm.systemuicompilerfilter=speed-profile
 dalvik.vm.systemservercompilerfilter=speed-profile
 pm.dexopt.bg-dexopt=speed
 pm.dexopt.install=speed-profile
@@ -34,7 +34,6 @@ pm.dexopt.shared=speed
 persist.zygote.preload_threads=3
 ro.zygote.disable_gl_preload=false
 ro.zygote.preload.enable=0
-ro.zygote.preload.disable=1
 
 # MTK PERF
 ro.mtk_perf_fast_start_win=1
@@ -52,7 +51,7 @@ ro.lmk.thrashing_limit=20
 ro.lmk.downgrade_pressure=35
 ro.lmk.swap_free_low_percentage=10
 
-# Gpu Optimization
+# GPU Optimization
 ro.vendor.gpu.optimize.level=5
 ro.vendor.gpu.optimize.load_level=3
 ro.vendor.gpu.optimize.driver_version=3
@@ -68,7 +67,7 @@ ro.vendor.gpu.optimize.max_job_count=4
 ro.vendor.gpu.optimize.max_target_duration=10
 ro.vendor.gpu.optimize.min_target_size=200
 
-# Surface Flinger Optimisation
+# SurfaceFlinger Optimization
 debug.sf.use_phase_offsets_as_durations=1
 debug.sf.late.sf.duration=20000000
 debug.sf.late.app.duration=15000000
@@ -78,17 +77,60 @@ debug.sf.earlyGl.sf.duration=20000000
 debug.sf.earlyGl.app.duration=15000000
 debug.sf.hwc.min.duration=15000000
 
-# Main optimization
-dalvik.vm.systemuicompilerfilter=speed-profile
-dalvik.vm.systemservercompilerfilter=speed-profile
+# Main Optimization
 dalvik.vm.dex2oat-minidebuginfo=false
 dalvik.vm.minidebuginfo=false
 
-# Specific Transsion thermal
+# Specific Transsion Thermal
 ro.dar.thermal_core.support=0
 
-# Enable Transsion freezer
+# Enable Transsion Freezer
 ro.tran.hide.freezer=0
 
-# Disable Limit 60Fps while Gaming on AOSP 15.0
+# Disable Limit 60FPS While Gaming on AOSP 15.0
 debug.graphics.game_default_frame_rate.disabled=true
+
+# Additional Optimizations
+debug.cpurend.vsync=false
+debug.sf.disable_client_composition_cache=1
+debug.hwui.skia_atrace_enabled=false
+debug.renderengine.backend=skiaglthreaded
+debug.sf.hw=1
+debug.hwui.renderer=skiagl
+debug.performance.tuning=1
+ro.config.enable.hw_accel=true
+persist.sys.hwui.render_dirty_regions=true
+debug.hwui.rendering=1
+debug.hwui.system_rendering=1
+debug.hwui.system_disable_vsync=1
+persist.service.gfx.disable_vsync=1
+
+# Increase Scrolling Speed by Enabling LED Cover
+persist.service.lcd.ledcover_enable=1
+persist.service.lcd.ledcover_gesture=1
+
+# Optimized Memory Usage
+ro.config.hwfb_optimize_mem=1
+ro.config.hwfb_optimize_lag_more=1
+persist.service.storage_optimize=1
+ro.config.hwfb_optimize_app_launch=1
+
+# GPU Optimized
+persist.service.gfx.enable=1
+persist.service.gfx.enable_early_boost=1
+persist.service.gfx.gpu_optimize=1
+persist.service.gfx.renderthread=1
+persist.service.gfx.gpu_usage_limit=100
+persist.service.gfx.gpu_rendering_priority=1
+persist.service.gfx.gpu_boost=1
+persist.service.gfx.force_gpu=1
+
+# Reduce Lag Scrolling
+ro.config.hwfb_optimize_lag=1
+ro.config.hwfb_optimize_scroll=1
+
+# Optimized Deep Sleep
+persist.service.deviceidle.enable_deep_sleep=1
+persist.service.deviceidle.deep_sleep_delay=1000
+persist.service.deviceidle.deep_sleep_battery_level=0
+persist.service.deviceidle.deep_sleep_aggressive=1
