@@ -248,6 +248,56 @@ for param in boost_affinity boost_LR gcc_hwui_hint; do
     zeshia "1" "/sys/module/mtk_fpsgo/parameters/$param"
 done
 
+clear_background_apps() {
+AZLog "Clearing all background apps..."
+
+app_list=$(dumpsys activity recents | grep "Recent #" | grep -oE "[a-zA-Z0-9_.]+/[^ ]+" | cut -d'/' -f1 | grep -v "com.android.systemui" | grep -v "com.android.settings")  
+
+for app in $app_list; do  
+    am force-stop "$app"  
+    AZLog "Stopped app: $app"  
+done  
+
+AZLog "all apps is cleared."
+
+}
+
+if [ "$(cat /data/AZenith/clearbgapps 2>/dev/null)" -eq 1 ]; then
+AZLog "clearing background apps..."
+clear_background_apps
+else
+AZLog "clear background is disabled."
+fi
+
+# Disable battery saver module  
+[ -f /sys/module/battery_saver/parameters/enabled ] && {  
+	if grep -qo '[0-9]\+' /sys/module/battery_saver/parameters/enabled; then  
+		zeshia 0 /sys/module/battery_saver/parameters/enabled  
+	else  
+		zeshia N /sys/module/battery_saver/parameters/enabled  
+	fi  
+}  
+
+# Disable split lock mitigation  
+zeshia 0 /proc/sys/kernel/split_lock_mitigate  
+
+if [ -f "/sys/kernel/debug/sched_features" ]; then  
+	# Consider scheduling tasks that are eager to run  
+	zeshia NEXT_BUDDY /sys/kernel/debug/sched_features  
+
+	# Some sources report large latency spikes during large migrations  
+	zeshia NO_TTWU_QUEUE /sys/kernel/debug/sched_features  
+fi  
+
+if [ -d "/dev/stune/" ]; then  
+	# Prefer to schedule top-app tasks on idle CPUs  
+	zeshia 1 /dev/stune/top-app/schedtune.prefer_idle  
+
+	# Mark top-app as boosted, find high-performing CPUs  
+	zeshia 1 /dev/stune/top-app/schedtune.boost  
+fi
+
+
 sh "/data/adb/modules/AZenith/libs/bypassCharge" 
 AZLog "Performance Profile Applied Successfully!"
 
