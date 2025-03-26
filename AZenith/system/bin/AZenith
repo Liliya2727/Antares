@@ -1,107 +1,219 @@
 #!/system/bin/sh
 
-MODDIR=${0%/*}
-logpath="/data/AZenith/AZenith.log"
+# Paths
+BASEDIR="/data/adb/modules/AZenith"
+INT="/data/AZenith"
+RWD="$INT"
+MSC="$BASEDIR"
+SEARCH_PATHS="/vendor/lib64/egl /vendor/lib64/hw"
+PROCESSED_FILE_LIST="$RWD/processed_files.txt"
+LOGFILE="/data/AZenith/AZenith.log"
+LOGFILEMON="/data/AZenith/AZenithMon.log"
+PRELOAD_ENABLED="/data/AZenith/APreload"
 
+GAME_LIBS='libunity\.so|libUE4\.so|libframeestimation\(VK\|GL\)\.so|libflutter\.so|libapp\.so|libGGP\.so|libGame\.so|libvirglrenderer\.so|libvortekrenderer\.so|libwinlator\.so|libminecraftpe\.so|libc\+\+_shared\.so|libnative-mvd-render\.so|libMiHoYoMTRSDK\.so|libil2cpp\.so|libmoba\.so|libResources\.so|libyuanshen\.so|libcri\_(vip\|ware)\_unity\.so|libgamemaster\.so|LibPixUI\_PXplugin\.so|LibVkLayer\_swapchain\_rotate\.so|libzstd\.so|libPixUI\_Unity\.so'
 
+# Ensure necessary directories and files exist
+[ ! -e "$RWD/gamelist.txt" ] && cp -f "$MSC/gamelist.txt" "$RWD"
+touch "$PROCESSED_FILE_LIST"
+
+# Generate Game List Filter
+game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/AZenith/gamelist.txt")"
+
+# Logging Function
 AZLog() {
-    if [ "$(cat /data/AZenith/logger 2>/dev/null)" = "1" ]; then
-        local timestamp
-        timestamp=$(date +'%Y-%m-%d %H:%M:%S')
-        local message="$1"
-        echo "$timestamp - $message" >> "$logpath"
-        echo "$timestamp - $message"
+    if [ "$(cat /data/AZenith/logger)" = "1" ]; then
+        local timestamp=$(date +'%Y-%m-%d %H:%M:%S')
+        echo "$timestamp - $1" >> "$LOGFILE"
+        echo "$timestamp - $1"
     fi
 }
 
-AZLog "Script started - Monitoring Games"
+AZLogMon() {
+    if [ "$(cat /data/AZenith/logger)" = "1" ]; then
+        local timestamp=$(date +'%Y-%m-%d %H:%M:%S')
+        echo "$timestamp - $1" >> "$LOGFILEMON"
+        echo "$timestamp - $1"
+    fi
+}
 
-game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/AZenith/gamelist.txt")"
+# Notification
+notification() {
+    su -lp 2000 -c "/system/bin/cmd notification post -t \"$1\" -i file:///data/local/tmp/AZenith_icon.png -I file:///data/local/tmp/AZenith_icon.png 'AZPreload' \"$2\""
+}
 
-startgamemode() {
-    AZLog "Applying Performance Profile"
+# Cleanup VMT
+cleanup() {
+    pkill -f vmt
+    stopgamemode
+    exit 0
+}
+trap cleanup EXIT
+
+# Apply Performance Profile
+applyperformanceprofile() {    
+    # Notify if GPreload Active
+    if [ "$(cat /data/AZenith/APreload)" -eq 1 ]; then
+            notification "AZPreload" "Starting Game Preload, Please Wait..."
+    fi    
     sh /data/adb/modules/AZenith/libs/AZenith_Performance
 }
 
-stopgamemode() {
-    AZLog "Applying Normal Profile"
+# Apply Normal Profile
+applynormalprofile() {    
     sh /data/adb/modules/AZenith/libs/AZenith_Normal
 }
 
-applychange() {
-    if [ -z "$current_state" ]; then
-        export current_state=0
-    fi
-    if [ "$1" -eq 1 ] && [ "$current_state" -ne 1 ]; then    
-        export current_state=1
-        AZLog "Starting Game Mode..."
-        /system/bin/am start -a android.intent.action.MAIN -e toasttext "Applying Tweak to $gamestart" -n bellavita.toast/.MainActivity
-        cmd package force-dex-opt "$gamestart" >/dev/null 2>&1
-        startgamemode
-    elif [ "$1" -eq 0 ] && [ "$current_state" -ne 0 ]; then
-        export current_state=0
-        AZLog "Starting Normal Mode..."
-        /system/bin/am start -a android.intent.action.MAIN -e toasttext "Applying Normal Profile..." -n bellavita.toast/.MainActivity
-        stopgamemode
+GamePreload() {
+    if [ -z "$current_preload" ]; then
+         export current_preload=0
+    fi             
+    if [ "$1" -eq 1 ] && [ "$current_preload" -ne 1 ]; then    
+        current_preload=1
+        notification "AZPreload" "Game Preload is Running! Preloading: $gamebg"       
+    elif [ "$1" -eq 0 ] && [ "$current_preload" -ne 0 ]; then
+        current_preload=0 
+        am force-stop "$package" >/dev/null 2>&1 
+        notification "AZPreload" "Game Preload is Stopped"
+        pkill -x vmt
+        pkill -x vmt2
     fi
 }
 
-# Monitoring 
+# Apply performance profile
+applychange() {
+    if [ -z "$current_state" ]; then
+        current_state=0
+    fi
+    if [ "$1" -eq 1 ] && [ "$current_state" -ne 1 ]; then    
+        current_state=1        
+        /system/bin/am start -a android.intent.action.MAIN -e toasttext "Applying Tweak to $gamestart" -n bellavita.toast/.MainActivity        
+        pm compile -f "$gamestart"  
+        AZLogMon "Compiled $gamestart"      
+        applyperformanceprofile         
+        renice -n 19 -p $game_pids
+    elif [ "$1" -eq 0 ] && [ "$current_state" -ne 0 ]; then
+        current_state=0      
+        /system/bin/am start -a android.intent.action.MAIN -e toasttext "Applying Normal Profile..." -n bellavita.toast/.MainActivity
+        applynormalprofile
+    fi
+}
+
+# Logging by @kanaochar
+startlogging() {
+    echo "****************************************************" >> "$LOGFILEMON"
+    echo "AZenith Log" >> "$LOGFILEMON"
+    echo "" >> "$LOGFILEMON"
+    echo "AZenith Version: $(awk -F'=' '/version=/ {print $2}' /data/adb/modules/AZenith/module.prop)" >> "$LOGFILEMON"
+    echo "Chipset: $(getprop "ro.board.platform")" >> "$LOGFILEMON"
+    echo "Fingerprint: $(getprop ro.build.fingerprint)" >> "$LOGFILEMON"
+    echo "Android SDK: $(getprop ro.build.version.sdk)" >> "$LOGFILEMON"
+    echo "Kernel: $(uname -r -m)" >> "$LOGFILEMON"
+    echo "****************************************************" >> "$LOGFILEMON"
+    echo "" >> "$LOGFILEMON"
+    echo "" >> "$LOGFILEMON"
+}
+
+# Monitoring Loop!
 monitoring() {
-    mltwk="com.mobile.legends"  
-    bgtime=0 
-    timeout=35 
+    startlogging
+    prev_mode=-1  # Initialize with an invalid mode
 
     while true; do
-        AZLog "Monitoring Games..."
-
+        # Get Foreground Apps
         window=$(dumpsys window)
         gamestart=$(echo "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
         screenstate=$(dumpsys power | grep -i "mHoldingDisplaySuspendBlocker" | grep -Eo "true|false")
+        recentapps=$(dumpsys activity recents | grep "Recent #" | awk '{print $NF}' | grep -Eo "$game_list_filter")
 
-        AZLog "Detected Game: $gamestart"
-        AZLog "ScreenOn: $screenstate"
-
+        # Track the active game
         if [ -n "$gamestart" ]; then
             gamebg="$gamestart"
-            if [ "$gamebg" = "$mltwk" ]; then
-                bgtime=0  
-            fi
         fi
 
+        # VMTouch Variable        
+        package=$gamebg      
+
+        # Get Background Apps
         if [ -n "$gamebg" ]; then
-            game_pids=$(pgrep -f -e "$gamebg")
+            export game_pids=$(pgrep -f -e "$gamebg")
         else
-            game_pids=""
+            export game_pids=""
         fi
 
+        # Apply game mode
         if [ -n "$gamestart" ] && [ "$screenstate" = "true" ]; then
-            AZLog "Game detected in foreground & Screen On: $gamestart"
             applychange 1
-        elif [ -n "$game_pids" ] && [ "$screenstate" = "true" ]; then
-            AZLog "Game running in background: $gamebg"
+            new_mode=1
+            if [ -f "$PRELOAD_ENABLED" ] && [ "$(cat "$PRELOAD_ENABLED")" = "1" ]; then
+                AZLog "Preload is Enabled, package files is: $package"            
+                GamePreload 1
+                lib_path="$(cmd package path "$package" | head -n1 | cut -f2 -d: | xargs -n1 dirname)/lib/arm64"
+            if [ -d "$lib_path" ] && find "$lib_path" -type f -name "*.so" 2>/dev/null | grep -q .; then
+                find "$lib_path" -type f -name "*.so" 2>/dev/null | while read -r lib; do
+                    escaped_lib=$(printf '%s\n' "$lib" | sed 's/[\.\$\*\/\[\\^]/\\&/g')
+                    grep -qF "$escaped_lib" "$PROCESSED_FILE_LIST" && continue                    
+                    if echo "$lib" | grep -Eq "$GAME_LIBS"; then
+                        vmt -dL "$lib"
+                        echo "$lib" >> "$PROCESSED_FILE_LIST"
+                        AZLog "Processing lib $lib"                        
+                    fi
+                done
+            else
+                apk_path=$(cmd package path "$package" | head -n1 | cut -d: -f2)
+                split_apks=$(ls "$(dirname "$apk_path")"/*.apk 2>/dev/null)
+                if [ -n "$split_apks" ]; then
+                    for apk in $split_apks; do
+                        unzip -l "$apk" | awk '{print $4}' | grep '\.so$' | while read -r lib; do
+                            if unzip -p "$apk" "$lib" | strings | grep -Eq "$GAME_LIBS"; then
+                                unzip -p "$apk" "$lib" | vmt -dL -
+                                AZLog "Processing apk $apk"
+                            fi
+                        done
+                    done
+                fi
+            fi            
+            GamePreload 1
+            fi            
+        elif [ -n "$recentapps" ] && [ "$screenstate" = "true" ]; then
             applychange 1
-            
-
-            if [ "$gamebg" = "$mltwk" ]; then
-                bgtime=$((bgtime + 10))  # Increment timeout only for MLBB
-            fi
+            new_mode=1
         else
-            AZLog "No active game detected or screen is off - Stopping tweaks"
             applychange 0
-            gamebg=""
-            bgtime=0  
+            export gamebg=""
+            new_mode=0
+            if [ -f "$PRELOAD_ENABLED" ] && [ "$(cat "$PRELOAD_ENABLED")" = "1" ]; then
+                GamePreload 0                
+            fi            
         fi
-
-        if [ "$bgtime" -ge "$timeout" ] && [ -n "$game_pids" ] && [ "$gamebg" = "$mltwk" ]; then
-            AZLog "Mobile Legends has been in background for too long - Killing process..."
-            pkill -9 -f "$gamebg"
-            bgtime=0  # Reset timer after killing
+        
+        # Log only when mode changes
+        if [ "$new_mode" -ne "$prev_mode" ]; then
+            if [ "$new_mode" -eq 1 ]; then
+                if [ -f "$PRELOAD_ENABLED" ] && [ "$(cat "$PRELOAD_ENABLED")" = "1" ]; then
+                AZLogMon "Preload Enabled Applying to package $package"
+                else
+                AZLogMon "Preload is Disabled, Skipping..."
+                fi
+                AZLogMon "Applying Performance Profile To: $gamestart"
+                AZLogMon ""
+                AZLogMon ""
+            else
+                if [ -f "$PRELOAD_ENABLED" ] && [ "$(cat "$PRELOAD_ENABLED")" = "1" ]; then               
+                AZLogMon "Preload is Stopped"
+                else
+                AZLogMon "Preload is Already disabled..."
+                fi
+                AZLogMon "Applying Normal Profile"                
+                AZLogMon ""
+                AZLogMon ""
+            fi
+            prev_mode="$new_mode"  # Update previous mode
         fi
-
-        sleep 10
+        sleep 15
     done
 }
-monitoring 
-    
+
+# Start Monitoring
+monitoring
 exit 0
