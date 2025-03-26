@@ -1,11 +1,88 @@
-# This file will be read by resetprop
-# Example: Change dpi
-# ro.sf.lcd_density=320
+#######################################
+# Unlock ANGLE
+#######################################
+ro.gfx.angle.supported=true
+#######################################
+# EnCorinVest prop
+#######################################
+PERF_RES_NET_BT_AUDIO_LOW_LATENCY=1
+PERF_RES_NET_WIFI_LOW_LATENCY=1
+PERF_RES_NET_MD_WEAK_SIG_OPT=1
+PERF_RES_NET_NETD_BOOST_UID=1
+PERF_RES_NET_MD_HSR_MODE=1
+PERF_RES_THERMAL_POLICY=-1
+
+# From Celestial Render
+
+# Disable Force 4X MSAA
+debug.egl.force_msaa=false
+
+# HWUI
+ro.hwui.disable_scissor_opt=false
+debug.hwui.use_gpu_pixel_buffers=true
+debug.hwui.render_dirty_regions=false
+debug.hwui.disable_vsync=true
+debug.hwui.level=0
+
+# Reduce Texture
+ro.hwui.texture_cache_flushrate=0.4
+ro.hwui.texture_cache_size=72
+ro.hwui.layer_cache_size=48
+ro.hwui.r_buffer_cache_size=8
+ro.hwui.path_cache_size=32
+ro.hwui.gradient_cache_size=1
+ro.hwui.drop_shadow_cache_size=6
+
+# Hyperthreading & Multithread
+persist.sys.dalvik.hyperthreading=true
+persist.sys.dalvik.multithread=true
+
+# Smooth GUI
+persist.service.lgospd.enable=0
+persist.service.pcsync.enable=0
+persist.sys.lgospd.enable=0
+persist.sys.pcsync.enable=0
+
+# Vendor perf
+ro.vendor.perf.scroll_opt=1
+vendor.perf.framepacing.enable=1
+
+# For QCom
+sys.hwc.gpu_perf_mode=1
+
+# Other
+debug.gr.numframebuffers=3
+
+# From Celestial Tweaks
+
+# Reduce RAM Usage
+ro.iorapd.enable=false
+iorapd.perfetto.enable=false
+iorapd.readahead.enable=false
+persist.device_config.runtime_native_boot.iorap_readahead_enable=false
+persist.sys.purgeable_assets=1
+
+# Disable CPU VSync
+debug.cpurend.vsync=false
+
+# Audio Enhancer
+persist.audio.fluence.mode=endfire
+persist.audio.vr.enable=true
+persist.audio.handset.mic=digital
+af.resampler.quality=255
+mpq.audio.decode=true
+
+# Disable Tombstoned
+tombstoned.max_tombstone_count=0
+
+##################################
+# Azenith Props
+##################################
 
 # Dalvik Thermal
 dalvik.vm.dexopt.thermal-cutoff=0
 
-# Common Tweak
+# Common Tweaks
 ro.vendor.sleep.state=s2idle
 ro.config.low_ram=false
 ro.ril.disable.power.collapse=0
@@ -15,13 +92,6 @@ ro.ril.sensor.sleep.control=1
 hwui.disable_vsync=true
 persist.cpu.freq.boost=1
 persist.sys.ui.hw=true
-debug.egl.force_msaa=0
-ro.tran_low_battery_60hz_refresh_rate.support=0
-PERF_RES_NET_BT_AUDIO_LOW_LATENCY=1
-PERF_RES_NET_WIFI_LOW_LATENCY=1
-PERF_RES_NET_MD_WEAK_SIG_OPT=1
-PERF_RES_NET_NETD_BOOST_UID=1
-PERF_RES_NET_MD_HSR_MODE=1
 
 # Dalvik
 dalvik.vm.systemuicompilerfilter=speed-profile
@@ -34,6 +104,7 @@ pm.dexopt.shared=speed
 persist.zygote.preload_threads=3
 ro.zygote.disable_gl_preload=false
 ro.zygote.preload.enable=0
+ro.zygote.preload.disable=1
 
 # MTK PERF
 ro.mtk_perf_fast_start_win=1
@@ -67,7 +138,7 @@ ro.vendor.gpu.optimize.max_job_count=4
 ro.vendor.gpu.optimize.max_target_duration=10
 ro.vendor.gpu.optimize.min_target_size=200
 
-# SurfaceFlinger Optimization
+# Surface Flinger Optimization
 debug.sf.use_phase_offsets_as_durations=1
 debug.sf.late.sf.duration=20000000
 debug.sf.late.app.duration=15000000
@@ -84,53 +155,26 @@ dalvik.vm.minidebuginfo=false
 # Specific Transsion Thermal
 ro.dar.thermal_core.support=0
 
-# Enable Transsion Freezer
-ro.tran.hide.freezer=0
-
-# Disable Limit 60FPS While Gaming on AOSP 15.0
+# Disable Limit 60FPS while Gaming on AOSP 15.0
 debug.graphics.game_default_frame_rate.disabled=true
 
-# Additional Optimizations
-debug.cpurend.vsync=false
-debug.sf.disable_client_composition_cache=1
-debug.hwui.skia_atrace_enabled=false
-debug.renderengine.backend=skiaglthreaded
-debug.sf.hw=1
-debug.hwui.renderer=skiagl
+##################################
+# Zeta 120 Hz
+##################################
+# Scroll Config
+view.touch_slop=3
+touch.deviceType=touchScreen
+ro.min_pointer_dur=0.00000001
+ro.product.multi_touch_enabled=true
+persist.sys.scrollingcache=3
+
+# Sensitivity Config
+device.internal=1
 debug.performance.tuning=1
-ro.config.enable.hw_accel=true
-persist.sys.hwui.render_dirty_regions=true
-debug.hwui.rendering=1
-debug.hwui.system_rendering=1
-debug.hwui.system_disable_vsync=1
-persist.service.gfx.disable_vsync=1
+view.scroll_friction=0.00001
+touch.pressure.scale=0.00001
+touch.size.calibration=100
 
-# Increase Scrolling Speed by Enabling LED Cover
-persist.service.lcd.ledcover_enable=1
-persist.service.lcd.ledcover_gesture=1
-
-# Optimized Memory Usage
-ro.config.hwfb_optimize_mem=1
-ro.config.hwfb_optimize_lag_more=1
-persist.service.storage_optimize=1
-ro.config.hwfb_optimize_app_launch=1
-
-# GPU Optimized
-persist.service.gfx.enable=1
-persist.service.gfx.enable_early_boost=1
-persist.service.gfx.gpu_optimize=1
-persist.service.gfx.renderthread=1
-persist.service.gfx.gpu_usage_limit=100
-persist.service.gfx.gpu_rendering_priority=1
-persist.service.gfx.gpu_boost=1
-persist.service.gfx.force_gpu=1
-
-# Reduce Lag Scrolling
-ro.config.hwfb_optimize_lag=1
-ro.config.hwfb_optimize_scroll=1
-
-# Optimized Deep Sleep
-persist.service.deviceidle.enable_deep_sleep=1
-persist.service.deviceidle.deep_sleep_delay=1000
-persist.service.deviceidle.deep_sleep_battery_level=0
-persist.service.deviceidle.deep_sleep_aggressive=1
+# Disable Low Battery FPS Drop
+ro.tran_low_battery_60hz_refresh_rate.support=0
+sys.surfaceflinger.idle_reduce_framerate_enable=no

@@ -3,7 +3,7 @@
 # Configuration flags
 SKIPMOUNT=false
 PROPFILE=true
-POSTFSDATA=false
+POSTFSDATA=true
 LATESTARTSERVICE=true
 
 # Get module version and author from module.prop
@@ -48,10 +48,10 @@ bypasslist="
 ui_print
 ui_print "              AZenith              "
 ui_print
-ui_print "- Release Date   : 23 / 03 / 2025"
-ui_print "- Author          : ${AUTHOR}"
-ui_print "- Version         : ${MODVER}"
-ui_print "- Device          : $(getprop ro.product.board) $(getprop ro.product.cpu.abi)"
+ui_print "- Release Date   : 27 / 03 / 2025"
+ui_print "- Author            : ${AUTHOR}"
+ui_print "- Version           : ${MODVER}"
+ui_print "- Device            : $(getprop ro.product.board)"
 ui_print "- Build Date    : $(getprop ro.build.date)"
 sleep 1
 ui_print "- Installing AZenith..."
@@ -60,6 +60,10 @@ sleep 1
 # Extracting module files
 ui_print "- Creating necessary directories..."
 mkdir -p /data/AZenith
+
+ui_print "- Extracting functions.sh"
+extract -qjo "$ZIPFILE" 'common/functions.sh' -d $TMPDIR >&2
+$TMPDIR/functions.sh
 
 ui_print "- Extracting system files..."
 extract -o "$ZIPFILE" 'system/*' -d "$MODPATH" >&2
@@ -146,6 +150,7 @@ sleep 2
 ui_print "- Finalizing Installations..."
 set_perm_recursive "$MODPATH/system/bin" 0 2000 0777 0777
 chmod +x "$MODPATH/system/bin/AZenith" 
+set_perm_recursive $MODPATH/vendor 0 0 0755 0755
 
 ui_print "- Installation complete!"
 
