@@ -4,7 +4,7 @@ MODDIR=${0%/*}
 logpath="/data/AZenith/AZenith.log"
 
 AZLog() {
-    if [ "$(cat /data/AZenith/logger 2>/dev/null)" = "1" ]; then
+    if [ "$(cat /data/AZenith/logger)" = "1" ]; then
         local timestamp
         timestamp=$(date +'%Y-%m-%d %H:%M:%S')
         local message="$1"
@@ -15,9 +15,9 @@ AZLog() {
 
 zeshia() {
     if [ -f "$2" ]; then
-        chmod 644 "$2" >/dev/null 2>&1
-        echo "$1" >"$2" 2>/dev/null && AZLog "Set $2 to $1" || AZLog "Failed to set $2 to $1"
-        chmod 444 "$2" >/dev/null 2>&1
+        chmod 644 "$2"
+        echo "$1" >"$2" && AZLog "Set $2 to $1" || AZLog "Failed to set $2 to $1"
+        chmod 444 "$2"
     else
         AZLog "File $2 not found, skipping..."
     fi
@@ -26,7 +26,7 @@ zeshia() {
 
 # Bypass Charge
 enableBypass() {
-if [ "$(cat /data/AZenith/bypass_charge 2>/dev/null)" -eq 1 ]; then
+if [ "$(cat /data/AZenith/bypass_charge)" -eq 1 ]; then
 applypath() {
         if [ -e "$2" ]; then  
             zeshia "$1" "$2"
@@ -59,7 +59,7 @@ fi
 }
 disableBypass() {
 # Disable Bypass Charge
-if [ "$(cat /data/AZenith/bypass_charge 2>/dev/null)" -eq 1 ]; then
+if [ "$(cat /data/AZenith/bypass_charge)" -eq 1 ]; then
 applypath() {
         if [ -e "$2" ]; then  
             zeshia "$1" "$2"
@@ -91,7 +91,7 @@ else
 fi
 }
 
-profiler="$(cat /data/AZenith/profiler 2>/dev/null)"
+profiler="$(cat /data/AZenith/profiler)"
 if [ "$profiler" = "Performance" ]; then
     enableBypass
 fi

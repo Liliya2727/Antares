@@ -1,0 +1,13 @@
+#!/bin/sh
+logpathmon="/data/AZenith/AZenithMon.log"
+
+echo "" >> "$logpathmon"
+echo "" >> "$logpathmon"
+echo "!!!!!!SERVICE KILLED!!!!!!!" >> "$logpathmon"  
+echo "" >> "$logpathmon"
+echo "" >> "$logpathmon"
+# ServiceKiller
+pkill -f AZenith
+pkill -f AZenith_Performance
+pkill -f AZenith_Normal
+pkill -f preload_sys

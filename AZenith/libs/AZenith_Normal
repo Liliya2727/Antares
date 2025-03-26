@@ -2,9 +2,10 @@
 
 MODDIR=${0%/*}
 logpath="/data/AZenith/AZenith.log"
+DEFAULT_GOV_FILE="/data/AZenith/custom_default_cpu_gov"
 
 AZLog() {
-    if [ "$(cat /data/AZenith/logger 2>/dev/null)" = "1" ]; then
+    if [ "$(cat /data/AZenith/logger)" = "1" ]; then
         local timestamp
         timestamp=$(date +'%Y-%m-%d %H:%M:%S')
         local message="$1"
@@ -23,9 +24,9 @@ load_default_governor() {
 
 zeshia() {
     if [ -f "$2" ]; then
-        chmod 644 "$2" >/dev/null 2>&1
-        echo "$1" >"$2" 2>/dev/null && AZLog "Set $2 to $1" || AZLog "Failed to set $2 to $1"
-        chmod 444 "$2" >/dev/null 2>&1
+        chmod 644 "$2"
+        echo "$1" >"$2" && AZLog "Set $2 to $1" || AZLog "Failed to set $2 to $1"
+        chmod 444 "$2"
     else
         AZLog "File $2 not found, skipping..."
     fi
@@ -33,11 +34,12 @@ zeshia() {
 
 divider=$(cat /data/AZenith/customFreqOffset | sed -e 's/OFF/100/' -e 's/%//g')
 AZLog "the divider is $divider"
-DEFAULT_GOV_FILE="/data/AZenith/custom_default_cpu_gov"
 default_cpu_gov=$(load_default_governor)
 AZLog "Default CPU Governor: $default_cpu_gov"
 
+
 zeshia "Normal" "/data/AZenith/profiler"
+
 
 # PPM Settings
 if [ -d /proc/ppm ]; then
@@ -61,20 +63,23 @@ for pl in /sys/devices/system/cpu/perf; do
 done
 
 # Disable DND
-if [ "$(cat /data/AZenith/dnd 2>/dev/null)" -eq 1 ]; then
+if [ "$(cat /data/AZenith/dnd)" -eq 1 ]; then
     cmd notification set_dnd off && AZLog "DND disabled" || AZLog "Failed to disable DND"
 else
     AZLog "DND was already off."
 fi
 
-
+changegovernor() {
 # Restore CPU Scaling Governor
 for path in /sys/devices/system/cpu/cpufreq/policy*; do
     zeshia "$default_cpu_gov" "$path/scaling_governor"
     sleep 0.5
 done
+}
+changegovernor 
 
 
+cpufrequency() {
 # Restore CPU Frequency
 if [ -d /proc/ppm ]; then
     cluster=0
@@ -101,7 +106,8 @@ for path in /sys/devices/system/cpu/*/cpufreq; do
     zeshia "$cpu_minfreq" "$path/scaling_min_freq"
     
 done
-
+}
+cpufrequency 
 
 zeshia "120" "/proc/sys/vm/vfs_cache_pressure"
 
@@ -118,9 +124,9 @@ for eem in EEM_DET_B EEM_DET_BL EEM_DET_L; do
         
     fi
 done
-zeshia "$(cat /data/AZenith/default_EEM_DET_CCI 2>/dev/null)" "/proc/eem/EEM_DET_CCI/eem_offset"
-zeshia "$(cat /data/AZenith/default_EEMG_DET_GPU 2>/dev/null)" "/proc/eemg/EEMG_DET_GPU/eemg_offset"
-zeshia "$(cat /data/AZenith/default_EEMG_DET_GPU_HI 2>/dev/null)" "/proc/eemg/EEMG_DET_GPU_HI/eemg_offset"
+zeshia "$(cat /data/AZenith/default_EEM_DET_CCI 2)" "/proc/eem/EEM_DET_CCI/eem_offset"
+zeshia "$(cat /data/AZenith/default_EEMG_DET_GPU 2)" "/proc/eemg/EEMG_DET_GPU/eemg_offset"
+zeshia "$(cat /data/AZenith/default_EEMG_DET_GPU_HI 2)" "/proc/eemg/EEMG_DET_GPU_HI/eemg_offset"
 
 # Restore Power & Thermal Policies
 if [ -d /proc/ppm ]; then
@@ -138,7 +144,7 @@ zeshia "1" "/proc/cpufreq/cpufreq_power_mode"
 
 # GPU Frequency
 if [ -d /proc/gpufreq ]; then
-		zeshia "0" /proc/gpufreq/gpufreq_opp_freq 2>/dev/null
+		zeshia "0" /proc/gpufreq/gpufreq_opp_freq
 elif [ -d /proc/gpufreqv2 ]; then
 		zeshia "-1" /proc/gpufreqv2/fix_target_opp_index
 fi

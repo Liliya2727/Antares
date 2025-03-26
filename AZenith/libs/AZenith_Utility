@@ -4,7 +4,7 @@ MODDIR=${0%/*}
 logpath="/data/AZenith/AZenith.log"
 
 AZLog() {
-    if [ "$(cat /data/AZenith/logger 2>/dev/null)" = "1" ]; then
+    if [ "$(cat /data/AZenith/logger)" = "1" ]; then
         local timestamp
         timestamp=$(date +'%Y-%m-%d %H:%M:%S')
         local message="$1"
@@ -15,9 +15,9 @@ AZLog() {
 
 zeshia() {
     if [ -f "$2" ]; then
-        chmod 644 "$2" >/dev/null 2>&1
-        echo "$1" >"$2" 2>/dev/null && AZLog "Set $2 to $1" || AZLog "Failed to set $2 to $1"
-        chmod 444 "$2" >/dev/null 2>&1
+        chmod 644 "$2"
+        echo "$1" >"$2" && AZLog "Set $2 to $1" || AZLog "Failed to set $2 to $1"
+        chmod 444 "$2"
     else
         AZLog "File $2 not found, skipping..."
     fi
@@ -38,6 +38,29 @@ for eem in EEM_DET_B EEM_DET_BL EEM_DET_L EEM_DET_CCI; do
     else
         AZLog "$eem_path not found, skipping..."
     fi
+done
+
+# GED parameters
+ged_params="ged_smart_boost 1
+boost_upper_bound 100
+enable_gpu_boost 1
+enable_cpu_boost 1
+ged_boost_enable 1
+boost_gpu_enable 1
+gpu_dvfs_enable 1
+gx_frc_mode 1
+gx_dfps 1
+gx_force_cpu_boost 1
+gx_boost_on 1
+gx_game_mode 1
+gx_3D_benchmark_on 1
+gpu_loading 0
+cpu_boost_policy 1
+boost_extra 1
+is_GED_KPI_enabled 0"
+
+zeshia "$ged_params" | while read -r param value; do
+    zeshia "$value" "/sys/module/ged/parameters/$param"
 done
 
 # Save EEMG values
@@ -67,17 +90,6 @@ done
 
 	# Disable compaction_proactiveness
 	zeshia 0 /proc/sys/vm/compaction_proactiveness
-
-	# Disable SPI CRC
-	zeshia 0 /sys/module/mmc_core/parameters/use_spi_crc
-
-	# Disable OnePlus opchain
-	zeshia 0 /sys/module/opchain/parameters/chain_on
-
-	# Disable Oplus bloats
-	zeshia 0 /sys/module/cpufreq_bouncing/parameters/enable
-	zeshia 0 /proc/task_info/task_sched_info/task_sched_info_enable
-	zeshia 0 /proc/oplus_scheduler/sched_assist/sched_assist_enabled
 
 	# Report max CPU capabilities to these libraries
 	zeshia "libunity.so, libil2cpp.so, libmain.so, libUE4.so, libgodot_android.so, libgdx.so, libgdx-box2d.so, libminecraftpe.so, libLive2DCubismCore.so, libyuzu-android.so, libryujinx.so, libcitra-android.so, libhdr_pro_engine.so, libandroidx.graphics.path.so, libeffect.so" /proc/sys/kernel/sched_lib_name
@@ -113,6 +125,47 @@ done
 # Network settings with logging
 zeshia "cubic" /proc/sys/net/ipv4/tcp_congestion_control
 zeshia 1 /proc/sys/net/ipv4/tcp_low_latency
+
+# Virtual memory settings
+echo 35 > /proc/sys/vm/dirty_background_ratio
+echo 30 > /proc/sys/vm/dirty_ratio
+echo 120 > /proc/sys/vm/vfs_cache_pressure
+echo 400 > /proc/sys/vm/dirty_expire_centisecs
+echo 6000 > /proc/sys/vm/dirty_writeback_centisecs
+echo 0 > /proc/sys/vm/oom_dump_tasks
+echo 0 > /proc/sys/vm/page-cluster
+echo 0 > /proc/sys/vm/block_dump
+echo 10 > /proc/sys/vm/stat_interval
+echo 1 > /proc/sys/vm/compaction_proactiveness
+echo 1 > /proc/sys/vm/watermark_boost_factor
+echo 50 > /proc/sys/vm/watermark_scale_factor
+echo 2 > /proc/sys/vm/drop_caches
+echo 50 > /proc/sys/vm/swappiness
+
+for cs in /dev/cpuset
+do
+    echo 0-7 > "$cs/cpus"
+    echo 0-5 > "$cs/background/cpus"
+    echo 0-4 > "$cs/system-background/cpus"
+    echo 0-7 > "$cs/foreground/cpus"
+    echo 0-7 > "$cs/top-app/cpus"
+    echo 0-5 > "$cs/restricted/cpus"
+    echo 0-7 > "$cs/camera-daemon/cpus"
+    echo 0 > "$cs/memory_pressure_enabled"
+    echo 0 > "$cs/sched_load_balance"
+    echo 1 > "$cs/foreground/sched_load_balance"
+done
+
+# Disallow power saving mode for display
+for dlp in /proc/displowpower/*; do
+    [ -f "$dlp/hrt_lp" ] && echo 1 > "$dlp/hrt_lp"
+    [ -f "$dlp/idlevfp" ] && echo 1 > "$dlp/idlevfp"
+    [ -f "$dlp/idletime" ] && echo 100 > "$dlp/idletime"
+done
+
+echo 0 > /dev/cpuctl/foreground/cpu.uclamp.min
+echo 0 > /dev/cpuctl/top-app/cpu.uclamp.min
+echo 0 > /dev/cpuctl/pnpmgr_fg/cpu.uclamp.min
 
 # Disable all kernel panic mechanisms
 for param in hung_task_timeout_secs panic_on_oom panic_on_oops panic softlockup_panic; do
@@ -159,7 +212,7 @@ DThermal() {
     AZLog "Disabling Thermal Services..."
 
     thermal() {
-        find /system/etc/init /vendor/etc/init /odm/etc/init -type f 2>/dev/null | xargs grep -h "^service" | awk '{print $2}' | grep thermal
+        find /system/etc/init /vendor/etc/init /odm/etc/init -type f | xargs grep -h "^service" | awk '{print $2}' | grep thermal
     }
 
     propfile() {
@@ -237,138 +290,40 @@ EOF
     AZLog "Thermal service overridden"
 }
 
-killlogger() { 
-
-#sqlitelog
-resetprop -n debug.sqlite.journalmode OFF
-#wal sync
-resetprop -n debug.sqlite.wal.syncmode OFF
-#Close Logd (***according to the developer mode***)
-#https://android.googlesource.com/platform/system/core/+/2591d48/logd/README.property
-resetprop -n logd.logpersistd.enable false
-resetprop -n ro.logd.logpersistd.enable false
-resetprop -n persist.logd.logpersistd.enable false
-resetprop -n logd.security false
-resetprop -n ro.logd.security false
-resetprop -n persist.logd.security false
-resetprop -n logd.statistics false
-resetprop -n ro.logd.statistics false
-resetprop -n persist.logd.statistics false
-resetprop -n logd.kernel false
-resetprop -n ro.logd.kernel false
-resetprop -n persist.logd.kernel false
-resetprop -n logd.klogd false
-resetprop -n ro.logd.klogd false
-resetprop -n persist.logd.klogd false
-resetprop -n logd.auditd false
-resetprop -n ro.logd.auditd false
-resetprop -n persist.logd.auditd false
-resetprop -n logd.auditd.events false
-resetprop -n ro.logd.auditd.events false
-resetprop -n persist.logd.auditd.events false
-resetprop -n logd.auditd.main false
-resetprop -n ro.logd.auditd.main false
-resetprop -n persist.logd.auditd.main false
-resetprop -n logd.auditd.dmesg false
-resetprop -n ro.logd.auditd.dmesg false
-resetprop -n persist.logd.auditd.dmesg false
-resetprop -n logd.crash false
-resetprop -n ro.logd.crash false
-resetprop -n persist.logd.crash false
-resetprop -n logd.radio false
-resetprop -n ro.logd.radio false
-resetprop -n persist.logd.radio false
-resetprop -n logd.system false
-resetprop -n ro.logd.system false
-resetprop -n persist.logd.system false
-resetprop -n logd.stats false
-resetprop -n ro.logd.stats false
-resetprop -n persist.logd.stats false
-###Log size
-resetprop -n logd.size 0
-resetprop -n ro.logd.size 0
-resetprop -n persist.logd.size 0
-resetprop -n logd.size.security 0
-resetprop -n ro.logd.size.security 0
-resetprop -n logd.size.security 0
-resetprop -n ro.logd.size.statistics 0
-resetprop -n persist.logd.size.statistics 0
-resetprop -n persist.logd.size.statistics 0
-resetprop -n logd.size.kernel 0
-resetprop -n ro.logd.size.kernel 0
-resetprop -n persist.logd.size.kernel 0
-resetprop -n logd.size.klogd 0
-resetprop -n ro.logd.size.klogd 0
-resetprop -n persist.logd.size.klogd 0
-resetprop -n logd.size.auditd 0
-resetprop -n ro.logd.size.auditd 0
-resetprop -n persist.logd.size.auditd 0
-resetprop -n logd.size.auditd.events 0
-resetprop -n ro.logd.size.auditd.events 0
-resetprop -n persist.logd.size.auditd.events 0
-resetprop -n logd.size.auditd.main 0
-resetprop -n ro.logd.size.auditd.main 0
-resetprop -n persist.logd.size.auditd.main 0
-resetprop -n logd.size.auditd.dmesg 0
-resetprop -n ro.logd.size.auditd.dmesg 0
-resetprop -n persist.logd.size.auditd.dmesg 0
-resetprop -n logd.size.crash 0
-resetprop -n ro.logd.size.crash 0
-resetprop -n persist.logd.size.crash 0
-resetprop -n logd.size.radio 0
-resetprop -n ro.logd.size.radio 0
-resetprop -n persist.logd.size.radio 0
-resetprop -n logd.size.system 0
-resetprop -n ro.logd.size.system 0
-resetprop -n persist.logd.size.system 0
-resetprop -n logd.size.stats 0
-resetprop -n ro.logd.size.stats 0
-resetprop -n persist.logd.size.stats 0
-#silence log tag
-resetprop -n log.tag S
-resetprop -n ro.log.tag S
-resetprop -n persist.log.tag S
-resetprop -n log.tag.stats_log S
-resetprop -n ro.log.tag.stats_log S
-resetprop -n persist.log.tag.stats_log S
-#Bluetooth log (according to the developer mode)
-resetprop -n vendor.bluetooth.startbtlogger false
-#Kernel log (metaphysics)
-resetprop -n persist.sys.offlinelog.kernel false
-#Close the logcat service (mysterious and mysterious)
-resetprop -n persist.sys.offlinelog.logcat false
-resetprop -n persist.sys.offlinelog.logcatkernel false
-#MIUI kernel log (from Suilong)
-resetprop -n sys.miui.ndcd off
-#Turn off forcing software GLES rendering
-#resetprop -n persist.sys.force_sw_gles 0
-#Disable error detection
-resetprop -n ro.kernel.android.checkjni 0
-resetprop -n ro.kernel.checkjni 0
-#wpa debug disabled
-resetprop -n persist.wpa_supplicant.debug false
-#Optimize system sleep (metaphysics)
-#resetprop -n pm.sleep_mode 1
-#resetprop -n ro.ril.disable.power.collapse 0
-
-#resetprop -n db.log.slow_query_threshold 999
-resetprop -n debug.qualcomm.sns.hal 0
-resetprop -n persist.debug.sensors.hal 0
-resetprop -n debug.qualcomm.sns.daemon 0
-resetprop -n debug.qualcomm.sns.libsensor1 0
-resetprop -n sys.init_log_level 0
-resetprop -n debug.sf.ddms 0
-resetprop -n ro.lmk.debug false
-resetprop -n logd.logpersistd.enable false
-resetprop -n persist.bluetooth.btsnooplogmode disabled
-resetprop -n debug.atrace.app_cmdlines 0
-resetprop -n debug.atrace.tags.enableflags 0
-
-stop logd
-stop traced
-stop statsd
+kill_logd() {
+    zeshia 0 /sys/kernel/ccci/debug
+    zeshia 0 /sys/kernel/tracing/tracing_on        
+    zeshia 0 /proc/sys/kernel/perf_event_paranoid
+    zeshia 0 /proc/sys/kernel/debug_locks
+    zeshia 0 /proc/sys/kernel/perf_cpu_time_max_percent
+    zeshia off /proc/sys/kernel/printk_devkmsg    
 }
+    # List of logging services
+    list_logger="
+    logd
+    traced
+    statsd
+    tcpdump
+    cnss_diag
+    subsystem_ramdump
+    charge_logger
+    wlan_logging
+    "
 
+    # Logd
+    if [ -f /data/AZenith/logd ] && [ "$(cat /data/AZenith/logd)" -eq 1 ]; then
+        for logger in $list_logger; do
+            stop "$logger" 2>/dev/null
+        done
+    else
+        for logger in $list_logger; do
+            start "$logger" 2>/dev/null
+        done
+    fi
+    
+if [ -f /data/AZenith/logd ] && [ "$(cat /data/AZenith/logd)" -eq 1 ]; then
+    kill_logd
+fi
 if [ -f /data/AZenith/DThermal ] && [ "$(cat /data/AZenith/DThermal)" -eq 1 ]; then
     DThermal
 fi
@@ -377,9 +332,6 @@ if [ -f /data/AZenith/SFL ] && [ "$(cat /data/AZenith/SFL)" -eq 1 ]; then
 fi
 if [ -f /data/AZenith/FSTrim ] && [ "$(cat /data/AZenith/FSTrim)" -eq 1 ]; then
     FSTrim
-fi
-if [ -f /data/AZenith/logd ] && [ "$(cat /data/AZenith/logd)" -eq 1 ]; then
-    killlogger
 fi
 
 AZLog  "AZenith Utility Completed."

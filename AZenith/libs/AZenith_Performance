@@ -5,7 +5,7 @@ logpath="/data/AZenith/AZenith.log"
 game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/AZenith/gamelist.txt")"
 
 AZLog() {
-    if [ "$(cat /data/AZenith/logger 2>/dev/null)" = "1" ]; then
+    if [ "$(cat /data/AZenith/logger)" = "1" ]; then
         local timestamp
         timestamp=$(date +'%Y-%m-%d %H:%M:%S')
         local message="$1"
@@ -17,15 +17,15 @@ AZLog() {
 
 zeshia() {
     if [ -f "$2" ]; then
-        chmod 644 "$2" >/dev/null 2>&1
-        echo "$1" >"$2" 2>/dev/null && AZLog "Set $2 to $1" || AZLog "Failed to set $2 to $1"
-        chmod 444 "$2" >/dev/null 2>&1
+        chmod 644 "$2"
+        echo "$1" >"$2" && AZLog "Set $2 to $1" || AZLog "Failed to set $2 to $1"
+        chmod 444 "$2"
     else
         AZLog "File $2 not found, skipping..."
     fi
 }
 
-zeshia "Performance" "/data/AZenith/profiler"
+
 
 mltweak() {
     window=$(dumpsys window)
@@ -42,7 +42,7 @@ mltweak() {
             find "/data/media/0/Android/data/$mltwk/cache/" -type f -mtime +1 -exec rm -f {} +
             AZLog "Cleared ML cache in /data/media/0"
             /system/bin/am start -a android.intent.action.MAIN -e toasttext "ML High Prior!" -n bellavita.toast/.MainActivity    
-            renice -n 10 -p "$pid"
+            renice -n -10 -p "$pid"
             ionice -c 1 -n 0 -p "$pid"
             chrt -f -p 99 "$pid"
         done
@@ -51,7 +51,9 @@ mltweak() {
     fi
 }
 
-    if [ "$(cat /data/AZenith/mltweak 2>/dev/null)" -eq 1 ]; then
+zeshia "Performance" "/data/AZenith/profiler"
+
+    if [ "$(cat /data/AZenith/mltweak)" -eq 1 ]; then
         AZLog "ML tweak enabled, executing..."
         mltweak 
     else
@@ -83,7 +85,7 @@ done
 
 
 # Set DND Mode
-if [ "$(cat /data/AZenith/dnd 2>/dev/null)" -eq 1 ]; then
+if [ "$(cat /data/AZenith/dnd)" -eq 1 ]; then
     cmd notification set_dnd priority && AZLog "DND enabled" || AZLog "Failed to enable DND"
 else
     AZLog "DND not enabled."
@@ -98,7 +100,7 @@ done
 
 
 # MAX CPU Frequency 
-if [ "$(cat /data/AZenith/cpulimit 2>/dev/null)" -eq 1 ]; then
+if [ "$(cat /data/AZenith/cpulimit)" -eq 1 ]; then
     if [ -d /proc/ppm ]; then
         cluster=0
         for path in /sys/devices/system/cpu/cpufreq/policy*; do
@@ -121,7 +123,7 @@ fi
 zeshia "80" "/proc/sys/vm/vfs_cache_pressure"
 
 # Disable Volt Optimizer
-if [ "$(cat /data/AZenith/VoltOpt 2>/dev/null)" -eq 1 ]; then
+if [ "$(cat /data/AZenith/VoltOpt)" -eq 1 ]; then
     for eem in EEM_DET_B EEM_DET_BL EEM_DET_L; do
         zeshia "0" "/proc/eem/$eem/eem_offset"
     done
@@ -182,28 +184,7 @@ zeshia "0" /sys/devices/system/cpu/eas/enable
 zeshia "1" /sys/devices/system/cpu/cpu2/online
 zeshia "1" /sys/devices/system/cpu/cpu3/online
 	
-# GED parameters
-ged_params="ged_smart_boost 1
-boost_upper_bound 100
-enable_gpu_boost 1
-enable_cpu_boost 1
-ged_boost_enable 1
-boost_gpu_enable 1
-gpu_dvfs_enable 1
-gx_frc_mode 1
-gx_dfps 1
-gx_force_cpu_boost 1
-gx_boost_on 1
-gx_game_mode 1
-gx_3D_benchmark_on 1
-gpu_loading 0
-cpu_boost_policy 1
-boost_extra 1
-is_GED_KPI_enabled 0"
 
-zeshia "$ged_params" | while read -r param value; do
-    zeshia "$value" "/sys/module/ged/parameters/$param"
-done
 
 for path in /dev/stune/*; do
     base=$(basename "$path")  
@@ -249,24 +230,57 @@ for param in boost_affinity boost_LR gcc_hwui_hint; do
 done
 
 clear_background_apps() {
-AZLog "Clearing all background apps..."
+AZLog "Clearing background apps..."
 
-app_list=$(dumpsys activity recents | grep "Recent #" | grep -oE "[a-zA-Z0-9_.]+/[^ ]+" | cut -d'/' -f1 | grep -v "com.android.systemui" | grep -v "com.android.settings")  
+# Get the list of running apps sorted by CPU usage (excluding system processes and the script itself)
+app_list=$(top -n 1 -o %CPU | awk 'NR>7 {print $1}' | while read -r pid; do
+    pkg=$(cmd package list packages -U | awk -v pid="$pid" '$2 == pid {print $1}' | cut -d':' -f2)
+    if [ -n "$pkg" ] && ! echo "$pkg" | grep -qE "com.android.systemui|com.android.settings|$(basename "$0")"; then
+        echo "$pkg"
+    fi
+done)
 
-for app in $app_list; do  
-    am force-stop "$app"  
-    AZLog "Stopped app: $app"  
-done  
-
-AZLog "all apps is cleared."
-
+# Kill apps in order of highest CPU usage
+for app in $app_list; do
+    am force-stop "$app"
+    AZLog "Stopped app: $app"
+done
+    
+# force stop
+am force-stop com.instagram.android
+am force-stop com.android.vending
+am force-stop app.grapheneos.camera
+am force-stop com.google.android.gm
+am force-stop com.google.android.apps.youtube.creator
+am force-stop com.dolby.ds1appUI
+am force-stop com.google.android.youtube
+am force-stop com.twitter.android
+am force-stop nekox.messenger
+am force-stop com.shopee.id
+am force-stop com.vanced.android.youtube
+am force-stop com.speedsoftware.rootexplorer
+am force-stop com.bukalapak.android
+am force-stop org.telegram.messenger
+am force-stop ru.zdevs.zarchiver
+am force-stop com.android.chrome
+am force-stop com.whatsapp.messenger
+am force-stop com.google.android.GoogleCameraEng
+am force-stop com.facebook.orca
+am force-stop com.lazada.android
+am force-stop com.android.camera
+am force-stop com.android.settings
+am force-stop com.franco.kernel
+am force-stop com.telkomsel.telkomselcm
+am force-stop com.facebook.katana
+am force-stop com.instagram.android
+am force-stop com.facebook.lite
+am kill-all
 }
-
-if [ "$(cat /data/AZenith/clearbgapps 2>/dev/null)" -eq 1 ]; then
-AZLog "clearing background apps..."
-clear_background_apps
-else
-AZLog "clear background is disabled."
+if [ "$(cat /data/AZenith/clearbg)" -eq 1 ]; then
+   clear_background_apps
+   AZLog "Clearing apps"
+   else
+   AZLog "Ram Boost is disabled"
 fi
 
 # Disable battery saver module  
@@ -276,7 +290,7 @@ fi
 	else  
 		zeshia N /sys/module/battery_saver/parameters/enabled  
 	fi  
-}  
+}
 
 # Disable split lock mitigation  
 zeshia 0 /proc/sys/kernel/split_lock_mitigate  
