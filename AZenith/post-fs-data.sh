@@ -2,17 +2,7 @@
 
 # Wi-Fi Logs 
 ## Deleting and recreating Wi-Fi logs
-rm -rf /data/vendor/wlan_logs
-touch /data/vendor/wlan_logs
 chmod 000 /data/vendor/wlan_logs
-
-# Kernel Debugging
-## Disabling kernel debugging
-for i in "debug_mask" "log_level*" "debug_level*" "*debug_mode" "enable_ramdumps" "edac_mc_log*" "enable_event_log" "*log_level*" "*log_ue*" "*log_ce*" "log_ecn_error" "snapshot_crashdumper" "seclog*" "compat-log" "*log_enabled" "tracing_on" "mballoc_debug"; do
-    for o in $(find /sys/ -type f -name "$i"); do
-        echo "0" > "$o"
-    done
-done
 
 # Setting Kernel Parameters
 for sys in /sys; do
@@ -22,32 +12,17 @@ for sys in /sys; do
     echo "0" > "$sys/module/rmnet_data/parameters/rmnet_data_log_level"
 done
 
-# Ramdumps
-## Disabling ramdumps
-for parameters in /sys/module/subsystem_restart/parameters; do
-    echo "0" > "$parameters/enable_mini_ramdumps"
-    echo "0" > "$parameters/enable_ramdumps"
-done
-
-# File System 
-## Disabling some FS settings
-for fs in /proc/sys/fs; do
-    echo "0" > "$fs/by-name/userdata/iostat_enable"
-    echo "0" > "$fs/dir-notify-enable"
-done
-
 # Unity Fix 
 ## Setting up Unity parameters
-    lib_names="com.miHoYo. com.activision. com.garena. com.roblox. com.epicgames com.dts. UnityMain libunity.so libil2cpp.so libmain.so libcri_vip_unity.so libopus.so libxlua.so libUE4.so libAsphalt9.so libnative-lib.so libRiotGamesApi.so libResources.so libagame.so libapp.so libflutter.so libMSDKCore.so libFIFAMobileNeon.so libUnreal.so libEOSSDK.so libcocos2dcpp.so libgodot_android.so libgdx.so libgdx-box2d.so libminecraftpe.so libLive2DCubismCore.so libyuzu-android.so libryujinx.so libcitra-android.so libhdr_pro_engine.so libandroidx.graphics.path.so libeffect.so"
-    for path in /proc/sys/kernel/sched_lib_name /proc/sys/kernel/sched_lib_mask_force /proc/sys/walt/sched_lib_name /proc/sys/walt/sched_lib_mask_force; do
-        if [ -w "$path" ]; then
-            case "$path" in
-                */sched_lib_name) echo "$lib_names" > "$path" ;;
-                */sched_lib_mask_force) echo "255" > "$path" ;;
-            esac
-        fi
-    done
-####################################################
+lib_names="com.miHoYo. com.activision. com.garena. com.roblox. com.epicgames com.dts. UnityMain libunity.so libil2cpp.so libmain.so libcri_vip_unity.so libopus.so libxlua.so libUE4.so libAsphalt9.so libnative-lib.so libRiotGamesApi.so libResources.so libagame.so libapp.so libflutter.so libMSDKCore.so libFIFAMobileNeon.so libUnreal.so libEOSSDK.so libcocos2dcpp.so libgodot_android.so libgdx.so libgdx-box2d.so libminecraftpe.so libLive2DCubismCore.so libyuzu-android.so libryujinx.so libcitra-android.so libhdr_pro_engine.so libandroidx.graphics.path.so libeffect.so"
+for path in /proc/sys/kernel/sched_lib_name /proc/sys/kernel/sched_lib_mask_force /proc/sys/walt/sched_lib_name /proc/sys/walt/sched_lib_mask_force; do
+    if [ -w "$path" ]; then
+        case "$path" in
+            */sched_lib_name) echo "$lib_names" > "$path" ;;
+            */sched_lib_mask_force) echo "255" > "$path" ;;
+        esac
+    fi
+done
 
 ### Bluetooth and Network Logging ###
 resetprop -n bluetooth.btsnoop_log_mode disabled
@@ -75,11 +50,6 @@ resetprop -n atrace.app_cmdlines.enabled 0
 ### Media and Performance Monitoring ###
 resetprop -n media.metrics.enable false
 resetprop -n media.metrics.value 0
-
-### Qualcomm Sensor HAL Debugging ###
-resetprop -n qualcomm.sns.hal.debug 0
-resetprop -n qualcomm.sns.daemon.debug 0
-resetprop -n qualcomm.sns.libsensor1.debug 0
 
 ### Disable Unnecessary Processes ###
 resetprop -n av.debug.cache_persistent.disabled true

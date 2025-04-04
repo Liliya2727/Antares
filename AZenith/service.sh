@@ -52,7 +52,9 @@ startlogging() {
     echo "" >> "$logpath"
     echo "" >> "$logpath"
 }
+if [ "$(cat /data/AZenith/logger)" = "1" ]; then
 startlogging
+fi
 AZLog "Removed Old Logs"
 
 
