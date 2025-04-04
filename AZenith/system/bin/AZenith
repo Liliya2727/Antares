@@ -44,7 +44,8 @@ notification() {
 
 # Cleanup VMT
 cleanup() {
-    pkill -f vmt
+    pkill -x vmt
+    pkill -x vmt2
     stopgamemode
     exit 0
 }
@@ -117,7 +118,7 @@ startlogging() {
 # Monitoring Loop!
 monitoring() {
     startlogging
-    prev_mode=-1  # Initialize with an invalid mode
+    prev_mode=-1 
 
     while true; do
         # Get Foreground Apps
@@ -170,10 +171,11 @@ monitoring() {
                                 AZLog "Processing apk $apk"
                             fi
                         done
-                    done
+                    done                    
                 fi
             fi            
             GamePreload 1
+            sleep 35
             fi            
         elif [ -n "$recentapps" ] && [ "$screenstate" = "true" ]; then
             applychange 1
@@ -185,9 +187,8 @@ monitoring() {
             if [ -f "$PRELOAD_ENABLED" ] && [ "$(cat "$PRELOAD_ENABLED")" = "1" ]; then
                 GamePreload 0                
             fi            
-        fi
-        
-        # Log only when mode changes
+        fi        
+        # Log 
         if [ "$new_mode" -ne "$prev_mode" ]; then
             if [ "$new_mode" -eq 1 ]; then
                 if [ -f "$PRELOAD_ENABLED" ] && [ "$(cat "$PRELOAD_ENABLED")" = "1" ]; then
@@ -208,7 +209,7 @@ monitoring() {
                 AZLogMon ""
                 AZLogMon ""
             fi
-            prev_mode="$new_mode"  # Update previous mode
+            prev_mode="$new_mode"  
         fi
         sleep 15
     done
