@@ -125,7 +125,7 @@ monitoring() {
         window=$(dumpsys window)
         gamestart=$(echo "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
         screenstate=$(dumpsys power | grep -i "mHoldingDisplaySuspendBlocker" | grep -Eo "true|false")
-        recentapps=$(dumpsys activity recents | grep "Recent #" | awk '{print $NF}' | grep -Eo "$game_list_filter")
+        
 
         # Track the active game
         if [ -n "$gamestart" ]; then
@@ -144,6 +144,8 @@ monitoring() {
 
         # Apply game mode
         if [ -n "$gamestart" ] && [ "$screenstate" = "true" ]; then
+            recentapps=$(dumpsys activity recents | grep "Recent #" | awk '{print $NF}' | grep -Eo "$game_list_filter")
+            AZLogMon "Checking Recent apps: $recentapps"
             applychange 1
             new_mode=1
             if [ -f "$PRELOAD_ENABLED" ] && [ "$(cat "$PRELOAD_ENABLED")" = "1" ]; then
