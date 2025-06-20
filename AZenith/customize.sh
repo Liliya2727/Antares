@@ -1,5 +1,21 @@
 #!/system/bin/sh
 
+#
+# Copyright (C) 2024-2025 Zexshia
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 # Configuration flags
 SKIPMOUNT=false
 PROPFILE=false
@@ -27,53 +43,39 @@ bypasslist="
 /sys/devices/platform/charger/bypass_charger
 /sys/devices/platform/charger/tran_aichg_disable_charger
 /proc/mtk_battery_cmd/current_cmd
+/sys/devices/platform/mt-battery/disable_charger"
 "
 
 # Display banner
 ui_print ""
 ui_print "              AZenith              "
 ui_print ""
-ui_print "- Release Date  : 27/03/2025"
+ui_print "- Build Date  : 17/06/2025"
 ui_print "- Author        : ${AUTHOR}"
 ui_print "- Version       : ${MODVER}"
 ui_print "- Device        : $(getprop ro.product.board)"
 ui_print "- Build Date    : $(getprop ro.build.date)"
 sleep 1
 ui_print "- Installing AZenith..."
-sleep 1
 
 # Extracting module files
 ui_print "- Creating necessary directories..."
 mkdir -p /data/AZenith
-
-ui_print "- Extracting functions.sh"
-extract -qjo "$ZIPFILE" 'common/functions.sh' -d $TMPDIR >&2
-$TMPDIR/functions.sh
-
-ui_print "- Extracting system files..."
+ui_print "- Extracting system directories..."
 extract -o "$ZIPFILE" 'system/*' -d "$MODPATH" >&2
-
-ui_print "- Extracting system.prop..."
-extract -o "$ZIPFILE" 'system.prop*' -d "$MODPATH" >&2
-
-ui_print "- Extracting libs files..."
+ui_print "- Extracting libs directories..."
 extract -o "$ZIPFILE" 'libs/*' -d "$MODPATH" >&2
-
-ui_print "- Extracting service script..."
+ui_print "- Extracting service.sh..."
 unzip -o "$ZIPFILE" 'service.sh' -d "$MODPATH" >&2
-
-ui_print "- Extracting gamelist.txt..."
+ui_print "- Extracting gamelist..."
 unzip -qo "$ZIPFILE" 'gamelist.txt' -d "/data/AZenith" >&2
-
-ui_print "- Extracting icon..."
+ui_print "- Extracting module Icon..."
 unzip -qo "$ZIPFILE" 'AZenith_icon.png' -d "/data/local/tmp" >&2
 sleep 1
 
-# Checking path
+# Checking bypass
 ui_print "- Checking Bypass compatibility..."
 sleep 3
-
-# Check Bypass Path
 bypasspath=""
 for path in $bypasslist; do
     if checkpath "$path"; then
@@ -82,20 +84,19 @@ for path in $bypasslist; do
     fi
 done
 
-# Notify User
+# Fallback to nb html if bypass unsupported
 if [ -z "$bypasspath" ]; then
-    ui_print "- Bypass Charging is Unsupported!"
+    ui_print "- Skip installing bypasscharge..."
     mv "$MODPATH/assets/indexnbhtml" "$MODPATH/webroot/index.html"
     mv "$MODPATH/assets/fn762agnbjs" "$MODPATH/webroot/fn762ag.js"
     else
-    ui_print "- Bypass Charging is Supported!"
-    ui_print "- Using path: $path"
+    ui_print "- start installing bypasscharge addon"
+    ui_print "- path: $path"
     mv "$MODPATH/assets/indexbphtml" "$MODPATH/webroot/index.html"
     mv "$MODPATH/assets/fn762agbpjs" "$MODPATH/webroot/fn762ag.js"
 fi
 
-
-# Installing toast notification
+# Installing toast
 if pm list packages | grep -q bellavita.toast; then
     ui_print "- Bellavita Toast is already installed."
 else
@@ -106,10 +107,9 @@ else
     rm "$MODPATH/toast.apk"
 fi
 
-# Determine Chipset
+# Check device chipset
 chipset=$(grep "Hardware" /proc/cpuinfo | uniq | cut -d ':' -f 2 | sed 's/^[ \t]*//')
 [ -z "$chipset" ] && chipset="$(getprop ro.board.platform) $(getprop ro.hardware)"
-
 case "$chipset" in
     *mt* | *MT*) 
         soc=1
@@ -123,45 +123,23 @@ case "$chipset" in
         ;;
 esac
 
-# Cihuy
+# Move Important File to run Azenith 
 mv "$MODPATH/assets/availableFreq" "/data/AZenith/availableFreq"
 mv "$MODPATH/assets/customFreqOffset" "/data/AZenith/customFreqOffset"
 
-# Extract WebUI
-ui_print "- Extracting WebUI"
-mv "$MODPATH/assets/indexhtml" "$MODPATH/webroot/index.html"
-sleep 2
-
-# Remove File
+# Cleanup file
 rm -rf "$MODPATH/assets"
+rm -rf "$MODPATH/gamelist.txt"
+rm -rf "$MODPATH/toast.apk"
 
 # Final permission setup
 ui_print "- Setting Permissions..."
-set_perm_recursive "$MODPATH" 0 0 0755 0644
-sleep 2
-
-# Setting permissions
-ui_print "- Finalizing Installations..."
 set_perm_recursive "$MODPATH/system/bin" 0 2000 0777 0777
 chmod +x "$MODPATH/system/bin/AZenith" 
-set_perm_recursive $MODPATH/vendor 0 0 0755 0755
-
+chmod +x "$MODPATH/system/bin/AZenith_Normal" 
+chmod +x "$MODPATH/system/bin/AZenith_Utility" 
+chmod +x "$MODPATH/system/bin/AZenith_Performance" 
+chmod +x "$MODPATH/system/bin/AZenith_Powersave" 
+chmod +x "$MODPATH/system/bin/bypassCharge" 
+chmod +x "$MODPATH/system/bin/preload_sys" 
 ui_print "- Installation complete!"
-
-# Random message 
-case "$((RANDOM % 14 + 1))" in
-  1)  ui_print "- 勝利を掴め! (Shōri o tsukame!)" ;;
-  2)  ui_print "- 逃げるな! 反撃せよ! (Nigeru na! Hangeki seyo!)" ;;
-  3)  ui_print "- 初撃! (Shogeki!)" ;;
-  4)  ui_print "- 全滅! (Zemmetsu!)" ;;
-  5)  ui_print "- 伝説だ! 誰も止められない! (Densetsu da! Daremo tomerarenai!)" ;;
-  6)  ui_print "- 亀が復活するぞ! (Kame ga fukkatsu suru zo!)" ;;
-  7)  ui_print "- 我々の砲塔が攻撃されている! (Wareware no hōtō ga kōgeki sa rete iru!)" ;;
-  8)  ui_print "- 敵を撃破! (Teki o gekiha!)" ;;
-  9)  ui_print "- 勇者に勝利あり! (Yūsha ni shōri ari!)" ;;
-  10) ui_print "- 止めた! もう支配させない! (Tometa! Mō shihai sasenai!)" ;;
-  11) ui_print "- 撤退せよ! (Tettai seyo!)" ;;
-  12) ui_print "- 戦場に嵐を呼べ! (Senjō ni arashi o yobe!)" ;;
-  13) ui_print "- よくやった! だが戦いは続く! (Yoku yatta! Daga tatakai wa tsuzuku!)" ;;
-  14) ui_print "- 最強のチームが勝つ! (Saikyō no chīmu ga katsu!)" ;;
-esac
