@@ -16,10 +16,9 @@
 # limitations under the License.
 #
 
-# Configuration flags
 SKIPMOUNT=false
 PROPFILE=false
-POSTFSDATA=true
+POSTFSDATA=false
 LATESTARTSERVICE=true
 
 # Get module version and author from module.prop
@@ -28,8 +27,31 @@ AUTHOR=$(grep "^author=" "$MODPATH/module.prop" | cut -d '=' -f2)
 device_codename=$(getprop ro.product.board)
 chip=$(getprop ro.hardware)
 
-# List of system paths to replace (if any)
-REPLACE=""
+MODULE_CONFIG="/data/adb/.config/AZenith"
+make_node() {
+	[ ! -f "$2" ] && echo "$1" >"$2"
+}
+
+# Display banner
+ui_print ""
+ui_print "              AZenith              "
+ui_print ""
+ui_print "- Release Date : 01/07/2025"
+ui_print "- Author        : ${AUTHOR}"
+ui_print "- Version       : ${MODVER}"
+ui_print "- Device        : $(getprop ro.product.board)"
+ui_print "- Installing AZenith..."
+
+# Extracting module files
+mkdir -p "$MODULE_CONFIG"
+ui_print "- Extracting system directories..."
+extract -o "$ZIPFILE" 'system/*' -d "$MODPATH" >&2
+ui_print "- Extracting libs directories..."
+unzip -o "$ZIPFILE" 'service.sh' -d "$MODPATH" >&2
+ui_print "- Extracting gamelist..."
+unzip -qo "$ZIPFILE" 'gamelist.txt' -d "$MODULE_CONFIG" >&2
+ui_print "- Extracting module Icon..."
+unzip -qo "$ZIPFILE" 'AZenith_icon.png' -d "/data/local/tmp" >&2
 
 checkpath() {
     if [ -e "$1" ]; then
@@ -43,39 +65,10 @@ bypasslist="
 /sys/devices/platform/charger/bypass_charger
 /sys/devices/platform/charger/tran_aichg_disable_charger
 /proc/mtk_battery_cmd/current_cmd
-/sys/devices/platform/mt-battery/disable_charger"
+/sys/devices/platform/mt-battery/disable_charger
 "
-
-# Display banner
-ui_print ""
-ui_print "              AZenith              "
-ui_print ""
-ui_print "- Build Date  : 17/06/2025"
-ui_print "- Author        : ${AUTHOR}"
-ui_print "- Version       : ${MODVER}"
-ui_print "- Device        : $(getprop ro.product.board)"
-ui_print "- Build Date    : $(getprop ro.build.date)"
-sleep 1
-ui_print "- Installing AZenith..."
-
-# Extracting module files
-ui_print "- Creating necessary directories..."
-mkdir -p /data/AZenith
-ui_print "- Extracting system directories..."
-extract -o "$ZIPFILE" 'system/*' -d "$MODPATH" >&2
-ui_print "- Extracting libs directories..."
-extract -o "$ZIPFILE" 'libs/*' -d "$MODPATH" >&2
-ui_print "- Extracting service.sh..."
-unzip -o "$ZIPFILE" 'service.sh' -d "$MODPATH" >&2
-ui_print "- Extracting gamelist..."
-unzip -qo "$ZIPFILE" 'gamelist.txt' -d "/data/AZenith" >&2
-ui_print "- Extracting module Icon..."
-unzip -qo "$ZIPFILE" 'AZenith_icon.png' -d "/data/local/tmp" >&2
-sleep 1
-
 # Checking bypass
 ui_print "- Checking Bypass compatibility..."
-sleep 3
 bypasspath=""
 for path in $bypasslist; do
     if checkpath "$path"; then
@@ -86,11 +79,11 @@ done
 
 # Fallback to nb html if bypass unsupported
 if [ -z "$bypasspath" ]; then
-    ui_print "- Skip installing bypasscharge..."
+    ui_print "- Inflating WebUi"
     mv "$MODPATH/assets/indexnbhtml" "$MODPATH/webroot/index.html"
     mv "$MODPATH/assets/fn762agnbjs" "$MODPATH/webroot/fn762ag.js"
     else
-    ui_print "- start installing bypasscharge addon"
+    ui_print "- Inflating WebUi"
     ui_print "- path: $path"
     mv "$MODPATH/assets/indexbphtml" "$MODPATH/webroot/index.html"
     mv "$MODPATH/assets/fn762agbpjs" "$MODPATH/webroot/fn762ag.js"
@@ -124,10 +117,27 @@ case "$chipset" in
 esac
 
 # Move Important File to run Azenith 
-mv "$MODPATH/assets/availableFreq" "/data/AZenith/availableFreq"
-mv "$MODPATH/assets/customFreqOffset" "/data/AZenith/customFreqOffset"
+mv "$MODPATH/assets/availableFreq" "/data/adb/.config/AZenith/availableFreq"
+mv "$MODPATH/assets/customFreqOffset" "/data/adb/.config/AZenith/customFreqOffset"
+
+make_node 0 "$MODULE_CONFIG/clearbg"
+make_node 0 "$MODULE_CONFIG/bypass"
+make_node 0 "$MODULE_CONFIG/APreload"
+make_node 0 "$MODULE_CONFIG/logger"
+make_node 0 "$MODULE_CONFIG/logd"
+make_node 0 "$MODULE_CONFIG/FSTrim"
+make_node 0 "$MODULE_CONFIG/DThermal"
+make_node 0 "$MODULE_CONFIG/dnd"
+make_node 0 "$MODULE_CONFIG/schedtunes"
+make_node 0 "$MODULE_CONFIG/fpsged"
+make_node 0 "$MODULE_CONFIG/iosched"
+make_node 0 "$MODULE_CONFIG/SFL"
+make_node 0 "$MODULE_CONFIG/malisched"
+make_node 0 "$MODULE_CONFIG/cpulimit"
+make_node "1000 1000 1000 1000"  "$MODULE_CONFIG/color_scheme"
 
 # Cleanup file
+ui_print "- Cleaning up files..."
 rm -rf "$MODPATH/assets"
 rm -rf "$MODPATH/gamelist.txt"
 rm -rf "$MODPATH/toast.apk"
@@ -136,10 +146,7 @@ rm -rf "$MODPATH/toast.apk"
 ui_print "- Setting Permissions..."
 set_perm_recursive "$MODPATH/system/bin" 0 2000 0777 0777
 chmod +x "$MODPATH/system/bin/AZenith" 
-chmod +x "$MODPATH/system/bin/AZenith_Normal" 
-chmod +x "$MODPATH/system/bin/AZenith_Utility" 
-chmod +x "$MODPATH/system/bin/AZenith_Performance" 
-chmod +x "$MODPATH/system/bin/AZenith_Powersave" 
+chmod +x "$MODPATH/system/bin/AZenith_Profiler" 
 chmod +x "$MODPATH/system/bin/bypassCharge" 
-chmod +x "$MODPATH/system/bin/preload_sys" 
+chmod +x "$MODPATH/system/bin/vmt" 
 ui_print "- Installation complete!"
