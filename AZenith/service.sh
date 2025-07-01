@@ -16,23 +16,21 @@
 # limitations under the License.
 #
 
-MODDIR=${0%/*}
 # Wait for boot to Complete
 while [ "$(getprop sys.boot_completed)" != "1" ]; do  
-    sleep 30
+    sleep 40
 done
 
-# Make Profiler Directory
-touch /data/AZenith/profiler
+# Cleanup old Logs
+rm -f /data/adb/.config/AZenith/AZenith.log
+rm -f /data/adb/.config/AZenith/AZenithVerbose.log
+rm -f /data/adb/.config/AZenith/AZenithPR.log
 
-# Handle case when 'default_gov' is performance
-chmod 666 /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-default_gov="$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)"
-if echo "$default_gov" | grep -q performance; then
-	default_gov="schedutil"
-fi
+# Fallback to schedutil if default governor is Performance 
+chmod 644 /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+default_gov=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)
+[ "$default_gov" = "performance" ] && default_gov="schedutil"
+
 
 # Run Daemon
 AZenith
-
-exit 0
