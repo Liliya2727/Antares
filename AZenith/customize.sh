@@ -80,13 +80,13 @@ done
 # Fallback to nb html if bypass unsupported
 if [ -z "$bypasspath" ]; then
     ui_print "- Inflating WebUi"
-    mv "$MODPATH/assets/indexnbhtml" "$MODPATH/webroot/index.html"
-    mv "$MODPATH/assets/fn762agnbjs" "$MODPATH/webroot/fn762ag.js"
+    mv "$MODPATH/assets/include/indexnbhtml" "$MODPATH/webroot/index.html"
+    mv "$MODPATH/assets/include/fn762agnbjs" "$MODPATH/webroot/fn762ag.js"
     else
     ui_print "- Inflating WebUi"
     ui_print "- path: $path"
-    mv "$MODPATH/assets/indexbphtml" "$MODPATH/webroot/index.html"
-    mv "$MODPATH/assets/fn762agbpjs" "$MODPATH/webroot/fn762ag.js"
+    mv "$MODPATH/webroot/include/indexbphtml" "$MODPATH/webroot/assets/index.html"
+    mv "$MODPATH/assets/include/fn762agbpjs" "$MODPATH/webroot/assets/fn762ag.js"
 fi
 
 # Installing toast
@@ -134,7 +134,9 @@ make_node 0 "$MODULE_CONFIG/iosched"
 make_node 0 "$MODULE_CONFIG/SFL"
 make_node 0 "$MODULE_CONFIG/malisched"
 make_node 0 "$MODULE_CONFIG/cpulimit"
-make_node "1000 1000 1000 1000"  "$MODULE_CONFIG/color_scheme"
+make_node "1000 1000 1000 1000" "$MODULE_CONFIG/color_scheme"
+make_node "OFF 90% 80% 70% 60% 50% 40%" "$MODULE_CONFIG/availableFreq"
+make_node "OFF" "$MODULE_CONFIG/customFreqOffset"
 
 # Cleanup file
 ui_print "- Cleaning up files..."
