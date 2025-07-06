@@ -89,18 +89,18 @@ esac
 case "$soc" in
     "MediaTek")
         ui_print "- Inflating WebUI for MediaTek"
-        mv "$MODPATH/webroot/include/mtkhtml" "$MODPATH/webroot/assets/index.html"
+        mv "$MODPATH/webroot/include/mtkhtml" "$MODPATH/webroot/index.html"
         mv "$MODPATH/assets/include/mtkjs" "$MODPATH/webroot/assets/fn762ag.js"
         ;;
     "Snapdragon")
         ui_print "- Inflating WebUI for Snapdragon"
         mv "$MODPATH/assets/include/sdmhtml" "$MODPATH/webroot/index.html"
-        mv "$MODPATH/assets/include/sdmjs" "$MODPATH/webroot/fn762ag.js"
+        mv "$MODPATH/assets/include/sdmjs" "$MODPATH/webroot/assets/fn762ag.js"
         ;;
     *)
         ui_print "- Inflating Universal WebUI"
         mv "$MODPATH/assets/include/bschtml" "$MODPATH/webroot/index.html"
-        mv "$MODPATH/assets/include/bscjs" "$MODPATH/webroot/fn762ag.js"
+        mv "$MODPATH/assets/include/bscjs" "$MODPATH/webroot/assets/fn762ag.js"
         ;;
 esac
 # I made 3 differs WebUI for this to match every Chipsets
