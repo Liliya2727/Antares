@@ -127,12 +127,7 @@ int main(int argc, char* argv[]) {
     is_kanged();
         
 
-    // Handle missing Gamelist
-    if (access(GAMELIST, F_OK) != 0) {
-        fprintf(stderr, "\033[31mFATAL ERROR:\033[0m Unable to access Gamelist, either has been removed or moved.\n");
-        log_zenith(LOG_FATAL, "Critical file not found (%s)", GAMELIST);
-        exit(EXIT_FAILURE);
-    }
+    
 
     // Daemonize service
     if (daemon(0, 0)) {
