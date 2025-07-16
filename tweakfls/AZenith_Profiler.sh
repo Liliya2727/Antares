@@ -1193,61 +1193,93 @@ persist.vendor.thermal.config 0
 EOF
     }
 
-    propfile
+    thermal() {
+    find /system/etc/init /vendor/etc/init /odm/etc/init -type f 2>/dev/null | xargs grep -h "^service" | awk '{print $2}' | grep thermal
+}
 
-    stop thermal_core
-    stop vendor.thermal-hal-2-0.mtk
-    AZLog "Stopped core thermal services"
+for svc in $(thermal); do
+    stop "$svc"
+done
 
-    for svc in $(thermal); do
-        stop "$svc"
-        AZLog "Stopped thermal service: $svc"
+# Freeze all running thermal processes
+for pid in $(pgrep thermal); do
+    kill -SIGSTOP "$pid"
+done
+
+# Clear init.svc_ properties only if they exist
+for prop in $(getprop | awk -F '[][]' '/init\.svc_/ {print $2}'); do
+    if [ -n "$prop" ]; then
+        resetprop -n "$prop" ""
+    fi
+done
+
+for dead in \
+    android.hardware.thermal-service.mediatek android.hardware.thermal@2.0-service.mtk
+do
+    stop "$dead"
+    pid=$(pidof "$dead")
+    if [ -n "$pid" ]; then
+        kill -SIGSTOP "$pid"
+    fi
+done
+
+for prop in $(getprop | grep thermal | cut -f1 -d] | cut -f2 -d[ | grep -F init.svc.); do
+    setprop "$prop" stopped
+done
+
+for prop in $(getprop | grep thermal | cut -f1 -d] | cut -f2 -d[ | grep -F init.svc_); do
+    setprop "$prop" ""
+done
+
+# Disable thermal zones
+chmod 644 /sys/class/thermal/thermal_zone*/mode
+for zone in /sys/class/thermal/thermal_zone*/mode; do
+    [ -f "$zone" ] && echo "disabled" > "$zone"
+done
+
+for zone2 in /sys/class/thermal/thermal_zone*/policy; do
+    [ -f "$zone2" ] && echo "userspace" > "$zone2"
+done
+
+# Disable GPU Power Limitations
+if [ -f "/proc/gpufreq/gpufreq_power_limited" ]; then
+    for setting in ignore_batt_oc ignore_batt_percent ignore_low_batt ignore_thermal_protect ignore_pbm_limited; do
+        echo "$setting 1" > /proc/gpufreq/gpufreq_power_limited
     done
+fi
 
-    for thermalpr in $(pgrep thermal); do
-        kill -SIGSTOP "$thermalpr"
-        AZLog "Froze thermal process: $thermalpr"
-    done
-
-    for thermalinit in $(getprop | awk -F '[][]' '/init\.svc_.*thermal/ {print $2}'); do
-        [ -n "$thermalinit" ] && resetprop -n "$thermalinit" ""
-        AZLog "Cleared thermal init: $thermalinit"
-    done
-
-    for kill in android.hardware.thermal-service.mediatek android.hardware.thermal@2.0-service.mtk; do
-        getprop | grep -q "$kill" && stop "$kill"
-        thermalhwsvc=$(pidof "$kill")
-        [ -n "$thermalhwsvc" ] && kill -9 "$thermalhwsvc"
-        AZLog "Stopped thermal binary: $kill"
-    done
-
-    for kill2 in /vendor/bin/hw/android.hardware.thermal-service.mediatek /vendor/bin/hw/android.hardware.thermal@2.0-service.mtk; do
-        if [ -f "$kill2" ]; then
-            mv "$kill2" "$kill2.bak"
-            echo "" > "$kill2"
-            chmod 000 "$kill2"
-            AZLog "Disabled thermal binary: $kill2"
+# Set CPU limits based on max frequency
+if [ -f /sys/devices/virtual/thermal/thermal_message/cpu_limits ]; then
+    for cpu in 0 2 4 6 7; do
+        maxfreq_path="/sys/devices/system/cpu/cpu$cpu/cpufreq/cpuinfo_max_freq"
+        if [ -f "$maxfreq_path" ]; then
+            maxfreq=$(cat "$maxfreq_path")
+            [ -n "$maxfreq" ] && [ "$maxfreq" -gt 0 ] && echo "cpu$cpu $maxfreq" > /sys/devices/virtual/thermal/thermal_message/cpu_limits
         fi
     done
+fi
 
-    for thermalprop in $(getprop | grep thermal | cut -f1 -d] | cut -f2 -d[ | grep -F init.svc.); do
-        resetprop "$thermalprop" stopped
-        AZLog "Reset thermal property: $thermalprop"
-    done
-
-    if [ -d "/sys/class/thermal" ]; then
-        chmod 644 /sys/class/thermal/thermal_zone*/mode
-        for thermalzone in /sys/class/thermal/thermal_zone*/mode; do
-            [ -f "$thermalzone" ] && echo "disabled" > "$thermalzone"
-            AZLog "Disabled thermal zone: $thermalzone"
+# Disable PPM (Power Policy Manager) Limits
+if [ -d /proc/ppm ]; then
+    if [ -f /proc/ppm/policy_status ]; then
+        for idx in $(grep -E 'FORCE_LIMIT|PWR_THRO|THERMAL' /proc/ppm/policy_status | awk -F'[][]' '{print $2}'); do
+            echo "$idx 0" > /proc/ppm/policy_status
         done
     fi
+fi
 
-    [ -d "/sys/devices/virtual/thermal" ] && find /sys/devices/virtual/thermal -type f -exec chmod 000 {} +
-    AZLog "Disabled virtual thermal monitoring"
+# Hide and disable monitoring of thermal zones
+find /sys/devices/virtual/thermal -type f -exec chmod 000 {} +
 
-    cmd thermalservice override-status 0
-    AZLog "Thermal service overridden"
+# Disable Thermal Stats
+cmd thermalservice override-status 0
+
+# Disable Battery Overcharge Thermal Throttling
+if [ -f "/proc/mtk_batoc_throttling/battery_oc_protect_stop" ]; then
+    echo "stop 1" > /proc/mtk_batoc_throttling/battery_oc_protect_stop
+fi
+
+    AZLog "Thermal service Disabled"
 }
 
 kill_logd() {
