@@ -1,0 +1,31 @@
+name: Build AZenith
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up Android NDK
+      uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r26b
+
+    - name: Run ndk-build
+      run: |
+        cd jni
+        ndk-build \
+          NDK_PROJECT_PATH=. \
+          APP_BUILD_SCRIPT=./Android.mk \
+          NDK_APPLICATION_MK=./Application.mk \
+          NDK_OUT=../out \
+          NDK_LIBS_OUT=../out/libs
