@@ -98,5 +98,4 @@ case "$1" in
 esac
 
 wait
-
 exit 0
