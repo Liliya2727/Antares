@@ -1294,7 +1294,7 @@ if [ "$(cat /data/adb/.config/AZenith/malisched)" -eq 1 ]; then
     malisched
 fi
 if [ "$(cat /data/adb/.config/AZenith/fpsged)" -eq 1 ]; then
-    fpsged
+    fpsgoandgedparams
 fi
 if [ "$(cat /data/adb/.config/AZenith/schedtunes)" -eq 1 ]; then
     schedtunes
@@ -1333,6 +1333,4 @@ case "$1" in
 esac
 
 wait
-
-$@
 exit 0
