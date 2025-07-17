@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/system/bin/sh
 
 #
 # Copyright (C) 2024-2025 Zexshia
