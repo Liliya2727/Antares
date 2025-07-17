@@ -36,7 +36,7 @@ zeshia() {
         AZLog "File $path not found, skipping..."
         return
     fi
-    if [ ! -w "$path" ] && ! chmod 666 "$path" 2>/dev/null; then
+    if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
         AZLog "Cannot write to $path (permission denied)"
         return
     fi
@@ -54,7 +54,7 @@ zeshia() {
             AZLog "Wrote to $path, but fallback different values (output: $current)"
         fi
     fi
-    chmod 644 "$path" 2>/dev/null
+    chmod 444 "$path" 2>/dev/null
 }
 
 # Bypass Charge
