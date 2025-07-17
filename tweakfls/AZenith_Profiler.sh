@@ -957,8 +957,6 @@ AZLog "ECO Mode applied successfully!"
 ###############################################
 
 perfcommon() {
-# Define important libs
-lib="UnityMain, libunity.so, libil2ccp.so, libmain.so"
 
 schedtunes() {
 settunes() {
