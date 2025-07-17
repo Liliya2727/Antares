@@ -42,7 +42,7 @@ zeshia() {
         AZLog "File $path not found, skipping..."
         return
     fi
-    if [ ! -w "$path" ] && ! chmod 666 "$path" 2>/dev/null; then
+    if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
         AZLog "Cannot write to $path (permission denied)"
         return
     fi
@@ -60,7 +60,7 @@ zeshia() {
             AZLog "Set $path to $value (can't confirm)"
         fi
     fi
-    chmod 644 "$path" 2>/dev/null
+    chmod 444 "$path" 2>/dev/null
 }
 
 FSTrim() {
