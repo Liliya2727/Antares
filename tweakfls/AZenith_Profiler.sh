@@ -28,7 +28,7 @@ POWERSAVE_GOV_FILE="/data/adb/.config/AZenith/custom_powersave_cpu_gov"
 
 AZLog() {
     if [ "$(cat /data/adb/.config/AZenith/logger)" = "1" ]; then
-        local timestamp
+        local timestamp       
         timestamp=$(date +'%Y-%m-%d %H:%M:%S')
         local message="$1"
         echo "$timestamp - $message" >> "$logpath"
@@ -37,11 +37,10 @@ AZLog() {
 }
 
 dlog() {    
-        local timestamp
-        timestamp=$(date +'%Y-%m-%d %H:%M:%S')
+        local timestamp                
+        timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
         local message="$1"
-        echo "$timestamp - $message" >> "$logdaemonpath"
-        echo "$timestamp - $message"    
+        echo "$timestamp I AZenith: $message" >> "$logdaemonpath"
 }
 
 zeshia() {
@@ -268,40 +267,39 @@ fi
 
 # Restore CPU Scaling Governor
 for path in /sys/devices/system/cpu/cpu*/cpufreq; do
-    zeshia "$default_cpu_gov" "$path/scaling_governor"
-    dlog "Applying governor to : $default_cpu_gov"
-    sleep 0.5
+    zeshia "$default_cpu_gov" "$path/scaling_governor"    
 done
-
+dlog "Applying governor to : $default_cpu_gov"
 
 # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
 if [ -d /proc/ppm ]; then
     cluster=0
     for path in /sys/devices/system/cpu/cpufreq/policy*; do
+        [ -f "$path/cpuinfo_max_freq" ] || continue
+
         cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
         cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-
-
-        new_maxfreq=$((cpu_maxfreq * 100 / 100))  
+        new_maxfreq=$((cpu_maxfreq * 100 / 100))
 
         zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
         zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+
+        policy_name=$(basename "$path") 
+        dlog "Set $policy_name maxfreq to $new_maxfreq and minfreq $cpu_minfreq"
+
         ((cluster++))
-                
-        
     done
 fi
+
 for path in /sys/devices/system/cpu/*/cpufreq; do
+    [ -f "$path/cpuinfo_max_freq" ] || continue
+
     cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
     cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-
-    new_maxfreq=$((cpu_maxfreq * 100 / 100)) 
+    new_maxfreq=$((cpu_maxfreq * 100 / 100))
 
     zeshia "$new_maxfreq" "$path/scaling_max_freq"
-    zeshia "$cpu_minfreq" "$path/scaling_min_freq"
-    dlog "Set cpu maxfreq to $new_maxfreq"
-    dlog "Set cpu minfreq to $cpu_minfreq"
-    
+    zeshia "$cpu_minfreq" "$path/scaling_min_freq"    
 done
 
 # vm cache pressure
@@ -554,11 +552,40 @@ fi
 
 # Set Governor Game
 for path in /sys/devices/system/cpu/cpu*/cpufreq; do
-    zeshia "$game_cpu_gov" "$path/scaling_governor"
-    dlog "Applying governor to : $game_cpu_gov"
+    zeshia "$game_cpu_gov" "$path/scaling_governor"  
 done
+dlog "Applying governor to : $game_cpu_gov"
 
 # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
+if [ "$(cat /data/adb/.config/AZenith/cpulimit)" -eq 1 ]; then
+if [ -d /proc/ppm ]; then
+    cluster=0
+    for path in /sys/devices/system/cpu/cpufreq/policy*; do
+        cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+        cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
+
+
+        new_maxfreq=$((cpu_maxfreq * 100 / 100))  
+
+        zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+        zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+        policy_name=$(basename "$path") 
+        dlog "Set $policy_name maxfreq to $new_maxfreq and minfreq $cpu_minfreq"
+        ((cluster++))
+        
+    done
+fi
+for path in /sys/devices/system/cpu/*/cpufreq; do
+    cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+    cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
+
+    new_maxfreq=$((cpu_maxfreq * 100 / 100)) 
+
+    zeshia "$new_maxfreq" "$path/scaling_max_freq"
+    zeshia "$cpu_minfreq" "$path/scaling_min_freq"   
+    
+done
+else
 if [ -d /proc/ppm ]; then
     cluster=0
     for path in /sys/devices/system/cpu/cpufreq/policy*; do
@@ -570,6 +597,8 @@ if [ -d /proc/ppm ]; then
 
         zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
         zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+        policy_name=$(basename "$path") 
+        dlog "Set $policy_name maxfreq to $new_maxfreq and minfreq $cpu_minfreq"
         ((cluster++))
         
     done
@@ -581,32 +610,9 @@ for path in /sys/devices/system/cpu/*/cpufreq; do
     new_maxfreq=$((cpu_maxfreq * 100 / 100)) 
 
     zeshia "$new_maxfreq" "$path/scaling_max_freq"
-    zeshia "$cpu_minfreq" "$path/scaling_min_freq"
-    dlog "Set cpu maxfreq to $new_maxfreq"
-    dlog "Set cpu minfreq to $cpu_minfreq"
+    zeshia "$cpu_minfreq" "$path/scaling_min_freq"   
     
 done
-
-cpumax() {
-# Fix Target Opp index
-    if [ -d /proc/ppm ]; then
-        cluster=0
-        for path in /sys/devices/system/cpu/cpufreq/policy*; do
-            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-            zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-            zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-            ((cluster++))
-        done
-    fi
-    for path in /sys/devices/system/cpu/*/cpufreq; do
-        cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-        zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
-        zeshia "$cpu_maxfreq" "$path/scaling_min_freq"
-        zeshia "cpu$(awk '{print $1}' "$path/affected_cpus") $cpu_maxfreq" "/sys/devices/virtual/thermal/thermal_message/cpu_limits"
-    done
-}
-if [ "$(cat /data/adb/.config/AZenith/cpulimit)" -eq 1 ]; then
-cpumax
 fi
 
 # VM Cache Pressure 
@@ -882,11 +888,9 @@ load_powersave_governor() {
 powersave_cpu_gov=$(load_powersave_governor)
 
 for path in /sys/devices/system/cpu/cpu*/cpufreq; do
-    zeshia "$powersave_cpu_gov" "$path/scaling_governor"
-    dlog "Applying governor to : $powersave_cpu_gov"
-    sleep 0.5
+    zeshia "$powersave_cpu_gov" "$path/scaling_governor"    
 done
- 
+dlog "Applying governor to : $powersave_cpu_gov"
 
 
 # Power level settings
@@ -917,11 +921,11 @@ AZLog "Cpu limit is set to $limiter"
 
             zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
             zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+            policy_name=$(basename "$path")         
+            dlog "Set $policy_name maxfreq to $limiter% of maxfreq $new_maxfreq and minfreq 40% of maxfreq $new_minfreq"
             ((cluster++))
         done
-    fi
-
-  
+    fi  
     for path in /sys/devices/system/cpu/cpufreq/policy*; do
         [ -f "$path/cpuinfo_max_freq" ] || continue
         cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
@@ -931,8 +935,7 @@ AZLog "Cpu limit is set to $limiter"
 
         zeshia "$new_maxfreq" "$path/scaling_max_freq"
         zeshia "$new_minfreq" "$path/scaling_min_freq"
-        dlog "Set cpu maxfreq to '$limiter'% of maxfreq $new_maxfreq"
-        dlog "Set cpu minfreq to $new_minfreq"
+
     done
 
 
