@@ -91,6 +91,28 @@ disablevsync() {
     esac
 }
 
+saveLog() {
+    log_file="/sdcard/AZenithLog$(date +"%Y-%m-%d_%H_%M").txt"
+    echo "$log_file"
+    
+    module_ver=$(awk -F'=' '/version=/ {print $2}' /data/adb/modules/AZenith/module.prop)
+    android_sdk=$(getprop ro.build.version.sdk)
+    kernel_info=$(uname -r -m)
+    fingerprint=$(getprop ro.build.fingerprint)
+    
+    cat <<EOF >"$log_file"
+##########################################
+             AZenith Process Log
+    
+    Module: $module_ver
+    Android: $android_sdk
+    Kernel: $kernel_info
+    Fingerprint: $fingerprint
+##########################################
+
+$(</data/adb/.config/AZenith/AZenith.log)
+EOF
+}
 
 sync
 
