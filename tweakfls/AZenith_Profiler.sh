@@ -1401,6 +1401,6 @@ case "$1" in
 2) balanced_profile ;;
 3) eco_mode ;;
 esac
-
+$@
 wait
 exit 0
