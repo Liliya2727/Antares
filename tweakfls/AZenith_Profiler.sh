@@ -71,48 +71,6 @@ zeshia() {
     chmod 444 "$path" 2>/dev/null
 }
 
-FSTrim() {
-    for mount in /system /vendor /data /cache /metadata /odm /system_ext /product; do
-        if mountpoint -q "$mount"; then
-            fstrim -v "$mount"
-            AZLog "Trimmed: $mount"
-        else
-            AZLog "Skipped (not mounted): $mount"
-        fi
-    done
-}
-
-disablevsync() {
-    case "$1" in
-        60hz) service call SurfaceFlinger 1035 i32 2 ;;
-        90hz) service call SurfaceFlinger 1035 i32 1 ;;
-        120hz) service call SurfaceFlinger 1035 i32 0 ;;
-        Disabled) service call SurfaceFlinger 1035 i32 2 ;;
-    esac
-}
-
-saveLog() {
-    log_file="/sdcard/AZenithLog$(date +"%Y-%m-%d_%H_%M").txt"
-    echo "$log_file"
-    
-    module_ver=$(awk -F'=' '/version=/ {print $2}' /data/adb/modules/AZenith/module.prop)
-    android_sdk=$(getprop ro.build.version.sdk)
-    kernel_info=$(uname -r -m)
-    fingerprint=$(getprop ro.build.fingerprint)
-    
-    cat <<EOF >"$log_file"
-##########################################
-             AZenith Process Log
-    
-    Module: $module_ver
-    Android: $android_sdk
-    Kernel: $kernel_info
-    Fingerprint: $fingerprint
-##########################################
-
-$(</data/adb/.config/AZenith/AZenith.log)
-EOF
-}
 
 sync
 
@@ -997,10 +955,31 @@ AZLog "ECO Mode applied successfully!"
 }
 
 ###############################################
-# # # # # # # PERFCOMMON # # # # # # #
+# # # # # # # INITIALIZE # # # # # # #
 ###############################################
 
-perfcommon() {
+initialize() {
+
+
+# Disable all kernel panic mechanisms
+for param in hung_task_timeout_secs panic_on_oom panic_on_oops panic softlockup_panic; do
+    zeshia "0" "/proc/sys/kernel/$param"
+done
+
+# Tweaking scheduler to reduce latency
+	zeshia 500000 /proc/sys/kernel/sched_migration_cost_ns
+	zeshia 1000000 /proc/sys/kernel/sched_min_granularity_ns
+	zeshia 500000 /proc/sys/kernel/sched_wakeup_granularity_ns
+	# Disable read-ahead for swap devices
+	zeshia 0 /proc/sys/vm/page-cluster
+	# Update /proc/stat less often to reduce jitter
+	zeshia 20 /proc/sys/vm/stat_interval
+	# Disable compaction_proactiveness
+	zeshia 0 /proc/sys/vm/compaction_proactiveness
+	
+	zeshia 255 /proc/sys/kernel/sched_lib_mask_force
+	
+    sync
 
 schedtunes() {
 settunes() {
@@ -1101,21 +1080,6 @@ zeshia "100" /sys/kernel/ged/hal/gpu_boost_level
 }
 
 
-# Tweaking scheduler to reduce latency
-	zeshia 500000 /proc/sys/kernel/sched_migration_cost_ns
-	zeshia 1000000 /proc/sys/kernel/sched_min_granularity_ns
-	zeshia 500000 /proc/sys/kernel/sched_wakeup_granularity_ns
-	# Disable read-ahead for swap devices
-	zeshia 0 /proc/sys/vm/page-cluster
-	# Update /proc/stat less often to reduce jitter
-	zeshia 20 /proc/sys/vm/stat_interval
-	# Disable compaction_proactiveness
-	zeshia 0 /proc/sys/vm/compaction_proactiveness
-	
-	zeshia 255 /proc/sys/kernel/sched_lib_mask_force
-	
-    sync
-
 malisched() {
 # GPU Mali Scheduling
 mali_dir=$(ls -d /sys/devices/platform/soc/*mali*/scheduling 2>/dev/null | head -n 1)
@@ -1127,70 +1091,6 @@ if [ -n "$mali1_dir" ]; then
     zeshia "1" "$mali1_dir/js_ctx_scheduling_mode"
 fi
 }
-
-# Block I/O optimizations
-for block in mmcblk0 mmcblk1 sda sdb sdc; do
-    for param in add_random iostats rotational; do
-        zeshia "0" "/sys/block/$block/queue/$param"
-    done
-    zeshia "2" "/sys/block/$block/queue/nomerges"
-    zeshia "2" "/sys/block/$block/queue/rq_affinity"
-    zeshia "128" "/sys/block/$block/queue/nr_requests"
-    zeshia "256" "/sys/block/$block/queue/read_ahead_kb"
-done &
-
-
-# Network settings with logging
-zeshia "cubic" /proc/sys/net/ipv4/tcp_congestion_control
-zeshia 1 /proc/sys/net/ipv4/tcp_low_latency
-
-# Virtual memory settings
-zeshia 10 /proc/sys/vm/dirty_background_ratio
-zeshia 20 /proc/sys/vm/dirty_ratio
-zeshia 80 /proc/sys/vm/vfs_cache_pressure
-zeshia 300 /proc/sys/vm/dirty_expire_centisecs
-zeshia 3000 /proc/sys/vm/dirty_writeback_centisecs
-zeshia 0 /proc/sys/vm/oom_dump_tasks
-zeshia 0 /proc/sys/vm/page-cluster
-zeshia 0 /proc/sys/vm/block_dump
-zeshia 20 /proc/sys/vm/stat_interval
-zeshia 0 /proc/sys/vm/compaction_proactiveness
-zeshia 0 /proc/sys/vm/watermark_boost_factor
-zeshia 20 /proc/sys/vm/watermark_scale_factor
-zeshia 20 /proc/sys/vm/swappiness
-
-for cs in /dev/cpuset
-do
-    zeshia 0-7 "$cs/cpus"
-    zeshia 0-5 "$cs/background/cpus"
-    zeshia 0-4 "$cs/system-background/cpus"
-    zeshia 0-7 "$cs/foreground/cpus"
-    zeshia 0-7 "$cs/top-app/cpus"
-    zeshia 0-5 "$cs/restricted/cpus"
-    zeshia 0-7 "$cs/camera-daemon/cpus"
-    zeshia 0 "$cs/memory_pressure_enabled"
-    zeshia 0 "$cs/sched_load_balance"
-    zeshia 1 "$cs/foreground/sched_load_balance"
-done
-
-# Disallow power saving mode for display
-for dlp in /proc/displowpower/*; do
-    [ -f "$dlp/hrt_lp" ] && zeshia 1 "$dlp/hrt_lp"
-    [ -f "$dlp/idlevfp" ] && zeshia 1 "$dlp/idlevfp"
-    [ -f "$dlp/idletime" ] && zeshia 100 "$dlp/idletime"
-done
-
-zeshia 0 /dev/cpuctl/foreground/cpu.uclamp.min
-zeshia 0 /dev/cpuctl/top-app/cpu.uclamp.min
-zeshia 0 /dev/cpuctl/pnpmgr_fg/cpu.uclamp.min
-
-# Disable all kernel panic mechanisms
-for param in hung_task_timeout_secs panic_on_oom panic_on_oops panic softlockup_panic; do
-    zeshia "0" "/proc/sys/kernel/$param"
-done
-
-# Set library names for scheduler optimization
-zeshia "$lib" "/proc/sys/kernel/sched_lib_name"
 
 SFL() {
 resetprop -n debug.sf.disable_backpressure 1
@@ -1396,7 +1296,7 @@ fi
 ###############################################
 
 case "$1" in
-0) perfcommon ;;
+0) initialize ;;
 1) performance_profile ;;
 2) balanced_profile ;;
 3) eco_mode ;;
