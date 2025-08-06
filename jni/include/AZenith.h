@@ -11,18 +11,20 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
-#define GAME_LIB "libunity\\.so|libUE4\\.so|libframeestimation(VK|GL)\\.so|libflutter\\.so|libapp\\.so|libGGP\\.so|libGame\\.so|libvirglrenderer\\.so|libvortekrenderer\\.so|libwinlator\\.so|libminecraftpe\\.so|libc\\+\\+_shared\\.so|libnative-mvd-render\\.so|libMiHoYoMTRSDK\\.so|libil2cpp\\.so|libmoba\\.so|libResources\\.so|libyuanshen\\.so|libcri_(vip|ware)_unity\\.so|libgamemaster\\.so|LibPixUI_PXplugin\\.so|LibVkLayer_swapchain_rotate\\.so|libzstd\\.so|libPixUI_Unity\\.so"
+#define GAME_LIB                                                                                                                    \
+    "libunity\\.so|libUE4\\.so|libframeestimation(VK|GL)\\.so|libflutter\\.so|libapp\\.so|libGGP\\.so|libGame\\.so|"                \
+    "libvirglrenderer\\.so|libvortekrenderer\\.so|libwinlator\\.so|libminecraftpe\\.so|libc\\+\\+_shared\\.so|libnative-mvd-"       \
+    "render\\.so|libMiHoYoMTRSDK\\.so|libil2cpp\\.so|libmoba\\.so|libResources\\.so|libyuanshen\\.so|libcri_(vip|ware)_unity\\.so|" \
+    "libgamemaster\\.so|LibPixUI_PXplugin\\.so|LibVkLayer_swapchain_rotate\\.so|libzstd\\.so|libPixUI_Unity\\.so"
 
-
-#define BASEDIR            "/data/adb/modules/AZenith"
-#define INTDIR             "/data/adb/.config/AZenith"
-#define MSC                BASEDIR
-#define SEARCH_PATHS       "/vendor/lib64/egl /vendor/lib64/hw"
+#define BASEDIR "/data/adb/modules/AZenith"
+#define INTDIR "/data/adb/.config/AZenith"
+#define MSC BASEDIR
+#define SEARCH_PATHS "/vendor/lib64/egl /vendor/lib64/hw"
 #define PROCESSED_FILE_LIST INTDIR "/processed_files.txt"
-#define PRELOAD_ENABLED     INTDIR "/APreload"
-#define LOGGER     INTDIR "/logger"
-#define APPRIOR     INTDIR "/iosched"
-
+#define PRELOAD_ENABLED INTDIR "/APreload"
+#define LOGGER INTDIR "/logger"
+#define APPRIOR INTDIR "/iosched"
 
 extern unsigned int LOOP_INTERVAL;
 #define MAX_DATA_LENGTH 1024
@@ -86,15 +88,15 @@ extern pid_t game_pid;
  */
 
 // Misc Utilities
-extern void GamePreload(const char *package); 
-extern void cleanup_vmt(void);                  // from misc.c
-extern void cleanup(void); 
+extern void GamePreload(const char* package);
+extern void cleanup_vmt(void); // from misc.c
+extern void cleanup(void);
 
 static bool preload_active = false;
 void sighandler(const int signal);
 char* trim_newline(char* string);
 void notify(const char* message);
-void toast(const char* message); 
+void toast(const char* message);
 void is_kanged(void);
 char* timern(void);
 bool return_true(void);
@@ -110,7 +112,7 @@ int create_lock_file(void);
 int write2file(const char* filename, const bool append, const bool use_flock, const char* data, ...);
 
 // system
-void log_preload(LogLevel level, const char *message, ...);
+void log_preload(LogLevel level, const char* message, ...);
 void log_zenith(LogLevel level, const char* message, ...);
 void external_log(LogLevel level, const char* tag, const char* message);
 

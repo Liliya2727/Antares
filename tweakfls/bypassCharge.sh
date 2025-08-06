@@ -24,7 +24,7 @@ AZLog() {
         local timestamp
         timestamp=$(date +'%Y-%m-%d %H:%M:%S')
         local message="$1"
-        echo "$timestamp - $message" >> "$logpath"
+        echo "$timestamp - $message" >>"$logpath"
         echo "$timestamp - $message"
     fi
 }
@@ -40,13 +40,13 @@ zeshia() {
         AZLog "Cannot write to $path (permission denied)"
         return
     fi
-    echo "$value" > "$path" 2>/dev/null
+    echo "$value" >"$path" 2>/dev/null
     local current
     current="$(cat "$path" 2>/dev/null)"
     if [ "$current" = "$value" ]; then
         AZLog "Set $path to $value"
     else
-        echo "$value" > "$path" 2>/dev/null
+        echo "$value" >"$path" 2>/dev/null
         current="$(cat "$path" 2>/dev/null)"
         if [ "$current" = "$value" ]; then
             AZLog "Set $path to $value (after retry)"
@@ -59,33 +59,32 @@ zeshia() {
 
 # Bypass Charge
 enableBypass() {
-applypath() {
-        if [ -e "$2" ]; then  
+    applypath() {
+        if [ -e "$2" ]; then
             zeshia "$1" "$2"
             return 0
         fi
-        return 1       
+        return 1
+    }
+    applypath "1" "/sys/devices/platform/charger/bypass_charger" && return
+    applypath "0 1" "/proc/mtk_battery_cmd/current_cmd" && return
+    applypath "1" "/sys/devices/platform/charger/tran_aichg_disable_charger" && return
+    applypath "1" "/sys/devices/platform/mt-battery/disable_charger" && return
 }
-	applypath "1" "/sys/devices/platform/charger/bypass_charger" && return
-	applypath "0 1" "/proc/mtk_battery_cmd/current_cmd" && return
-	applypath "1" "/sys/devices/platform/charger/tran_aichg_disable_charger" && return	
-	applypath "1" "/sys/devices/platform/mt-battery/disable_charger" && return
-}
-
 
 disableBypass() {
-# Disable Bypass Charge
-applypath() {
-        if [ -e "$2" ]; then  
+    # Disable Bypass Charge
+    applypath() {
+        if [ -e "$2" ]; then
             zeshia "$1" "$2"
             return 0
         fi
-        return 1       
-}    
+        return 1
+    }
     applypath "0" "/sys/devices/platform/charger/bypass_charger" && return
     applypath "0 0" "/proc/mtk_battery_cmd/current_cmd" && return
     applypath "0" "/sys/devices/platform/charger/tran_aichg_disable_charger" && return
-    applypath "0" "/sys/devices/platform/mt-battery/disable_charger" && return    
+    applypath "0" "/sys/devices/platform/mt-battery/disable_charger" && return
 }
 
 ###############################################

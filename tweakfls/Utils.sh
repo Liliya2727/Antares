@@ -22,19 +22,19 @@ MODDIR=${0%/*}
 
 AZLog() {
     if [ "$(cat /data/adb/.config/AZenith/logger)" = "1" ]; then
-        local timestamp       
+        local timestamp
         timestamp=$(date +'%Y-%m-%d %H:%M:%S')
         local message="$1"
-        echo "$timestamp - $message" >> "$logpath"
+        echo "$timestamp - $message" >>"$logpath"
         echo "$timestamp - $message"
     fi
 }
 
-dlog() {    
-        local timestamp                
-        timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
-        local message="$1"
-        echo "$timestamp I AZenith: $message" >> "$logdaemonpath"
+dlog() {
+    local timestamp
+    timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
+    local message="$1"
+    echo "$timestamp I AZenith: $message" >>"$logdaemonpath"
 }
 
 zeshia() {
@@ -48,13 +48,13 @@ zeshia() {
         AZLog "Cannot write to $path (permission denied)"
         return
     fi
-    echo "$value" > "$path" 2>/dev/null
+    echo "$value" >"$path" 2>/dev/null
     local current
     current="$(cat "$path" 2>/dev/null)"
     if [ "$current" = "$value" ]; then
         AZLog "Set $path to $value"
     else
-        echo "$value" > "$path" 2>/dev/null
+        echo "$value" >"$path" 2>/dev/null
         current="$(cat "$path" 2>/dev/null)"
         if [ "$current" = "$value" ]; then
             AZLog "Set $path to $value (after retry)"
@@ -78,33 +78,32 @@ FSTrim() {
 
 disablevsync() {
     case "$1" in
-        60hz) service call SurfaceFlinger 1035 i32 2 ;;
-        90hz) service call SurfaceFlinger 1035 i32 1 ;;
-        120hz) service call SurfaceFlinger 1035 i32 0 ;;
-        Disabled) service call SurfaceFlinger 1035 i32 2 ;;
+    60hz) service call SurfaceFlinger 1035 i32 2 ;;
+    90hz) service call SurfaceFlinger 1035 i32 1 ;;
+    120hz) service call SurfaceFlinger 1035 i32 0 ;;
+    Disabled) service call SurfaceFlinger 1035 i32 2 ;;
     esac
 }
 
 vsync_value="$(cat /data/adb/.config/AZenith/customVsync)"
 case "$vsync_value" in
-    60hz|90hz|120hz)
-        disablevsync "$vsync_value"
-        ;;
-    Disabled)
-        AZLog "disable vsync disabled"
-        ;;
+60hz | 90hz | 120hz)
+    disablevsync "$vsync_value"
+    ;;
+Disabled)
+    AZLog "disable vsync disabled"
+    ;;
 esac
-
 
 saveLog() {
     log_file="/sdcard/AZenithLog$(date +"%Y-%m-%d_%H_%M").txt"
     echo "$log_file"
-    
+
     module_ver=$(awk -F'=' '/version=/ {print $2}' /data/adb/modules/AZenith/module.prop)
     android_sdk=$(getprop ro.build.version.sdk)
     kernel_info=$(uname -r -m)
     fingerprint=$(getprop ro.build.fingerprint)
-    
+
     cat <<EOF >"$log_file"
 ##########################################
              AZenith Process Log
@@ -118,6 +117,5 @@ saveLog() {
 $(</data/adb/.config/AZenith/AZenith.log)
 EOF
 }
-
 
 $@

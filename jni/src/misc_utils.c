@@ -41,13 +41,12 @@
  * Description        : Push a notification.
  ***********************************************************************************/
 void notify(const char* message) {
-    int exit =
-        systemv("su -lp 2000 -c \"/system/bin/cmd notification post "
-                "-t '%s' "
-                "-i file:///data/local/tmp/AZenith_icon.png "
-                "-I file:///data/local/tmp/AZenith_icon.png "
-                "'AZenith' '%s'\" >/dev/null",
-                NOTIFY_TITLE, message);
+    int exit = systemv("su -lp 2000 -c \"/system/bin/cmd notification post "
+                       "-t '%s' "
+                       "-i file:///data/local/tmp/AZenith_icon.png "
+                       "-I file:///data/local/tmp/AZenith_icon.png "
+                       "'AZenith' '%s'\" >/dev/null",
+                       NOTIFY_TITLE, message);
 
     if (exit != 0) [[clang::unlikely]] {
         log_zenith(LOG_ERROR, "Unable to post push notification, message: %s", message);
@@ -116,11 +115,9 @@ char* timern(void) {
  * Description        : Display a toast notification using bellavita.toast app.
  ***********************************************************************************/
 void toast(const char* message) {
-    int exit = systemv(
-        "su -lp 2000 -c \"/system/bin/am start -a android.intent.action.MAIN "
-        "-e toasttext '%s' -n bellavita.toast/.MainActivity >/dev/null 2>&1\"",
-        message
-    );
+    int exit = systemv("su -lp 2000 -c \"/system/bin/am start -a android.intent.action.MAIN "
+                       "-e toasttext '%s' -n bellavita.toast/.MainActivity >/dev/null 2>&1\"",
+                       message);
 
     if (exit != 0) [[clang::unlikely]] {
         log_zenith(LOG_WARN, "Unable to show toast message: %s", message);
@@ -181,12 +178,11 @@ bool return_false(void) {
 void cleanup_vmt(void) {
     log_zenith(LOG_INFO, "Cleaning up vmt Process...");
     systemv("pkill -x vmt");
-    systemv("pkill -x vmt2");    
+    systemv("pkill -x vmt2");
 }
 
 void cleanup(void) {
     log_zenith(LOG_INFO, "Stop Preloading, Killing vmt process...");
     systemv("pkill -x vmt");
-    systemv("pkill -x vmt2");    
+    systemv("pkill -x vmt2");
 }
-

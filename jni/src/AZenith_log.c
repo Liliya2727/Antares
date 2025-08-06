@@ -48,22 +48,22 @@ void log_zenith(LogLevel level, const char* message, ...) {
  *                      to a log file.
  ***********************************************************************************/
 void log_preload(LogLevel level, const char* message, ...) {
-FILE* fp = fopen(LOGGER, "r");
-if (fp) {
-     char val = fgetc(fp);
-     fclose(fp);
-        
-if (val == '1') {
-    char* timestamp = timern();
-    char logMesg[MAX_OUTPUT_LENGTH];
-    va_list args;
-    va_start(args, message);
-    vsnprintf(logMesg, sizeof(logMesg), message, args);
-    va_end(args);
+    FILE* fp = fopen(LOGGER, "r");
+    if (fp) {
+        char val = fgetc(fp);
+        fclose(fp);
 
-    write2file(LOG_FILE_PRELOAD, true, true, "%s %s %s: %s\n", timestamp, level_str[level], LOG_TAG, logMesg);
-}
-}
+        if (val == '1') {
+            char* timestamp = timern();
+            char logMesg[MAX_OUTPUT_LENGTH];
+            va_list args;
+            va_start(args, message);
+            vsnprintf(logMesg, sizeof(logMesg), message, args);
+            va_end(args);
+
+            write2file(LOG_FILE_PRELOAD, true, true, "%s %s %s: %s\n", timestamp, level_str[level], LOG_TAG, logMesg);
+        }
+    }
 }
 /***********************************************************************************
  * Function Name      : external_log

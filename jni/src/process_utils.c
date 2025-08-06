@@ -129,19 +129,19 @@ int uidof(pid_t pid) {
  *                      given process.
  ***********************************************************************************/
 void set_priority(const pid_t pid) {
-FILE* fp = fopen(APPRIOR, "r");
-if (fp) {
-     char val = fgetc(fp);
-     fclose(fp);
-        
-if (val == '1') {
-    log_zenith(LOG_DEBUG, "Applying priority settings for PID %d", pid);
+    FILE* fp = fopen(APPRIOR, "r");
+    if (fp) {
+        char val = fgetc(fp);
+        fclose(fp);
 
-    if (setpriority(PRIO_PROCESS, pid, -20) == -1)
-        log_zenith(LOG_ERROR, "Unable to set nice priority for %d", pid);
+        if (val == '1') {
+            log_zenith(LOG_DEBUG, "Applying priority settings for PID %d", pid);
 
-    if (syscall(SYS_ioprio_set, 1, pid, (1 << 13) | 0) == -1)
-        log_zenith(LOG_ERROR, "Unable to set IO priority for %d", pid);
-}
-}
+            if (setpriority(PRIO_PROCESS, pid, -20) == -1)
+                log_zenith(LOG_ERROR, "Unable to set nice priority for %d", pid);
+
+            if (syscall(SYS_ioprio_set, 1, pid, (1 << 13) | 0) == -1)
+                log_zenith(LOG_ERROR, "Unable to set IO priority for %d", pid);
+        }
+    }
 }
