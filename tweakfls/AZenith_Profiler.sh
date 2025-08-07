@@ -314,13 +314,12 @@ balanced_profile() {
 
             cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
             cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-            new_maxfreq=$((cpu_maxfreq * 100 / 100))
 
-            zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+            zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
             zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
 
             policy_name=$(basename "$path")
-            dlog "Set $policy_name maxfreq to $new_maxfreq and minfreq $cpu_minfreq"
+            dlog "Set $policy_name minfreq $cpu_minfreq"
 
             ((cluster++))
         done
@@ -331,9 +330,8 @@ balanced_profile() {
 
         cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
         cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-        new_maxfreq=$((cpu_maxfreq * 100 / 100))
 
-        zeshia "$new_maxfreq" "$path/scaling_max_freq"
+        zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
         zeshia "$cpu_minfreq" "$path/scaling_min_freq"
     done
 
@@ -667,12 +665,10 @@ performance_profile() {
                 cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
                 cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
 
-                new_maxfreq=$((cpu_maxfreq * 100 / 100))
-
-                zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+                zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
                 zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
                 policy_name=$(basename "$path")
-                dlog "Set $policy_name maxfreq to $new_maxfreq and minfreq $cpu_minfreq"
+                dlog "Keep $policy_name minfreq $cpu_minfreq"
                 ((cluster++))
 
             done
@@ -681,9 +677,7 @@ performance_profile() {
             cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
             cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
 
-            new_maxfreq=$((cpu_maxfreq * 100 / 100))
-
-            zeshia "$new_maxfreq" "$path/scaling_max_freq"
+            zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
             zeshia "$cpu_minfreq" "$path/scaling_min_freq"
 
         done
@@ -692,26 +686,20 @@ performance_profile() {
             cluster=0
             for path in /sys/devices/system/cpu/cpufreq/policy*; do
                 cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-                cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
 
-                new_maxfreq=$((cpu_maxfreq * 100 / 100))
-
-                zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-                zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+                zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+                zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
                 policy_name=$(basename "$path")
-                dlog "Set $policy_name maxfreq to $new_maxfreq and minfreq $cpu_minfreq"
+                dlog "Set $policy_name minfreq $cpu_maxfreq"
                 ((cluster++))
 
             done
         fi
         for path in /sys/devices/system/cpu/*/cpufreq; do
             cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-            cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
 
-            new_maxfreq=$((cpu_maxfreq * 100 / 100))
-
-            zeshia "$new_maxfreq" "$path/scaling_max_freq"
-            zeshia "$cpu_minfreq" "$path/scaling_min_freq"
+            zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
+            zeshia "$cpu_maxfreq" "$path/scaling_min_freq"
 
         done
     fi
