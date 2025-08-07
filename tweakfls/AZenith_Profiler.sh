@@ -70,6 +70,13 @@ zeshia() {
     chmod 444 "$path" 2>/dev/null
 }
 
+setgov() {
+	chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+	echo "$1" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null
+	chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+	chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
+}
+
 sync
 
 ###############################################
@@ -296,9 +303,7 @@ balanced_profile() {
     fi
 
     # Restore CPU Scaling Governor
-    for path in /sys/devices/system/cpu/cpu*/cpufreq; do
-        zeshia "$default_cpu_gov" "$path/scaling_governor"
-    done
+    setgov "$default_cpu_gov"
     dlog "Applying governor to : $default_cpu_gov"
 
     # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
@@ -651,9 +656,7 @@ performance_profile() {
     fi
 
     # Set Governor Game
-    for path in /sys/devices/system/cpu/cpu*/cpufreq; do
-        zeshia "$game_cpu_gov" "$path/scaling_governor"
-    done
+    setgov "$game_cpu_gov"
     dlog "Applying governor to : $game_cpu_gov"
 
     # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
@@ -1017,9 +1020,7 @@ eco_mode() {
     }
     powersave_cpu_gov=$(load_powersave_governor)
 
-    for path in /sys/devices/system/cpu/cpu*/cpufreq; do
-        zeshia "$powersave_cpu_gov" "$path/scaling_governor"
-    done
+    setgov "$powersave_cpu_gov"
     dlog "Applying governor to : $powersave_cpu_gov"
 
     # Power level settings

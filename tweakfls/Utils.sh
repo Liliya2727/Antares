@@ -65,6 +65,12 @@ zeshia() {
     chmod 444 "$path" 2>/dev/null
 }
 
+setsgov() {
+	chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+	echo "$1" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+	chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+}
+
 FSTrim() {
     for mount in /system /vendor /data /cache /metadata /odm /system_ext /product; do
         if mountpoint -q "$mount"; then
