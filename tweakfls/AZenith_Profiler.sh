@@ -217,54 +217,54 @@ snapdragon_balance() {
 # # # # # # # EXYNOS BALANCE # # # # # # #
 ###############################################
 exynos_balance() {
-	# GPU Frequency
-	gpu_path="/sys/kernel/gpu"
-	[ -d "$gpu_path" ] && {
-		max_freq=$(which_maxfreq "$gpu_path/gpu_available_frequencies")
-		min_freq=$(which_minfreq "$gpu_path/gpu_available_frequencies")
-		write "$max_freq" "$gpu_path/gpu_max_clock"
-		write "$min_freq" "$gpu_path/gpu_min_clock"
-	}
+    # GPU Frequency
+    gpu_path="/sys/kernel/gpu"
+    [ -d "$gpu_path" ] && {
+        max_freq=$(which_maxfreq "$gpu_path/gpu_available_frequencies")
+        min_freq=$(which_minfreq "$gpu_path/gpu_available_frequencies")
+        write "$max_freq" "$gpu_path/gpu_max_clock"
+        write "$min_freq" "$gpu_path/gpu_min_clock"
+    }
 
-	mali_sysfs=$(find /sys/devices/platform/ -iname "*.mali" -print -quit 2>/dev/null)
-	apply coarse_demand "$mali_sysfs/power_policy"
+    mali_sysfs=$(find /sys/devices/platform/ -iname "*.mali" -print -quit 2>/dev/null)
+    apply coarse_demand "$mali_sysfs/power_policy"
 
-	# DRAM frequency
-	[ $DEVICE_MITIGATION -eq 0 ] && {
-		for path in /sys/class/devfreq/*devfreq_mif*; do
-			devfreq_unlock "$path"
-		done &
-	}
+    # DRAM frequency
+    [ $DEVICE_MITIGATION -eq 0 ] && {
+        for path in /sys/class/devfreq/*devfreq_mif*; do
+            devfreq_unlock "$path"
+        done &
+    }
 }
 
 ###############################################
 # # # # # # # UNISOC BALANCE # # # # # # #
 ###############################################
 unisoc_balance() {
-	# GPU Frequency
-	gpu_path=$(find /sys/class/devfreq/ -type d -iname "*.gpu" -print -quit 2>/dev/null)
-	[ -n "$gpu_path" ] && devfreq_unlock "$gpu_path"
+    # GPU Frequency
+    gpu_path=$(find /sys/class/devfreq/ -type d -iname "*.gpu" -print -quit 2>/dev/null)
+    [ -n "$gpu_path" ] && devfreq_unlock "$gpu_path"
 }
 
 ###############################################
 # # # # # # # TENSOR BALANCE # # # # # # #
 ###############################################
 tensor_balance() {
-	# GPU Frequency
-	gpu_path=$(find /sys/devices/platform/ -type d -iname "*.mali" -print -quit 2>/dev/null)
-	[ -n "$gpu_path" ] && {
-		max_freq=$(which_maxfreq "$gpu_path/available_frequencies")
-		min_freq=$(which_minfreq "$gpu_path/available_frequencies")
-		write "$max_freq" "$gpu_path/scaling_max_freq"
-		write "$min_freq" "$gpu_path/scaling_min_freq"
-	}
+    # GPU Frequency
+    gpu_path=$(find /sys/devices/platform/ -type d -iname "*.mali" -print -quit 2>/dev/null)
+    [ -n "$gpu_path" ] && {
+        max_freq=$(which_maxfreq "$gpu_path/available_frequencies")
+        min_freq=$(which_minfreq "$gpu_path/available_frequencies")
+        write "$max_freq" "$gpu_path/scaling_max_freq"
+        write "$min_freq" "$gpu_path/scaling_min_freq"
+    }
 
-	# DRAM frequency
-	[ $DEVICE_MITIGATION -eq 0 ] && {
-		for path in /sys/class/devfreq/*devfreq_mif*; do
-			devfreq_unlock "$path"
-		done &
-	}
+    # DRAM frequency
+    [ $DEVICE_MITIGATION -eq 0 ] && {
+        for path in /sys/class/devfreq/*devfreq_mif*; do
+            devfreq_unlock "$path"
+        done &
+    }
 }
 
 ###############################################
@@ -549,74 +549,74 @@ snapdragon_performance() {
 # # # # # # # EXYNOS PERFORMANCE # # # # # # #
 ###############################################
 exynos_performance() {
-	# GPU Frequency
-	gpu_path="/sys/kernel/gpu"
-	[ -d "$gpu_path" ] && {
-		max_freq=$(which_maxfreq "$gpu_path/gpu_available_frequencies")
-		apply "$max_freq" "$gpu_path/gpu_max_clock"
+    # GPU Frequency
+    gpu_path="/sys/kernel/gpu"
+    [ -d "$gpu_path" ] && {
+        max_freq=$(which_maxfreq "$gpu_path/gpu_available_frequencies")
+        apply "$max_freq" "$gpu_path/gpu_max_clock"
 
-		if [ $LITE_MODE -eq 1 ]; then
-			mid_freq=$(which_midfreq "$gpu_path/gpu_available_frequencies")
-			apply "$mid_freq" "$gpu_path/gpu_min_clock"
-		else
-			apply "$max_freq" "$gpu_path/gpu_min_clock"
-		fi
-	}
+        if [ $LITE_MODE -eq 1 ]; then
+            mid_freq=$(which_midfreq "$gpu_path/gpu_available_frequencies")
+            apply "$mid_freq" "$gpu_path/gpu_min_clock"
+        else
+            apply "$max_freq" "$gpu_path/gpu_min_clock"
+        fi
+    }
 
-	mali_sysfs=$(find /sys/devices/platform/ -iname "*.mali" -print -quit 2>/dev/null)
-	apply always_on "$mali_sysfs/power_policy"
+    mali_sysfs=$(find /sys/devices/platform/ -iname "*.mali" -print -quit 2>/dev/null)
+    apply always_on "$mali_sysfs/power_policy"
 
-	# DRAM and Buses Frequency
-	[ $DEVICE_MITIGATION -eq 0 ] && {
-		for path in /sys/class/devfreq/*devfreq_mif*; do
-			[ $LITE_MODE -eq 1 ] &&
-				devfreq_mid_perf "$path" ||
-				devfreq_max_perf "$path"
-		done &
-	}
+    # DRAM and Buses Frequency
+    [ $DEVICE_MITIGATION -eq 0 ] && {
+        for path in /sys/class/devfreq/*devfreq_mif*; do
+            [ $LITE_MODE -eq 1 ] &&
+                devfreq_mid_perf "$path" ||
+                devfreq_max_perf "$path"
+        done &
+    }
 }
 
 ###############################################
 # # # # # # # UNISOC PERFORMANCE # # # # # # #
 ###############################################
 unisoc_performance() {
-	# GPU Frequency
-	gpu_path=$(find /sys/class/devfreq/ -type d -iname "*.gpu" -print -quit 2>/dev/null)
-	[ -n "$gpu_path" ] && {
-		if [ $LITE_MODE -eq 0 ]; then
-			devfreq_max_perf "$gpu_path"
-		else
-			devfreq_mid_perf "$gpu_path"
-		fi
-	}
+    # GPU Frequency
+    gpu_path=$(find /sys/class/devfreq/ -type d -iname "*.gpu" -print -quit 2>/dev/null)
+    [ -n "$gpu_path" ] && {
+        if [ $LITE_MODE -eq 0 ]; then
+            devfreq_max_perf "$gpu_path"
+        else
+            devfreq_mid_perf "$gpu_path"
+        fi
+    }
 }
 
 ###############################################
 # # # # # # # TENSOR PERFORMANCE # # # # # # #
 ###############################################
 tensor_performance() {
-	# GPU Frequency
-	gpu_path=$(find /sys/devices/platform/ -type d -iname "*.mali" -print -quit 2>/dev/null)
-	[ -n "$gpu_path" ] && {
-		max_freq=$(which_maxfreq "$gpu_path/available_frequencies")
-		apply "$max_freq" "$gpu_path/scaling_max_freq"
+    # GPU Frequency
+    gpu_path=$(find /sys/devices/platform/ -type d -iname "*.mali" -print -quit 2>/dev/null)
+    [ -n "$gpu_path" ] && {
+        max_freq=$(which_maxfreq "$gpu_path/available_frequencies")
+        apply "$max_freq" "$gpu_path/scaling_max_freq"
 
-		if [ $LITE_MODE -eq 1 ]; then
-			mid_freq=$(which_midfreq "$gpu_path/available_frequencies")
-			apply "$mid_freq" "$gpu_path/scaling_min_freq"
-		else
-			apply "$max_freq" "$gpu_path/scaling_min_freq"
-		fi
-	}
+        if [ $LITE_MODE -eq 1 ]; then
+            mid_freq=$(which_midfreq "$gpu_path/available_frequencies")
+            apply "$mid_freq" "$gpu_path/scaling_min_freq"
+        else
+            apply "$max_freq" "$gpu_path/scaling_min_freq"
+        fi
+    }
 
-	# DRAM frequency
-	[ $DEVICE_MITIGATION -eq 0 ] && {
-		for path in /sys/class/devfreq/*devfreq_mif*; do
-			[ $LITE_MODE -eq 1 ] &&
-				devfreq_mid_perf "$path" ||
-				devfreq_max_perf "$path"
-		done &
-	}
+    # DRAM frequency
+    [ $DEVICE_MITIGATION -eq 0 ] && {
+        for path in /sys/class/devfreq/*devfreq_mif*; do
+            [ $LITE_MODE -eq 1 ] &&
+                devfreq_mid_perf "$path" ||
+                devfreq_max_perf "$path"
+        done &
+    }
 }
 
 ###############################################
@@ -971,35 +971,35 @@ snapdragon_powersave() {
 # # # # # # # EXYNOS POWERSAVE # # # # # # #
 ###############################################
 exynos_powersave() {
-	# GPU Frequency
-	gpu_path="/sys/kernel/gpu"
-	[ -d "$gpu_path" ] && {
-		freq=$(which_minfreq "$gpu_path/gpu_available_frequencies")
-		apply "$freq" "$gpu_path/gpu_min_clock"
-		apply "$freq" "$gpu_path/gpu_max_clock"
-	}
+    # GPU Frequency
+    gpu_path="/sys/kernel/gpu"
+    [ -d "$gpu_path" ] && {
+        freq=$(which_minfreq "$gpu_path/gpu_available_frequencies")
+        apply "$freq" "$gpu_path/gpu_min_clock"
+        apply "$freq" "$gpu_path/gpu_max_clock"
+    }
 }
 
 ###############################################
 # # # # # # # UNISOC POWERSAVE # # # # # # #
 ###############################################
 unisoc_powersave() {
-	# GPU Frequency
-	gpu_path=$(find /sys/class/devfreq/ -type d -iname "*.gpu" -print -quit 2>/dev/null)
-	[ -n "$gpu_path" ] && devfreq_min_perf "$gpu_path"
+    # GPU Frequency
+    gpu_path=$(find /sys/class/devfreq/ -type d -iname "*.gpu" -print -quit 2>/dev/null)
+    [ -n "$gpu_path" ] && devfreq_min_perf "$gpu_path"
 }
 
 ###############################################
 # # # # # # # TENSOR POWERSAVE # # # # # # #
 ###############################################
 tensor_powersave() {
-	# GPU Frequency
-	gpu_path=$(find /sys/devices/platform/ -type d -iname "*.mali" -print -quit 2>/dev/null)
-	[ -n "$gpu_path" ] && {
-		freq=$(which_minfreq "$gpu_path/available_frequencies")
-		apply "$freq" "$gpu_path/scaling_min_freq"
-		apply "$freq" "$gpu_path/scaling_max_freq"
-	}
+    # GPU Frequency
+    gpu_path=$(find /sys/devices/platform/ -type d -iname "*.mali" -print -quit 2>/dev/null)
+    [ -n "$gpu_path" ] && {
+        freq=$(which_minfreq "$gpu_path/available_frequencies")
+        apply "$freq" "$gpu_path/scaling_min_freq"
+        apply "$freq" "$gpu_path/scaling_max_freq"
+    }
 }
 
 ###############################################
