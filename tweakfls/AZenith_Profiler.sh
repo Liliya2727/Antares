@@ -214,6 +214,60 @@ snapdragon_balance() {
 }
 
 ###############################################
+# # # # # # # EXYNOS BALANCE # # # # # # #
+###############################################
+exynos_balance() {
+	# GPU Frequency
+	gpu_path="/sys/kernel/gpu"
+	[ -d "$gpu_path" ] && {
+		max_freq=$(which_maxfreq "$gpu_path/gpu_available_frequencies")
+		min_freq=$(which_minfreq "$gpu_path/gpu_available_frequencies")
+		write "$max_freq" "$gpu_path/gpu_max_clock"
+		write "$min_freq" "$gpu_path/gpu_min_clock"
+	}
+
+	mali_sysfs=$(find /sys/devices/platform/ -iname "*.mali" -print -quit 2>/dev/null)
+	apply coarse_demand "$mali_sysfs/power_policy"
+
+	# DRAM frequency
+	[ $DEVICE_MITIGATION -eq 0 ] && {
+		for path in /sys/class/devfreq/*devfreq_mif*; do
+			devfreq_unlock "$path"
+		done &
+	}
+}
+
+###############################################
+# # # # # # # UNISOC BALANCE # # # # # # #
+###############################################
+unisoc_balance() {
+	# GPU Frequency
+	gpu_path=$(find /sys/class/devfreq/ -type d -iname "*.gpu" -print -quit 2>/dev/null)
+	[ -n "$gpu_path" ] && devfreq_unlock "$gpu_path"
+}
+
+###############################################
+# # # # # # # TENSOR BALANCE # # # # # # #
+###############################################
+tensor_balance() {
+	# GPU Frequency
+	gpu_path=$(find /sys/devices/platform/ -type d -iname "*.mali" -print -quit 2>/dev/null)
+	[ -n "$gpu_path" ] && {
+		max_freq=$(which_maxfreq "$gpu_path/available_frequencies")
+		min_freq=$(which_minfreq "$gpu_path/available_frequencies")
+		write "$max_freq" "$gpu_path/scaling_max_freq"
+		write "$min_freq" "$gpu_path/scaling_min_freq"
+	}
+
+	# DRAM frequency
+	[ $DEVICE_MITIGATION -eq 0 ] && {
+		for path in /sys/class/devfreq/*devfreq_mif*; do
+			devfreq_unlock "$path"
+		done &
+	}
+}
+
+###############################################
 # # # # # # #  BALANCED PROFILES! # # # # # # #
 ###############################################
 balanced_profile() {
@@ -346,6 +400,9 @@ balanced_profile() {
     case "$(cat /data/adb/.config/AZenith/soctype)" in
     1) mediatek_balance ;;
     2) snapdragon_balance ;;
+    3) exynos_balance ;;
+    4) unisoc_balance ;;
+    5) tensor_balance ;;
     esac
 
     AZLog "Balanced Profile applied successfully!"
@@ -487,6 +544,81 @@ snapdragon_performance() {
     # Adreno Boost
     zeshia 3 /sys/class/kgsl/kgsl-3d0/devfreq/adrenoboost
 }
+
+###############################################
+# # # # # # # EXYNOS PERFORMANCE # # # # # # #
+###############################################
+exynos_performance() {
+	# GPU Frequency
+	gpu_path="/sys/kernel/gpu"
+	[ -d "$gpu_path" ] && {
+		max_freq=$(which_maxfreq "$gpu_path/gpu_available_frequencies")
+		apply "$max_freq" "$gpu_path/gpu_max_clock"
+
+		if [ $LITE_MODE -eq 1 ]; then
+			mid_freq=$(which_midfreq "$gpu_path/gpu_available_frequencies")
+			apply "$mid_freq" "$gpu_path/gpu_min_clock"
+		else
+			apply "$max_freq" "$gpu_path/gpu_min_clock"
+		fi
+	}
+
+	mali_sysfs=$(find /sys/devices/platform/ -iname "*.mali" -print -quit 2>/dev/null)
+	apply always_on "$mali_sysfs/power_policy"
+
+	# DRAM and Buses Frequency
+	[ $DEVICE_MITIGATION -eq 0 ] && {
+		for path in /sys/class/devfreq/*devfreq_mif*; do
+			[ $LITE_MODE -eq 1 ] &&
+				devfreq_mid_perf "$path" ||
+				devfreq_max_perf "$path"
+		done &
+	}
+}
+
+###############################################
+# # # # # # # UNISOC PERFORMANCE # # # # # # #
+###############################################
+unisoc_performance() {
+	# GPU Frequency
+	gpu_path=$(find /sys/class/devfreq/ -type d -iname "*.gpu" -print -quit 2>/dev/null)
+	[ -n "$gpu_path" ] && {
+		if [ $LITE_MODE -eq 0 ]; then
+			devfreq_max_perf "$gpu_path"
+		else
+			devfreq_mid_perf "$gpu_path"
+		fi
+	}
+}
+
+###############################################
+# # # # # # # TENSOR PERFORMANCE # # # # # # #
+###############################################
+tensor_performance() {
+	# GPU Frequency
+	gpu_path=$(find /sys/devices/platform/ -type d -iname "*.mali" -print -quit 2>/dev/null)
+	[ -n "$gpu_path" ] && {
+		max_freq=$(which_maxfreq "$gpu_path/available_frequencies")
+		apply "$max_freq" "$gpu_path/scaling_max_freq"
+
+		if [ $LITE_MODE -eq 1 ]; then
+			mid_freq=$(which_midfreq "$gpu_path/available_frequencies")
+			apply "$mid_freq" "$gpu_path/scaling_min_freq"
+		else
+			apply "$max_freq" "$gpu_path/scaling_min_freq"
+		fi
+	}
+
+	# DRAM frequency
+	[ $DEVICE_MITIGATION -eq 0 ] && {
+		for path in /sys/class/devfreq/*devfreq_mif*; do
+			[ $LITE_MODE -eq 1 ] &&
+				devfreq_mid_perf "$path" ||
+				devfreq_max_perf "$path"
+		done &
+	}
+}
+
 ###############################################
 # # # # # # # PERFORMANCE PROFILE! # # # # # # #
 ###############################################
@@ -704,6 +836,9 @@ performance_profile() {
     case "$(cat /data/adb/.config/AZenith/soctype)" in
     1) mediatek_performance ;;
     2) snapdragon_performance ;;
+    3) exynos_performance ;;
+    4) unisoc_performance ;;
+    5) tensor_performance ;;
     esac
 
     AZLog "Performance Profile Applied Successfully!"
@@ -833,6 +968,41 @@ snapdragon_powersave() {
 }
 
 ###############################################
+# # # # # # # EXYNOS POWERSAVE # # # # # # #
+###############################################
+exynos_powersave() {
+	# GPU Frequency
+	gpu_path="/sys/kernel/gpu"
+	[ -d "$gpu_path" ] && {
+		freq=$(which_minfreq "$gpu_path/gpu_available_frequencies")
+		apply "$freq" "$gpu_path/gpu_min_clock"
+		apply "$freq" "$gpu_path/gpu_max_clock"
+	}
+}
+
+###############################################
+# # # # # # # UNISOC POWERSAVE # # # # # # #
+###############################################
+unisoc_powersave() {
+	# GPU Frequency
+	gpu_path=$(find /sys/class/devfreq/ -type d -iname "*.gpu" -print -quit 2>/dev/null)
+	[ -n "$gpu_path" ] && devfreq_min_perf "$gpu_path"
+}
+
+###############################################
+# # # # # # # TENSOR POWERSAVE # # # # # # #
+###############################################
+tensor_powersave() {
+	# GPU Frequency
+	gpu_path=$(find /sys/devices/platform/ -type d -iname "*.mali" -print -quit 2>/dev/null)
+	[ -n "$gpu_path" ] && {
+		freq=$(which_minfreq "$gpu_path/available_frequencies")
+		apply "$freq" "$gpu_path/scaling_min_freq"
+		apply "$freq" "$gpu_path/scaling_max_freq"
+	}
+}
+
+###############################################
 # # # # # # # POWERSAVE PROFILE # # # # # # #
 ###############################################
 
@@ -925,6 +1095,9 @@ eco_mode() {
     case "$(cat /data/adb/.config/AZenith/soctype)" in
     1) mediatek_powersave ;;
     2) snapdragon_powersave ;;
+    3) exynos_powersave ;;
+    4) unisoc_powersave ;;
+    5) tensor_powersave ;;
     esac
 
     AZLog "ECO Mode applied successfully!"
