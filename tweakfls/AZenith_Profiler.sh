@@ -25,6 +25,7 @@ GAME_GOV_FILE="/data/adb/.config/AZenith/custom_game_cpu_gov"
 DEFAULT_GOV_FILE="/data/adb/.config/AZenith/custom_default_cpu_gov"
 POWERSAVE_GOV_FILE="/data/adb/.config/AZenith/custom_powersave_cpu_gov"
 
+
 AZLog() {
     if [ "$(cat /data/adb/.config/AZenith/logger)" = "1" ]; then
         local timestamp
@@ -68,6 +69,160 @@ zeshia() {
         fi
     fi
     chmod 444 "$path" 2>/dev/null
+}
+
+zeshiax() {
+    local value="$1"
+    local path="$2"
+    if [ ! -e "$path" ]; then
+        AZLog "File $path not found, skipping..."
+        return
+    fi
+    if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
+        AZLog "Cannot write to $path (permission denied)"
+        return
+    fi
+    echo "$value" >"$path" 2>/dev/null
+    local current
+    current="$(cat "$path" 2>/dev/null)"
+    if [ "$current" = "$value" ]; then
+        AZLog "Set $path to $value"
+    else
+        echo "$value" >"$path" 2>/dev/null
+        current="$(cat "$path" 2>/dev/null)"
+        if [ "$current" = "$value" ]; then
+            AZLog "Set $path to $value (after retry)"
+        else
+            AZLog "Set $path to $value (can't confirm)"
+        fi
+    fi
+}
+
+which_maxfreq() {
+	tr ' ' '\n' <"$1" | sort -nr | head -n 1
+}
+
+which_minfreq() {
+	tr ' ' '\n' <"$1" | grep -v '^[[:space:]]*$' | sort -n | head -n 1
+}
+
+which_midfreq() {
+	total_opp=$(wc -w <"$1")
+	mid_opp=$(((total_opp + 1) / 2))
+	tr ' ' '\n' <"$1" | grep -v '^[[:space:]]*$' | sort -nr | head -n $mid_opp | tail -n 1
+}
+cpufreq_ppm_max_perf() {
+	cluster=-1
+	for path in /sys/devices/system/cpu/cpufreq/policy*; do
+		((cluster++))
+		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+		zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
+
+		[ $LITE_MODE -eq 1 ] && {
+			cpu_midfreq=$(which_midfreq "$path/scaling_available_frequencies")
+			zeshia "$cluster $cpu_midfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
+			continue
+		}
+
+		zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
+	done
+}
+
+cpufreq_max_perf() {
+	for path in /sys/devices/system/cpu/*/cpufreq; do
+		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+		zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
+
+		[ $LITE_MODE -eq 1 ] && {
+			cpu_midfreq=$(which_midfreq "$path/scaling_available_frequencies")
+			zeshia "$cpu_midfreq" "$path/scaling_min_freq"
+			continue
+		}
+
+	    zeshia "$cpu_maxfreq" "$path/scaling_min_freq"
+	done
+	chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+}
+
+cpufreq_ppm_unlock() {
+	cluster=0
+	for path in /sys/devices/system/cpu/cpufreq/policy*; do
+		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
+		zeshiax "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
+		zeshiax "$cluster $cpu_minfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
+		((cluster++))
+	done
+}
+
+cpufreq_unlock() {
+	for path in /sys/devices/system/cpu/*/cpufreq; do
+		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
+		zeshiax "$cpu_maxfreq" "$path/scaling_max_freq"
+		zeshiax "$cpu_minfreq" "$path/scaling_min_freq"
+	done
+	chmod -f 644 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+}
+
+devfreq_max_perf() {
+	[ ! -f "$1/available_frequencies" ] && return 1
+	max_freq=$(which_maxfreq "$1/available_frequencies")
+	zeshia "$max_freq" "$1/max_freq"
+	zeshia "$max_freq" "$1/min_freq"
+}
+
+devfreq_mid_perf() {
+	[ ! -f "$1/available_frequencies" ] && return 1
+	max_freq=$(which_maxfreq "$1/available_frequencies")
+	mid_freq=$(which_midfreq "$1/available_frequencies")
+	zeshia "$max_freq" "$1/max_freq"
+	zeshia "$mid_freq" "$1/min_freq"
+}
+
+devfreq_unlock() {
+	[ ! -f "$1/available_frequencies" ] && return 1
+	max_freq=$(which_maxfreq "$1/available_frequencies")
+	min_freq=$(which_minfreq "$1/available_frequencies")
+	zeshiax "$max_freq" "$1/max_freq"
+	zeshiax "$min_freq" "$1/min_freq"
+}
+
+devfreq_min_perf() {
+	[ ! -f "$1/available_frequencies" ] && return 1
+	freq=$(which_minfreq "$1/available_frequencies")
+	zeshia "$freq" "$1/min_freq"
+	zeshia "$freq" "$1/max_freq"
+}
+
+qcom_cpudcvs_max_perf() {
+	[ ! -f "$1/available_frequencies" ] && return 1
+	freq=$(which_maxfreq "$1/available_frequencies")
+	zeshia "$freq" "$1/hw_max_freq"
+	zeshia "$freq" "$1/hw_min_freq"
+}
+
+qcom_cpudcvs_mid_perf() {
+	[ ! -f "$1/available_frequencies" ] && return 1
+	max_freq=$(which_maxfreq "$1/available_frequencies")
+	mid_freq=$(which_midfreq "$1/available_frequencies")
+	zeshia "$max_freq" "$1/hw_max_freq"
+	zeshia "$mid_freq" "$1/hw_min_freq"
+}
+
+qcom_cpudcvs_unlock() {
+	[ ! -f "$1/available_frequencies" ] && return 1
+	max_freq=$(which_maxfreq "$1/available_frequencies")
+	min_freq=$(which_minfreq "$1/available_frequencies")
+	zeshiax "$max_freq" "$1/hw_max_freq"
+	zeshiax "$min_freq" "$1/hw_min_freq"
+}
+
+qcom_cpudcvs_min_perf() {
+	[ ! -f "$1/available_frequencies" ] && return 1
+	freq=$(which_minfreq "$1/available_frequencies")
+	zeshia "$freq" "$1/hw_min_freq"
+	zeshia "$freq" "$1/hw_max_freq"
 }
 
 setgov() {
@@ -229,12 +384,12 @@ exynos_balance() {
     [ -d "$gpu_path" ] && {
         max_freq=$(which_maxfreq "$gpu_path/gpu_available_frequencies")
         min_freq=$(which_minfreq "$gpu_path/gpu_available_frequencies")
-        write "$max_freq" "$gpu_path/gpu_max_clock"
-        write "$min_freq" "$gpu_path/gpu_min_clock"
+        zeshia "$max_freq" "$gpu_path/gpu_max_clock"
+        zeshia "$min_freq" "$gpu_path/gpu_min_clock"
     }
 
     mali_sysfs=$(find /sys/devices/platform/ -iname "*.mali" -print -quit 2>/dev/null)
-    apply coarse_demand "$mali_sysfs/power_policy"
+    zeshia coarse_demand "$mali_sysfs/power_policy"
 
     # DRAM frequency
     [ $DEVICE_MITIGATION -eq 0 ] && {
@@ -262,8 +417,8 @@ tensor_balance() {
     [ -n "$gpu_path" ] && {
         max_freq=$(which_maxfreq "$gpu_path/available_frequencies")
         min_freq=$(which_minfreq "$gpu_path/available_frequencies")
-        write "$max_freq" "$gpu_path/scaling_max_freq"
-        write "$min_freq" "$gpu_path/scaling_min_freq"
+        zeshia "$max_freq" "$gpu_path/scaling_max_freq"
+        zeshia "$min_freq" "$gpu_path/scaling_min_freq"
     }
 
     # DRAM frequency
@@ -556,18 +711,18 @@ exynos_performance() {
     gpu_path="/sys/kernel/gpu"
     [ -d "$gpu_path" ] && {
         max_freq=$(which_maxfreq "$gpu_path/gpu_available_frequencies")
-        apply "$max_freq" "$gpu_path/gpu_max_clock"
+        zeshia "$max_freq" "$gpu_path/gpu_max_clock"
 
         if [ $LITE_MODE -eq 1 ]; then
             mid_freq=$(which_midfreq "$gpu_path/gpu_available_frequencies")
-            apply "$mid_freq" "$gpu_path/gpu_min_clock"
+            zeshia "$mid_freq" "$gpu_path/gpu_min_clock"
         else
-            apply "$max_freq" "$gpu_path/gpu_min_clock"
+            zeshia "$max_freq" "$gpu_path/gpu_min_clock"
         fi
     }
 
     mali_sysfs=$(find /sys/devices/platform/ -iname "*.mali" -print -quit 2>/dev/null)
-    apply always_on "$mali_sysfs/power_policy"
+    zeshia always_on "$mali_sysfs/power_policy"
 
     # DRAM and Buses Frequency
     [ $DEVICE_MITIGATION -eq 0 ] && {
@@ -602,13 +757,13 @@ tensor_performance() {
     gpu_path=$(find /sys/devices/platform/ -type d -iname "*.mali" -print -quit 2>/dev/null)
     [ -n "$gpu_path" ] && {
         max_freq=$(which_maxfreq "$gpu_path/available_frequencies")
-        apply "$max_freq" "$gpu_path/scaling_max_freq"
+        zeshia "$max_freq" "$gpu_path/scaling_max_freq"
 
         if [ $LITE_MODE -eq 1 ]; then
             mid_freq=$(which_midfreq "$gpu_path/available_frequencies")
-            apply "$mid_freq" "$gpu_path/scaling_min_freq"
+            zeshia "$mid_freq" "$gpu_path/scaling_min_freq"
         else
-            apply "$max_freq" "$gpu_path/scaling_min_freq"
+            zeshia "$max_freq" "$gpu_path/scaling_min_freq"
         fi
     }
 
@@ -966,8 +1121,8 @@ exynos_powersave() {
     gpu_path="/sys/kernel/gpu"
     [ -d "$gpu_path" ] && {
         freq=$(which_minfreq "$gpu_path/gpu_available_frequencies")
-        apply "$freq" "$gpu_path/gpu_min_clock"
-        apply "$freq" "$gpu_path/gpu_max_clock"
+        zeshia "$freq" "$gpu_path/gpu_min_clock"
+        zeshia "$freq" "$gpu_path/gpu_max_clock"
     }
 }
 
@@ -988,8 +1143,8 @@ tensor_powersave() {
     gpu_path=$(find /sys/devices/platform/ -type d -iname "*.mali" -print -quit 2>/dev/null)
     [ -n "$gpu_path" ] && {
         freq=$(which_minfreq "$gpu_path/available_frequencies")
-        apply "$freq" "$gpu_path/scaling_min_freq"
-        apply "$freq" "$gpu_path/scaling_max_freq"
+        zeshia "$freq" "$gpu_path/scaling_min_freq"
+        zeshia "$freq" "$gpu_path/scaling_max_freq"
     }
 }
 
