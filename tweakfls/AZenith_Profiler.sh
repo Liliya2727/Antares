@@ -1209,7 +1209,6 @@ eco_mode() {
 
         zeshia "$new_maxfreq" "$path/scaling_max_freq"
         zeshia "$cpu_minfreq" "$path/scaling_min_freq"
-
     done
 
     # VM Cache Pressure
