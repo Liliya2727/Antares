@@ -27,7 +27,7 @@ POWERSAVE_GOV_FILE="/data/adb/.config/AZenith/custom_powersave_cpu_gov"
 
 
 AZLog() {
-    if [ "$(cat /data/adb/.config/AZenith/logger)" = "1" ]; then
+    if [ "$(getprop sys.azenith.debugmode)" = "true" ]; then
         local timestamp
         timestamp=$(date +'%Y-%m-%d %H:%M:%S')
         local message="$1"
@@ -551,11 +551,11 @@ balanced_profile() {
         zeshia TTWU_QUEUE /sys/kernel/debug/sched_features
     fi
 
-    if [ "$(cat /data/adb/.config/AZenith/bypass_charge)" -eq 1 ]; then
-        bypassCharge 0
+    if [ "$(getprop sys.azenith.bypasschg)" -eq 1 ]; then
+        azenith_configuration disableBypass
     fi
 
-    case "$(cat /data/adb/.config/AZenith/soctype)" in
+    case "$(getprop sys.azenith.soctype)" in
     1) mediatek_balance ;;
     2) snapdragon_balance ;;
     3) exynos_balance ;;
@@ -802,7 +802,7 @@ performance_profile() {
     done
 
     # Set DND Mode
-    if [ "$(cat /data/adb/.config/AZenith/dnd)" -eq 1 ]; then
+    if [ "$(getprop sys.azenith.dnd)" -eq 1 ]; then
         cmd notification set_dnd priority && AZLog "DND enabled" || AZLog "Failed to enable DND"
     else
         AZLog "DND not enabled."
@@ -813,7 +813,7 @@ performance_profile() {
     dlog "Applying governor to : $game_cpu_gov"
 
     # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
-    if [ "$(cat /data/adb/.config/AZenith/cpulimit)" -eq 1 ]; then
+    if [ "$(getprop sys.azenith.cpulimit)" -eq 1 ]; then
         if [ -d /proc/ppm ]; then
             cluster=0
             for path in /sys/devices/system/cpu/cpufreq/policy*; do
@@ -952,7 +952,7 @@ performance_profile() {
         am force-stop com.facebook.lite
         am kill-all
     }
-    if [ "$(cat /data/adb/.config/AZenith/clearbg)" -eq 1 ]; then
+    if [ "$(getprop sys.azenith.clearbg)" -eq 1 ]; then
         clear_background_apps
         AZLog "Clearing apps"
     fi
@@ -975,11 +975,11 @@ performance_profile() {
         zeshia NO_TTWU_QUEUE /sys/kernel/debug/sched_features
     fi
 
-    if [ "$(cat /data/adb/.config/AZenith/bypass_charge)" -eq 1 ]; then
-        bypassCharge 1
+    if [ "$(getprop sys.azenith.bypasschg)" -eq 1 ]; then
+        azenith_configuration enableBypass
     fi
 
-    case "$(cat /data/adb/.config/AZenith/soctype)" in
+    case "$(getprop sys.azenith.soctype)" in
     1) mediatek_performance ;;
     2) snapdragon_performance ;;
     3) exynos_performance ;;
@@ -1175,12 +1175,12 @@ eco_mode() {
     done
 
     # Disable DND
-    if [ "$(cat /data/adb/.config/AZenith/dnd)" -eq 1 ]; then
+    if [ "$(getprop sys.azenith.dnd)" -eq 1 ]; then
         cmd notification set_dnd off && AZLog "DND disabled" || AZLog "Failed to disable DND"
     fi
 
     # CPU Freq Limiter
-    limiter=$(cat /data/adb/.config/AZenith/customFreqOffset | sed -e 's/Disabled/100/' -e 's/%//g')
+    limiter=$(getprop sys.azenith.customFreqOffset | sed -e 's/Disabled/100/' -e 's/%//g')
     AZLog "Cpu limit is set to $limiter"
 
     # Limit cpu freq
@@ -1232,11 +1232,11 @@ eco_mode() {
         zeshia NO_TTWU_QUEUE /sys/kernel/debug/sched_features
     fi
 
-    if [ "$(cat /data/adb/.config/AZenith/bypass_charge)" -eq 1 ]; then
-        bypassCharge 0
+    if [ "$(getprop sys.azenith.bypasschg)" -eq 1 ]; then
+        azenith_configuration disableBypass
     fi
 
-    case "$(cat /data/adb/.config/AZenith/soctype)" in
+    case "$(getprop sys.azenith.soctype)" in
     1) mediatek_powersave ;;
     2) snapdragon_powersave ;;
     3) exynos_powersave ;;
@@ -1422,11 +1422,11 @@ persist.vendor.thermal.engine.enable 0
 persist.vendor.thermal.config 0
 EOF
         }
-
+    
         thermal() {
             find /system/etc/init /vendor/etc/init /odm/etc/init -type f 2>/dev/null | xargs grep -h "^service" | awk '{print $2}' | grep thermal
         }
-
+    
         for svc in $(thermal); do
             stop "$svc"
         done
@@ -1435,7 +1435,7 @@ EOF
         for pid in $(pgrep thermal); do
             kill -SIGSTOP "$pid"
         done
-
+    
         # Clear init.svc_ properties only if they exist
         for prop in $(getprop | awk -F '[][]' '/init\.svc_/ {print $2}'); do
             if [ -n "$prop" ]; then
@@ -1452,14 +1452,6 @@ EOF
             fi
         done
 
-        for prop in $(getprop | grep thermal | cut -f1 -d] | cut -f2 -d[ | grep -F init.svc.); do
-            setprop "$prop" stopped
-        done
-
-        for prop in $(getprop | grep thermal | cut -f1 -d] | cut -f2 -d[ | grep -F init.svc_); do
-            setprop "$prop" ""
-        done
-
         # Disable thermal zones
         chmod 644 /sys/class/thermal/thermal_zone*/mode
         for zone in /sys/class/thermal/thermal_zone*/mode; do
@@ -1469,14 +1461,14 @@ EOF
         for zone2 in /sys/class/thermal/thermal_zone*/policy; do
             [ -f "$zone2" ] && echo "userspace" >"$zone2"
         done
-
+    
         # Disable GPU Power Limitations
         if [ -f "/proc/gpufreq/gpufreq_power_limited" ]; then
             for setting in ignore_batt_oc ignore_batt_percent ignore_low_batt ignore_thermal_protect ignore_pbm_limited; do
                 echo "$setting 1" >/proc/gpufreq/gpufreq_power_limited
             done
         fi
-
+    
         # Set CPU limits based on max frequency
         if [ -f /sys/devices/virtual/thermal/thermal_message/cpu_limits ]; then
             for cpu in 0 2 4 6 7; do
@@ -1532,7 +1524,7 @@ EOF
     "
 
     # Logd
-    if [ -f /data/adb/.config/AZenith/logd ] && [ "$(cat /data/adb/.config/AZenith/logd)" -eq 1 ]; then
+    if [ "$(getprop sys.azenith.logd)" -eq 1 ]; then
         for logger in $list_logger; do
             stop "$logger" 2>/dev/null
         done
@@ -1542,26 +1534,26 @@ EOF
         done
     fi
 
-    if [ "$(cat /data/adb/.config/AZenith/logd)" -eq 1 ]; then
+    if [ "$(getprop sys.azenith.logd)" -eq 1 ]; then
         kill_logd
     fi
-    if [ "$(cat /data/adb/.config/AZenith/DThermal)" -eq 1 ]; then
+    if [ "$(getprop sys.azenith.DThermal)" -eq 1 ]; then
         DThermal
     fi
-    if [ "$(cat /data/adb/.config/AZenith/SFL)" -eq 1 ]; then
+    if [ "$(getprop sys.azenith.SFL)" -eq 1 ]; then
         SFL
     fi
-    if [ "$(cat /data/adb/.config/AZenith/malisched)" -eq 1 ]; then
+    if [ "$(getprop sys.azenith.malisched)" -eq 1 ]; then
         malisched
     fi
-    if [ "$(cat /data/adb/.config/AZenith/fpsged)" -eq 1 ]; then
+    if [ "$(getprop sys.azenith.fpsged)" -eq 1 ]; then
         fpsgoandgedparams
     fi
-    if [ "$(cat /data/adb/.config/AZenith/schedtunes)" -eq 1 ]; then
+    if [ "$(getprop sys.azenith.schedtunes)" -eq 1 ]; then
         schedtunes
     fi
 
-    vsync_value="$(cat /data/adb/.config/AZenith/customVsync)"
+    vsync_value="$(getprop sys.azenith.customVsync)"
     case "$vsync_value" in
     60hz | 90hz | 120hz)
         disablevsync "$vsync_value"
@@ -1573,10 +1565,9 @@ EOF
 
     sync
 
-    if [ "$(cat /data/adb/.config/AZenith/bypass_charge)" -eq 1 ]; then
-        bypassCharge 0
+    if [ "$(getprop sys.azenith.bypasschg)" -eq 1 ]; then
+        azenith_configuration disableBypass
     fi
-
 }
 
 ###############################################
