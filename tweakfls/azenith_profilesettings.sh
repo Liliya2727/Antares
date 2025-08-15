@@ -25,7 +25,6 @@ GAME_GOV_FILE="/data/adb/.config/AZenith/custom_game_cpu_gov"
 DEFAULT_GOV_FILE="/data/adb/.config/AZenith/custom_default_cpu_gov"
 POWERSAVE_GOV_FILE="/data/adb/.config/AZenith/custom_powersave_cpu_gov"
 
-
 AZLog() {
     if [ "$(getprop sys.azenith.debugmode)" = "true" ]; then
         local timestamp
@@ -99,137 +98,137 @@ zeshiax() {
 }
 
 which_maxfreq() {
-	tr ' ' '\n' <"$1" | sort -nr | head -n 1
+    tr ' ' '\n' <"$1" | sort -nr | head -n 1
 }
 
 which_minfreq() {
-	tr ' ' '\n' <"$1" | grep -v '^[[:space:]]*$' | sort -n | head -n 1
+    tr ' ' '\n' <"$1" | grep -v '^[[:space:]]*$' | sort -n | head -n 1
 }
 
 which_midfreq() {
-	total_opp=$(wc -w <"$1")
-	mid_opp=$(((total_opp + 1) / 2))
-	tr ' ' '\n' <"$1" | grep -v '^[[:space:]]*$' | sort -nr | head -n $mid_opp | tail -n 1
+    total_opp=$(wc -w <"$1")
+    mid_opp=$(((total_opp + 1) / 2))
+    tr ' ' '\n' <"$1" | grep -v '^[[:space:]]*$' | sort -nr | head -n $mid_opp | tail -n 1
 }
 cpufreq_ppm_max_perf() {
-	cluster=-1
-	for path in /sys/devices/system/cpu/cpufreq/policy*; do
-		((cluster++))
-		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
-		zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
+    cluster=-1
+    for path in /sys/devices/system/cpu/cpufreq/policy*; do
+        ((cluster++))
+        cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+        zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
 
-		[ $LITE_MODE -eq 1 ] && {
-			cpu_midfreq=$(which_midfreq "$path/scaling_available_frequencies")
-			zeshia "$cluster $cpu_midfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
-			continue
-		}
+        [ $LITE_MODE -eq 1 ] && {
+            cpu_midfreq=$(which_midfreq "$path/scaling_available_frequencies")
+            zeshia "$cluster $cpu_midfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
+            continue
+        }
 
-		zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
-	done
+        zeshia "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
+    done
 }
 
 cpufreq_max_perf() {
-	for path in /sys/devices/system/cpu/*/cpufreq; do
-		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
-		zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
+    for path in /sys/devices/system/cpu/*/cpufreq; do
+        cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+        zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
 
-		[ $LITE_MODE -eq 1 ] && {
-			cpu_midfreq=$(which_midfreq "$path/scaling_available_frequencies")
-			zeshia "$cpu_midfreq" "$path/scaling_min_freq"
-			continue
-		}
+        [ $LITE_MODE -eq 1 ] && {
+            cpu_midfreq=$(which_midfreq "$path/scaling_available_frequencies")
+            zeshia "$cpu_midfreq" "$path/scaling_min_freq"
+            continue
+        }
 
-	    zeshia "$cpu_maxfreq" "$path/scaling_min_freq"
-	done
-	chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+        zeshia "$cpu_maxfreq" "$path/scaling_min_freq"
+    done
+    chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
 }
 
 cpufreq_ppm_unlock() {
-	cluster=0
-	for path in /sys/devices/system/cpu/cpufreq/policy*; do
-		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
-		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
-		zeshiax "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
-		zeshiax "$cluster $cpu_minfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
-		((cluster++))
-	done
+    cluster=0
+    for path in /sys/devices/system/cpu/cpufreq/policy*; do
+        cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+        cpu_minfreq=$(<"$path/cpuinfo_min_freq")
+        zeshiax "$cluster $cpu_maxfreq" /proc/ppm/policy/hard_userlimit_max_cpu_freq
+        zeshiax "$cluster $cpu_minfreq" /proc/ppm/policy/hard_userlimit_min_cpu_freq
+        ((cluster++))
+    done
 }
 
 cpufreq_unlock() {
-	for path in /sys/devices/system/cpu/*/cpufreq; do
-		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
-		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
-		zeshiax "$cpu_maxfreq" "$path/scaling_max_freq"
-		zeshiax "$cpu_minfreq" "$path/scaling_min_freq"
-	done
-	chmod -f 644 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+    for path in /sys/devices/system/cpu/*/cpufreq; do
+        cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+        cpu_minfreq=$(<"$path/cpuinfo_min_freq")
+        zeshiax "$cpu_maxfreq" "$path/scaling_max_freq"
+        zeshiax "$cpu_minfreq" "$path/scaling_min_freq"
+    done
+    chmod -f 644 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
 }
 
 devfreq_max_perf() {
-	[ ! -f "$1/available_frequencies" ] && return 1
-	max_freq=$(which_maxfreq "$1/available_frequencies")
-	zeshia "$max_freq" "$1/max_freq"
-	zeshia "$max_freq" "$1/min_freq"
+    [ ! -f "$1/available_frequencies" ] && return 1
+    max_freq=$(which_maxfreq "$1/available_frequencies")
+    zeshia "$max_freq" "$1/max_freq"
+    zeshia "$max_freq" "$1/min_freq"
 }
 
 devfreq_mid_perf() {
-	[ ! -f "$1/available_frequencies" ] && return 1
-	max_freq=$(which_maxfreq "$1/available_frequencies")
-	mid_freq=$(which_midfreq "$1/available_frequencies")
-	zeshia "$max_freq" "$1/max_freq"
-	zeshia "$mid_freq" "$1/min_freq"
+    [ ! -f "$1/available_frequencies" ] && return 1
+    max_freq=$(which_maxfreq "$1/available_frequencies")
+    mid_freq=$(which_midfreq "$1/available_frequencies")
+    zeshia "$max_freq" "$1/max_freq"
+    zeshia "$mid_freq" "$1/min_freq"
 }
 
 devfreq_unlock() {
-	[ ! -f "$1/available_frequencies" ] && return 1
-	max_freq=$(which_maxfreq "$1/available_frequencies")
-	min_freq=$(which_minfreq "$1/available_frequencies")
-	zeshiax "$max_freq" "$1/max_freq"
-	zeshiax "$min_freq" "$1/min_freq"
+    [ ! -f "$1/available_frequencies" ] && return 1
+    max_freq=$(which_maxfreq "$1/available_frequencies")
+    min_freq=$(which_minfreq "$1/available_frequencies")
+    zeshiax "$max_freq" "$1/max_freq"
+    zeshiax "$min_freq" "$1/min_freq"
 }
 
 devfreq_min_perf() {
-	[ ! -f "$1/available_frequencies" ] && return 1
-	freq=$(which_minfreq "$1/available_frequencies")
-	zeshia "$freq" "$1/min_freq"
-	zeshia "$freq" "$1/max_freq"
+    [ ! -f "$1/available_frequencies" ] && return 1
+    freq=$(which_minfreq "$1/available_frequencies")
+    zeshia "$freq" "$1/min_freq"
+    zeshia "$freq" "$1/max_freq"
 }
 
 qcom_cpudcvs_max_perf() {
-	[ ! -f "$1/available_frequencies" ] && return 1
-	freq=$(which_maxfreq "$1/available_frequencies")
-	zeshia "$freq" "$1/hw_max_freq"
-	zeshia "$freq" "$1/hw_min_freq"
+    [ ! -f "$1/available_frequencies" ] && return 1
+    freq=$(which_maxfreq "$1/available_frequencies")
+    zeshia "$freq" "$1/hw_max_freq"
+    zeshia "$freq" "$1/hw_min_freq"
 }
 
 qcom_cpudcvs_mid_perf() {
-	[ ! -f "$1/available_frequencies" ] && return 1
-	max_freq=$(which_maxfreq "$1/available_frequencies")
-	mid_freq=$(which_midfreq "$1/available_frequencies")
-	zeshia "$max_freq" "$1/hw_max_freq"
-	zeshia "$mid_freq" "$1/hw_min_freq"
+    [ ! -f "$1/available_frequencies" ] && return 1
+    max_freq=$(which_maxfreq "$1/available_frequencies")
+    mid_freq=$(which_midfreq "$1/available_frequencies")
+    zeshia "$max_freq" "$1/hw_max_freq"
+    zeshia "$mid_freq" "$1/hw_min_freq"
 }
 
 qcom_cpudcvs_unlock() {
-	[ ! -f "$1/available_frequencies" ] && return 1
-	max_freq=$(which_maxfreq "$1/available_frequencies")
-	min_freq=$(which_minfreq "$1/available_frequencies")
-	zeshiax "$max_freq" "$1/hw_max_freq"
-	zeshiax "$min_freq" "$1/hw_min_freq"
+    [ ! -f "$1/available_frequencies" ] && return 1
+    max_freq=$(which_maxfreq "$1/available_frequencies")
+    min_freq=$(which_minfreq "$1/available_frequencies")
+    zeshiax "$max_freq" "$1/hw_max_freq"
+    zeshiax "$min_freq" "$1/hw_min_freq"
 }
 
 qcom_cpudcvs_min_perf() {
-	[ ! -f "$1/available_frequencies" ] && return 1
-	freq=$(which_minfreq "$1/available_frequencies")
-	zeshia "$freq" "$1/hw_min_freq"
-	zeshia "$freq" "$1/hw_max_freq"
+    [ ! -f "$1/available_frequencies" ] && return 1
+    freq=$(which_minfreq "$1/available_frequencies")
+    zeshia "$freq" "$1/hw_min_freq"
+    zeshia "$freq" "$1/hw_max_freq"
 }
 
 setgov() {
-	chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-	echo "$1" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null
-	chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-	chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
+    chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+    echo "$1" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null
+    chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+    chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
 }
 
 sync
@@ -1253,6 +1252,67 @@ eco_mode() {
 ###############################################
 
 initialize() {
+    # Cleanup old Logs
+    rm -f /data/adb/.config/AZenith/AZenith.log
+    rm -f /data/adb/.config/AZenith/AZenithVerbose.log
+    rm -f /data/adb/.config/AZenith/AZenithPR.log
+
+    MODULE_CONFIG="/data/adb/.config/AZenith"
+    CONF="/data/adb/.config/AZenith"
+    CPU="/sys/devices/system/cpu/cpu0/cpufreq"
+    # Parse Governor to use
+    chmod 644 "$CPU/scaling_governor"
+    default_gov=$(cat "$CPU/scaling_governor")
+    echo "$default_gov" >$CONF/default_cpu_gov
+
+    # Fallback to normal gov if default is performance
+    if [ "$default_gov" == "performance" ] && [ ! -f $CONF/custom_default_cpu_gov ]; then
+        for gov in scx schedhorizon walt sched_pixel sugov_ext uag schedplus energy_step schedutil interactive conservative powersave; do
+            grep -q "$gov" "$CPU/scaling_available_governors" && {
+                echo "$gov" >$CONF/default_cpu_gov
+                default_gov="$gov"
+                break
+            }
+        done
+    fi
+
+    # Revert governor
+    custom_gov="$CONF/custom_default_cpu_gov"
+    [ -f "$custom_gov" ] && default_gov=$(cat "$custom_gov")
+    chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+    echo "$default_gov" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+    chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+    chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
+    [ ! -f $CONF/custom_powersave_cpu_gov ] && echo "$default_gov" >$CONF/custom_powersave_cpu_gov
+    [ ! -f $CONF/custom_game_cpu_gov ] && echo "$default_gov" >$CONF/custom_game_cpu_gov
+
+    # Restore Poperties that has been saved on config file
+    restore_prop() {
+        file="$1"
+        prop="$2"
+
+        if [ -f "$MODULE_CONFIG/$file" ]; then
+            value=$(cat "$MODULE_CONFIG/$file")
+            setprop "$prop" "$value"
+        fi
+    }
+
+    # Mappings
+    restore_prop clearbg sys.azenith.clearbg
+    restore_prop bypass_charge sys.azenith.bypasschg
+    restore_prop APreload sys.azenith.APreload
+    restore_prop debugmode sys.azenith.debugmode
+    restore_prop logd sys.azenith.logd
+    restore_prop DThermal sys.azenith.DThermal
+    restore_prop dnd sys.azenith.dnd
+    restore_prop schedtunes sys.azenith.schedtunes
+    restore_prop fpsged sys.azenith.fpsged
+    restore_prop AIenabled sys.azenith.AIenabled
+    restore_prop iosched sys.azenith.iosched
+    restore_prop SFL sys.azenith.SFL
+    restore_prop malisched sys.azenith.malisched
+    restore_prop cpulimit sys.azenith.cpulimit
+    restore_prop soctype sys.azenith.soctype
 
     # Disable all kernel panic mechanisms
     for param in hung_task_timeout_secs panic_on_oom panic_on_oops panic softlockup_panic; do
@@ -1422,11 +1482,11 @@ persist.vendor.thermal.engine.enable 0
 persist.vendor.thermal.config 0
 EOF
         }
-    
+
         thermal() {
             find /system/etc/init /vendor/etc/init /odm/etc/init -type f 2>/dev/null | xargs grep -h "^service" | awk '{print $2}' | grep thermal
         }
-    
+
         for svc in $(thermal); do
             stop "$svc"
         done
@@ -1435,7 +1495,7 @@ EOF
         for pid in $(pgrep thermal); do
             kill -SIGSTOP "$pid"
         done
-    
+
         # Clear init.svc_ properties only if they exist
         for prop in $(getprop | awk -F '[][]' '/init\.svc_/ {print $2}'); do
             if [ -n "$prop" ]; then
@@ -1461,14 +1521,14 @@ EOF
         for zone2 in /sys/class/thermal/thermal_zone*/policy; do
             [ -f "$zone2" ] && echo "userspace" >"$zone2"
         done
-    
+
         # Disable GPU Power Limitations
         if [ -f "/proc/gpufreq/gpufreq_power_limited" ]; then
             for setting in ignore_batt_oc ignore_batt_percent ignore_low_batt ignore_thermal_protect ignore_pbm_limited; do
                 echo "$setting 1" >/proc/gpufreq/gpufreq_power_limited
             done
         fi
-    
+
         # Set CPU limits based on max frequency
         if [ -f /sys/devices/virtual/thermal/thermal_message/cpu_limits ]; then
             for cpu in 0 2 4 6 7; do
