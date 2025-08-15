@@ -73,24 +73,32 @@ int write2file(const char* filename, const bool append, const bool use_flock, co
 }
 
 /***********************************************************************************
- * Function Name      : create_lock_file
+ * Function Name      : check_running_state
  * Inputs             : None
- * Returns            : int - 0 if lock file created successfully
- *                           -1 if another instance running
- * Description        : Create lock file and check if there's any another instance of
- *                      this daemon running.
+ * Returns            : running if daemon is running
+ *                      
+ * Description        : check if daemon is already running
  ***********************************************************************************/
-int create_lock_file(void) {
-    int fd = open(LOCK_FILE, O_WRONLY | O_CREAT, 0644);
-    if (fd == -1) {
-        perror("open");
-        return -1;
+int check_running_state(void) {
+    char state[64] = {0};
+
+    FILE *fp = popen("getprop persist.sys.azenith.state", "r");
+    if (!fp) {
+        perror("popen");
+        return -1; // Treat as error
     }
 
-    if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
-        close(fd);
-        return -1;
-    }
+    if (fgets(state, sizeof(state), fp) != NULL) {
+        // Remove trailing newline
+        size_t len = strlen(state);
+        if (len > 0 && state[len - 1] == '\n')
+            state[len - 1] = '\0';
 
-    return 0;
+        if (strcmp(state, "running") == 0) {
+            pclose(fp);
+            return 1; // Already running
+        }
+    }
+    pclose(fp);
+    return 0; // Not running
 }

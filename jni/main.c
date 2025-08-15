@@ -120,17 +120,17 @@ int main(int argc, char* argv[]) {
     }
 
     // Make sure only one instance is running
-    if (create_lock_file() != 0) {
+    if (check_running_state() == 1) {
         fprintf(stderr, "\033[31mERROR:\033[0m Another instance of Daemon is already running!\n");
         exit(EXIT_FAILURE);
     }
-
     // Handle case when module modified by 3rd party
     is_kanged();
 
     // Daemonize service
     if (daemon(0, 0)) {
         log_zenith(LOG_FATAL, "Unable to daemonize service");
+        systemv("setprop persist.sys.azenith.state stopped");
         exit(EXIT_FAILURE);
     }
 
@@ -144,6 +144,7 @@ int main(int argc, char* argv[]) {
     ProfileMode cur_mode = PERFCOMMON;
 
     log_zenith(LOG_INFO, "Daemon started as PID %d", getpid());
+    systemv("setprop persist.sys.azenith.state running");
     notify("Initializing...");
     run_profiler(PERFCOMMON); // exec perfcommon
     static bool did_notify_start = false;
@@ -158,6 +159,7 @@ int main(int argc, char* argv[]) {
         if (access(MODULE_UPDATE, F_OK) == 0) [[clang::unlikely]] {
             log_zenith(LOG_INFO, "Module update detected, exiting.");
             notify("Please reboot your device to complete module update.");
+            systemv("setprop persist.sys.azenith.state stopped");
             break;
         }
 
@@ -231,3 +233,4 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
