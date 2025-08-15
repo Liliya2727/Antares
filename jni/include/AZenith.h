@@ -108,6 +108,7 @@ char* execute_direct(const char* path, const char* arg0, ...);
 int systemv(const char* format, ...);
 
 // Utilities
+int check_running_state(void);
 int write2file(const char* filename, const bool append, const bool use_flock, const char* data, ...);
 
 // system
