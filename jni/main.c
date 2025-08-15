@@ -86,9 +86,9 @@ int main(int argc, char* argv[]) {
 
     // Expose logging interface for other modules
     char* base_name = basename(argv[0]);
-    if (strcmp(base_name, "AZenith_log") == 0) {
+    if (strcmp(base_name, "sys.azenith-service_log") == 0) {
         if (argc < 3) {
-            fprintf(stderr, "Usage: AZenith_log <TAG> <LEVEL> <MESSAGE>\n");
+            fprintf(stderr, "Usage: sys.azenith-service_log <TAG> <LEVEL> <MESSAGE>\n");
             fprintf(stderr, "Levels: 0=DEBUG, 1=INFO, 2=WARN, 3=ERROR, 4=FATAL\n");
             return EXIT_FAILURE;
         }
@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "\033[31mERROR:\033[0m Another instance of Daemon is already running!\n");
         exit(EXIT_FAILURE);
     }
-    
+
     // Handle case when module modified by 3rd party
     is_kanged();
 
