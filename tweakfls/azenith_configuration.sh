@@ -154,9 +154,4 @@ disableBypass() {
     applypath "0" "/sys/devices/platform/mt-battery/disable_charger" && return
 }
 
-case "$1" in
-0) disableBypass ;;
-1) enableBypass ;;
-esac
-
 $@
