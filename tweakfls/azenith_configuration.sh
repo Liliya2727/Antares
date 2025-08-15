@@ -21,7 +21,7 @@
 MODDIR=${0%/*}
 
 AZLog() {
-    if [ "$(cat /data/adb/.config/AZenith/logger)" = "1" ]; then
+    if [ "$(getprop prop.azenith.debugmode)" = "1" ]; then
         local timestamp
         timestamp=$(date +'%Y-%m-%d %H:%M:%S')
         local message="$1"
@@ -123,5 +123,40 @@ saveLog() {
 $(</data/adb/.config/AZenith/AZenith.log)
 EOF
 }
+
+# Bypass Charge
+enableBypass() {
+    applypath() {
+        if [ -e "$2" ]; then
+            zeshia "$1" "$2"
+            return 0
+        fi
+        return 1
+    }
+    applypath "1" "/sys/devices/platform/charger/bypass_charger" && return
+    applypath "0 1" "/proc/mtk_battery_cmd/current_cmd" && return
+    applypath "1" "/sys/devices/platform/charger/tran_aichg_disable_charger" && return
+    applypath "1" "/sys/devices/platform/mt-battery/disable_charger" && return
+}
+
+disableBypass() {
+    # Disable Bypass Charge
+    applypath() {
+        if [ -e "$2" ]; then
+            zeshia "$1" "$2"
+            return 0
+        fi
+        return 1
+    }
+    applypath "0" "/sys/devices/platform/charger/bypass_charger" && return
+    applypath "0 0" "/proc/mtk_battery_cmd/current_cmd" && return
+    applypath "0" "/sys/devices/platform/charger/tran_aichg_disable_charger" && return
+    applypath "0" "/sys/devices/platform/mt-battery/disable_charger" && return
+}
+
+case "$1" in
+0) disableBypass ;;
+1) enableBypass ;;
+esac
 
 $@
