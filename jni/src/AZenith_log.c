@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <Cryx.h>
+#include <AZenith.h>
 #include <android/log.h>
 
 char* custom_log_tag = NULL;
