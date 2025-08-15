@@ -75,8 +75,8 @@ int write2file(const char* filename, const bool append, const bool use_flock, co
 /***********************************************************************************
  * Function Name      : check_running_state
  * Inputs             : None
- * Returns            : running if daemon is running
- *                      
+ * Returns            : 1 if daemon is running
+ *                      0 if daemon is not running
  * Description        : check if daemon is already running
  ***********************************************************************************/
 int check_running_state(void) {
@@ -85,20 +85,19 @@ int check_running_state(void) {
     FILE *fp = popen("getprop persist.sys.azenith.state", "r");
     if (!fp) {
         perror("popen");
-        return -1; // Treat as error
+        return -1;
     }
 
     if (fgets(state, sizeof(state), fp) != NULL) {
-        // Remove trailing newline
         size_t len = strlen(state);
         if (len > 0 && state[len - 1] == '\n')
             state[len - 1] = '\0';
 
         if (strcmp(state, "running") == 0) {
             pclose(fp);
-            return 1; // Already running
+            return 1;
         }
     }
     pclose(fp);
-    return 0; // Not running
+    return 0;
 }
