@@ -22,9 +22,6 @@
 #define MSC BASEDIR
 #define SEARCH_PATHS "/vendor/lib64/egl /vendor/lib64/hw"
 #define PROCESSED_FILE_LIST INTDIR "/preload/processed_files.txt"
-#define PRELOAD_ENABLED INTDIR "/APreload"
-#define LOGGER INTDIR "/logger"
-#define APPRIOR INTDIR "/iosched"
 
 extern unsigned int LOOP_INTERVAL;
 #define MAX_DATA_LENGTH 1024
@@ -99,6 +96,7 @@ void toast(const char* message);
 void is_kanged(void);
 void checkstate(void);
 char* timern(void);
+void setspid(void);
 bool return_true(void);
 bool return_false(void);
 

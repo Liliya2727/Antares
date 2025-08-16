@@ -195,6 +195,20 @@ bool return_false(void) {
 }
 
 /***********************************************************************************
+ * Function Name      : setspid
+ * Inputs             : None
+ * Returns            : Service PID
+ * Description        : Set Service PID Properties
+ ***********************************************************************************/
+void setspid(void) {
+    char cmd[128];
+    pid_t pid = getpid();
+
+    snprintf(cmd, sizeof(cmd), "setprop persist.sys.azenith.service %d", pid);
+    systemv(cmd);
+}
+
+/***********************************************************************************
  * Function Name      : cleanup
  * Inputs             : None
  * Returns            : None (exits the program)
