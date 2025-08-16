@@ -144,14 +144,18 @@ int main(int argc, char* argv[]) {
     MLBBState mlbb_is_running = MLBB_NOT_RUNNING;
     ProfileMode cur_mode = PERFCOMMON;
 
+    // Remove old logs before start initializing script
+    systemv("rm -f /data/adb/.config/AZenith/debug/AZenith.log")
+    systemv("rm -f /data/adb/.config/AZenith/debug/AZenithVerbose.log")
+    systemv("rm -f /data/adb/.config/AZenith/debug/AZenithPR.log")
+
     log_zenith(LOG_INFO, "Daemon started as PID %d", getpid());
     systemv("setprop persist.sys.azenith.state running");
     notify("Initializing...");
     run_profiler(PERFCOMMON); // exec perfcommon
     static bool did_notify_start = false;
-
     // Cleanup VMT before initiate it Again
-    cleanup_vmt(); // kill any leftover preload processes
+    cleanup_vmt();
 
     while (1) {
         sleep(LOOP_INTERVAL);
@@ -234,4 +238,3 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
-

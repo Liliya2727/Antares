@@ -19,8 +19,8 @@
 # shellcheck disable=SC2013
 
 MODDIR=${0%/*}
-logpath="/data/adb/.config/AZenith/AZenithVerbose.log"
-logdaemonpath="/data/adb/.config/AZenith/AZenith.log"
+logpath="/data/adb/.config/AZenith/debug/AZenithVerbose.log"
+logdaemonpath="/data/adb/.config/AZenith/debug/AZenith.log"
 GAME_GOV_FILE="/data/adb/.config/AZenith/custom_game_cpu_gov"
 DEFAULT_GOV_FILE="/data/adb/.config/AZenith/custom_default_cpu_gov"
 POWERSAVE_GOV_FILE="/data/adb/.config/AZenith/custom_powersave_cpu_gov"
@@ -1252,10 +1252,6 @@ eco_mode() {
 ###############################################
 
 initialize() {
-    # Cleanup old Logs
-    rm -f /data/adb/.config/AZenith/AZenith.log
-    rm -f /data/adb/.config/AZenith/AZenithVerbose.log
-    rm -f /data/adb/.config/AZenith/AZenithPR.log
 
     MODULE_CONFIG="/data/adb/.config/AZenith"
     CONF="/data/adb/.config/AZenith"

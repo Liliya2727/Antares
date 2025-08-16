@@ -21,7 +21,7 @@
 #define INTDIR "/data/adb/.config/AZenith"
 #define MSC BASEDIR
 #define SEARCH_PATHS "/vendor/lib64/egl /vendor/lib64/hw"
-#define PROCESSED_FILE_LIST INTDIR "/processed_files.txt"
+#define PROCESSED_FILE_LIST INTDIR "/preload/processed_files.txt"
 #define PRELOAD_ENABLED INTDIR "/APreload"
 #define LOGGER INTDIR "/logger"
 #define APPRIOR INTDIR "/iosched"
@@ -35,11 +35,11 @@ extern unsigned int LOOP_INTERVAL;
 #define NOTIFY_TITLE "AZenith"
 #define LOG_TAG "AZenith"
 
-#define LOG_FILE "/data/adb/.config/AZenith/AZenith.log"
-#define LOG_FILE_PRELOAD "/data/adb/.config/AZenith/AZenithPR.log"
-#define PROFILE_MODE "/data/adb/.config/AZenith/current_profile"
-#define GAME_INFO "/data/adb/.config/AZenith/gameinfo"
-#define GAMELIST "/data/adb/.config/AZenith/gamelist.txt"
+#define LOG_FILE "/data/adb/.config/AZenith/debug/AZenith.log"
+#define LOG_FILE_PRELOAD "/data/adb/.config/AZenith/debug/AZenithPR.log"
+#define PROFILE_MODE "/data/adb/.config/AZenith/API/current_profile"
+#define GAME_INFO "/data/adb/.config/AZenith/API/gameinfo"
+#define GAMELIST "/data/adb/.config/AZenith/gamelist/gamelist.txt"
 #define MODULE_PROP "/data/adb/modules/AZenith/module.prop"
 #define MODULE_UPDATE "/data/adb/modules/AZenith/update"
 
