@@ -29,22 +29,12 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <sys/system_properties.h>
+
 
 void GamePreload(const char* package) {
     if (!package || strlen(package) == 0) {
         log_preload(LOG_WARN, "Package is null or empty");
-        return;
-    }
-
-    FILE* ap = fopen(PRELOAD_ENABLED, "r");
-    if (!ap) {
-        log_preload(LOG_DEBUG, "GamePreload file not found");
-        return;
-    }
-    char val = fgetc(ap);
-    fclose(ap);
-    if (val != '1') {
-        log_preload(LOG_DEBUG, "Game Preload is disabled");
         return;
     }
 
