@@ -35,7 +35,6 @@ extern unsigned int LOOP_INTERVAL;
 #define NOTIFY_TITLE "AZenith"
 #define LOG_TAG "AZenith"
 
-#define LOCK_FILE "/data/adb/.config/AZenith/.lock"
 #define LOG_FILE "/data/adb/.config/AZenith/AZenith.log"
 #define LOG_FILE_PRELOAD "/data/adb/.config/AZenith/AZenithPR.log"
 #define PROFILE_MODE "/data/adb/.config/AZenith/current_profile"
