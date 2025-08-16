@@ -452,7 +452,7 @@ balanced_profile() {
     done
 
     # Disable DND
-    if [ "$(cat /data/adb/.config/AZenith/dnd)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
         cmd notification set_dnd off && AZLog "DND disabled" || AZLog "Failed to disable DND"
     fi
 
@@ -550,11 +550,11 @@ balanced_profile() {
         zeshia TTWU_QUEUE /sys/kernel/debug/sched_features
     fi
 
-    if [ "$(getprop sys.azenith.bypasschg)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
         azenith_configuration disableBypass
     fi
 
-    case "$(getprop sys.azenith.soctype)" in
+    case "$(cat /data/adb/.config/AZenith/soctype)" in
     1) mediatek_balance ;;
     2) snapdragon_balance ;;
     3) exynos_balance ;;
@@ -812,7 +812,7 @@ performance_profile() {
     dlog "Applying governor to : $game_cpu_gov"
 
     # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
-    if [ "$(getprop sys.azenith.cpulimit)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ]; then
         if [ -d /proc/ppm ]; then
             cluster=0
             for path in /sys/devices/system/cpu/cpufreq/policy*; do
@@ -951,7 +951,7 @@ performance_profile() {
         am force-stop com.facebook.lite
         am kill-all
     }
-    if [ "$(getprop sys.azenith.clearbg)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.clearbg)" -eq 1 ]; then
         clear_background_apps
         AZLog "Clearing apps"
     fi
@@ -974,11 +974,11 @@ performance_profile() {
         zeshia NO_TTWU_QUEUE /sys/kernel/debug/sched_features
     fi
 
-    if [ "$(getprop sys.azenith.bypasschg)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
         azenith_configuration enableBypass
     fi
 
-    case "$(getprop sys.azenith.soctype)" in
+    case "$(cat /data/adb/.config/AZenith/soctype)" in
     1) mediatek_performance ;;
     2) snapdragon_performance ;;
     3) exynos_performance ;;
@@ -1231,11 +1231,11 @@ eco_mode() {
         zeshia NO_TTWU_QUEUE /sys/kernel/debug/sched_features
     fi
 
-    if [ "$(getprop sys.azenith.bypasschg)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
         azenith_configuration disableBypass
     fi
 
-    case "$(getprop sys.azenith.soctype)" in
+    case "$(cat /data/adb/.config/AZenith/soctype)" in
     1) mediatek_powersave ;;
     2) snapdragon_powersave ;;
     3) exynos_powersave ;;
@@ -1282,33 +1282,6 @@ initialize() {
     [ ! -f $CONF/custom_powersave_cpu_gov ] && echo "$default_gov" >$CONF/custom_powersave_cpu_gov
     [ ! -f $CONF/custom_game_cpu_gov ] && echo "$default_gov" >$CONF/custom_game_cpu_gov
 
-    # Restore Poperties that has been saved on config file
-    restore_prop() {
-        file="$1"
-        prop="$2"
-
-        if [ -f "$MODULE_CONFIG/$file" ]; then
-            value=$(cat "$MODULE_CONFIG/$file")
-            setprop "$prop" "$value"
-        fi
-    }
-
-    # Mappings
-    restore_prop clearbg sys.azenith.clearbg
-    restore_prop bypass_charge sys.azenith.bypasschg
-    restore_prop APreload sys.azenith.APreload
-    restore_prop debugmode persist.sys.azenith.debugmode
-    restore_prop logd sys.azenith.logd
-    restore_prop DThermal sys.azenith.DThermal
-    restore_prop dnd sys.azenith.dnd
-    restore_prop schedtunes sys.azenith.schedtunes
-    restore_prop fpsged sys.azenith.fpsged
-    restore_prop AIenabled sys.azenith.AIenabled
-    restore_prop iosched sys.azenith.iosched
-    restore_prop SFL sys.azenith.SFL
-    restore_prop malisched sys.azenith.malisched
-    restore_prop cpulimit sys.azenith.cpulimit
-    restore_prop soctype sys.azenith.soctype
 
     # Disable all kernel panic mechanisms
     for param in hung_task_timeout_secs panic_on_oom panic_on_oops panic softlockup_panic; do
@@ -1590,22 +1563,22 @@ EOF
         done
     fi
 
-    if [ "$(getprop sys.azenith.logd)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.logd)" -eq 1 ]; then
         kill_logd
     fi
-    if [ "$(getprop sys.azenith.DThermal)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.DThermal)" -eq 1 ]; then
         DThermal
     fi
-    if [ "$(getprop sys.azenith.SFL)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.SFL)" -eq 1 ]; then
         SFL
     fi
-    if [ "$(getprop sys.azenith.malisched)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.malisched)" -eq 1 ]; then
         malisched
     fi
-    if [ "$(getprop sys.azenith.fpsged)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.fpsged)" -eq 1 ]; then
         fpsgoandgedparams
     fi
-    if [ "$(getprop sys.azenith.schedtunes)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.schedtunes)" -eq 1 ]; then
         schedtunes
     fi
 
