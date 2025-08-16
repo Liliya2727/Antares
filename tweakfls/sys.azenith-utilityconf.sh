@@ -24,19 +24,22 @@ logdaemonpath="/data/adb/.config/AZenith/debug/AZenith.log"
 
 AZLog() {
     if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
-        local timestamp
-        timestamp=$(date +'%Y-%m-%d %H:%M:%S')
-        local message="$1"
-        echo "$timestamp - $message" >>"$logpath"
-        echo "$timestamp - $message"
+        local timestamp message log_tag
+        timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
+        message="$1"
+        log_tag="AZenith"
+        echo "$timestamp I $log_tag: $message" >>"$logpath"
+        log -t "$log_tag" "$message"
     fi
 }
 
 dlog() {
-    local timestamp
+    local timestamp message log_tag
     timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
-    local message="$1"
-    echo "$timestamp I AZenith: $message" >>"$logdaemonpath"
+    message="$1"
+    log_tag="AZenith"
+    echo "$timestamp I $log_tag: $message" >>"$logdaemonpath"
+    log -t "$log_tag" "$message"
 }
 
 zeshia() {

@@ -27,19 +27,22 @@ POWERSAVE_GOV_FILE="/data/adb/.config/AZenith/custom_powersave_cpu_gov"
 
 AZLog() {
     if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
-        local timestamp
-        timestamp=$(date +'%Y-%m-%d %H:%M:%S')
-        local message="$1"
-        echo "$timestamp - $message" >>"$logpath"
-        echo "$timestamp - $message"
+        local timestamp message log_tag
+        timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
+        message="$1"
+        log_tag="AZenith"
+        echo "$timestamp I $log_tag: $message" >>"$logpath"
+        log -t "$log_tag" "$message"
     fi
 }
 
 dlog() {
-    local timestamp
+    local timestamp message log_tag
     timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
-    local message="$1"
-    echo "$timestamp I AZenith: $message" >>"$logdaemonpath"
+    message="$1"
+    log_tag="AZenith"
+    echo "$timestamp I $log_tag: $message" >>"$logdaemonpath"
+    log -t "$log_tag" "$message"
 }
 
 zeshia() {
@@ -1281,7 +1284,6 @@ initialize() {
     chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
     [ ! -f $CONF/custom_powersave_cpu_gov ] && echo "$default_gov" >$CONF/custom_powersave_cpu_gov
     [ ! -f $CONF/custom_game_cpu_gov ] && echo "$default_gov" >$CONF/custom_game_cpu_gov
-
 
     # Disable all kernel panic mechanisms
     for param in hung_task_timeout_secs panic_on_oom panic_on_oops panic softlockup_panic; do
