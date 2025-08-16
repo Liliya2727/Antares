@@ -16,6 +16,8 @@
 
 #include <AZenith.h>
 #include <libgen.h>
+#include <sys/system_properties.h>
+
 
 unsigned int LOOP_INTERVAL = 15;
 
