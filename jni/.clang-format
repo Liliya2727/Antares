@@ -12,4 +12,3 @@ AllowShortFunctionsOnASingleLine: false
 BreakConstructorInitializers: BeforeComma
 IndentPPDirectives: BeforeHash
 PointerAlignment: Left
-
