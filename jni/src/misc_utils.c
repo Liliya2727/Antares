@@ -149,6 +149,30 @@ doorprize:
 }
 
 /***********************************************************************************
+ * Function Name      : checkstate
+ * Inputs             : None
+ * Returns            : None
+ * Description        : Exits if the module prop is "stopped" or not set
+ ***********************************************************************************/
+void checkstate(void) {
+    char state[64] = {0};
+    FILE *fp = popen("getprop persist.sys.azenith.state", "r");
+    if (fp) {
+        fgets(state, sizeof(state), fp);
+        pclose(fp);
+    }
+    state[strcspn(state, "\n")] = 0;
+    if (state[0] == '\0' || strcmp(state, "stopped") == 0) [[clang::unlikely]] {
+        goto killsvc;
+    }
+    return;
+killsvc:
+    log_zenith(LOG_FATAL, "Service killed by checkstate().");
+    systemv("setprop persist.sys.azenith.state stopped");
+    exit(EXIT_FAILURE);
+}
+
+/***********************************************************************************
  * Function Name      : return_true
  * Inputs             : None
  * Returns            : bool - only true

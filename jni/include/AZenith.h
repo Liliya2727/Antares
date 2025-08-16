@@ -97,6 +97,7 @@ char* trim_newline(char* string);
 void notify(const char* message);
 void toast(const char* message);
 void is_kanged(void);
+void checkstate(void);
 char* timern(void);
 bool return_true(void);
 bool return_false(void);

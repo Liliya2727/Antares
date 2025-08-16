@@ -168,6 +168,9 @@ int main(int argc, char* argv[]) {
             break;
         }
 
+        // Check module state simultaneusly
+        checkstate();
+
         // Only fetch gamestart when user not in-game
         // prevent overhead from dumpsys commands.
         if (!gamestart) {
