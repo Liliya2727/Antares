@@ -129,12 +129,9 @@ int uidof(pid_t pid) {
  *                      given process.
  ***********************************************************************************/
 void set_priority(const pid_t pid) {
-    FILE* fp = fopen(APPRIOR, "r");
-    if (fp) {
-        char val = fgetc(fp);
-        fclose(fp);
-
-        if (val == '1') {
+    char val[PROP_VALUE_MAX] = {0};
+    if (__system_property_get("persist.sys.azenithconf.iosched", val) > 0) {
+        if (val[0] == '1') {
             log_zenith(LOG_DEBUG, "Applying priority settings for PID %d", pid);
 
             if (setpriority(PRIO_PROCESS, pid, -20) == -1)
