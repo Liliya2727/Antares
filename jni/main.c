@@ -54,15 +54,9 @@ void stop_preload_if_active(unsigned int* LOOP_INTERVAL) {
 }
 
 void startpr(const char* pkg) {
-    if (!pkg)
-        return;
-
-    FILE* fp = fopen(PRELOAD_ENABLED, "r");
-    if (fp) {
-        char val = fgetc(fp);
-        fclose(fp);
-
-        if (val == '1') {
+    char val[PROP_VALUE_MAX] = {0};
+    if (__system_property_get("persist.sys.azenithconf.APreload", val) > 0) {
+        if (val[0] == '1') {
             log_zenith(LOG_INFO, "Start Preloading game package %s", pkg);
         }
     }
