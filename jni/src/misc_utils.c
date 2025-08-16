@@ -43,8 +43,8 @@
 void notify(const char* message) {
     int exit = systemv("su -lp 2000 -c \"/system/bin/cmd notification post "
                        "-t '%s' "
-                       "-i file:///data/local/tmp/AZenith_icon.png "
-                       "-I file:///data/local/tmp/AZenith_icon.png "
+                       "-i file:///data/local/tmp/module_icon.png "
+                       "-I file:///data/local/tmp/module_icon.png "
                        "'AZenith' '%s'\" >/dev/null",
                        NOTIFY_TITLE, message);
 

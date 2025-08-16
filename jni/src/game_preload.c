@@ -110,7 +110,7 @@ void GamePreload(const char* package) {
 
                 if (regexec(&regex, lib, 0, NULL, 0) == 0) {
                     char preload_cmd[600];
-                    snprintf(preload_cmd, sizeof(preload_cmd), "vmt -dL \"%s\"", lib);
+                    snprintf(preload_cmd, sizeof(preload_cmd), "sys.azenith-preloadbin -dL \"%s\"", lib);
                     if (systemv(preload_cmd) == 0) {
                         fprintf(processed, "%s\n", lib);
                         log_preload(LOG_INFO, "Preloaded native: %s", lib);
@@ -154,7 +154,7 @@ void GamePreload(const char* package) {
 
             if (match == 0 || match_regex) {
                 char cmd[1024];
-                snprintf(cmd, sizeof(cmd), "unzip -p \"%s\" \"%s\" | vmt -dL -", apk_file, innerlib);
+                snprintf(cmd, sizeof(cmd), "unzip -p \"%s\" \"%s\" | sys.azenith-preloadbin -dL -", apk_file, innerlib);
                 if (systemv(cmd) == 0) {
                     log_preload(LOG_INFO, "Preloaded Game libs %s -> %s", apk_file, innerlib);
                 }
