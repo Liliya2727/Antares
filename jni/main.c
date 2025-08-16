@@ -150,6 +150,7 @@ int main(int argc, char* argv[]) {
     systemv("rm -f /data/adb/.config/AZenith/debug/AZenithPR.log");
 
     log_zenith(LOG_INFO, "Daemon started as PID %d", getpid());
+    systemv("setprop persist.sys.azenith.service ready");
     systemv("setprop persist.sys.azenith.state running");
     notify("Initializing...");
     run_profiler(PERFCOMMON); // exec perfcommon
