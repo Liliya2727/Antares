@@ -19,6 +19,8 @@
 # shellcheck disable=SC2013
 
 MODDIR=${0%/*}
+logpath="/data/adb/.config/AZenith/debug/AZenithVerbose.log"
+logdaemonpath="/data/adb/.config/AZenith/debug/AZenith.log"
 
 AZLog() {
     if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
