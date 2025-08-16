@@ -29,7 +29,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <sys/system_properties.h>
 
 
 void GamePreload(const char* package) {
