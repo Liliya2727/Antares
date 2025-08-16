@@ -26,7 +26,7 @@ DEFAULT_GOV_FILE="/data/adb/.config/AZenith/custom_default_cpu_gov"
 POWERSAVE_GOV_FILE="/data/adb/.config/AZenith/custom_powersave_cpu_gov"
 
 AZLog() {
-    if [ "$(getprop sys.azenith.debugmode)" = "true" ]; then
+    if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
         local timestamp
         timestamp=$(date +'%Y-%m-%d %H:%M:%S')
         local message="$1"
@@ -1301,7 +1301,7 @@ initialize() {
     restore_prop clearbg sys.azenith.clearbg
     restore_prop bypass_charge sys.azenith.bypasschg
     restore_prop APreload sys.azenith.APreload
-    restore_prop debugmode sys.azenith.debugmode
+    restore_prop debugmode persist.sys.azenith.debugmode
     restore_prop logd sys.azenith.logd
     restore_prop DThermal sys.azenith.DThermal
     restore_prop dnd sys.azenith.dnd

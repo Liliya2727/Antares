@@ -21,7 +21,7 @@
 MODDIR=${0%/*}
 
 AZLog() {
-    if [ "$(getprop prop.azenith.debugmode)" = "1" ]; then
+    if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
         local timestamp
         timestamp=$(date +'%Y-%m-%d %H:%M:%S')
         local message="$1"
