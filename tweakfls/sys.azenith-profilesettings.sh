@@ -551,7 +551,7 @@ balanced_profile() {
     fi
 
     if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
-        azenith_configuration disableBypass
+        sys.azenith-utilityconf disableBypass
     fi
 
     case "$(cat /data/adb/.config/AZenith/soctype)" in
@@ -801,7 +801,7 @@ performance_profile() {
     done
 
     # Set DND Mode
-    if [ "$(getprop sys.azenith.dnd)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
         cmd notification set_dnd priority && AZLog "DND enabled" || AZLog "Failed to enable DND"
     else
         AZLog "DND not enabled."
@@ -975,7 +975,7 @@ performance_profile() {
     fi
 
     if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
-        azenith_configuration enableBypass
+        sys.azenith-utilityconf enableBypass
     fi
 
     case "$(cat /data/adb/.config/AZenith/soctype)" in
@@ -1179,7 +1179,7 @@ eco_mode() {
     fi
 
     # CPU Freq Limiter
-    limiter=$(getprop sys.azenith.customFreqOffset | sed -e 's/Disabled/100/' -e 's/%//g')
+    limiter=$(cat /data/adb/.config/AZenith/customFreqOffset | sed -e 's/Disabled/100/' -e 's/%//g')
     AZLog "Cpu limit is set to $limiter"
 
     # Limit cpu freq
@@ -1232,7 +1232,7 @@ eco_mode() {
     fi
 
     if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
-        azenith_configuration disableBypass
+        sys.azenith-utilityconf disableBypass
     fi
 
     case "$(cat /data/adb/.config/AZenith/soctype)" in
@@ -1553,7 +1553,7 @@ EOF
     "
 
     # Logd
-    if [ "$(getprop sys.azenith.logd)" -eq 1 ]; then
+    if [ "$(getprop persist.sys.azenithconf.logd)" -eq 1 ]; then
         for logger in $list_logger; do
             stop "$logger" 2>/dev/null
         done
@@ -1582,7 +1582,7 @@ EOF
         schedtunes
     fi
 
-    vsync_value="$(getprop sys.azenith.customVsync)"
+    vsync_value="$(cat /data/adb/.config/AZenith/customVsync)"
     case "$vsync_value" in
     60hz | 90hz | 120hz)
         disablevsync "$vsync_value"
@@ -1594,8 +1594,8 @@ EOF
 
     sync
 
-    if [ "$(getprop sys.azenith.bypasschg)" -eq 1 ]; then
-        azenith_configuration disableBypass
+    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
+        sys.azenith-utilityconf disableBypass
     fi
 }
 
