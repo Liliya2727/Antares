@@ -20,15 +20,9 @@
 unsigned int LOOP_INTERVAL = 15;
 
 void start_preload_if_needed(const char* pkg, unsigned int* LOOP_INTERVAL) {
-    if (!pkg)
-        return;
-
-    FILE* fp = fopen(PRELOAD_ENABLED, "r");
-    if (fp) {
-        char val = fgetc(fp);
-        fclose(fp);
-
-        if (val == '1') {
+    char val[PROP_VALUE_MAX] = {0};
+    if (__system_property_get("persist.sys.azenithconf.APreload", val) > 0) {
+        if (val[0] == '1') {
 
             // Fork the preload task to run in a separate process
             pid_t pid = fork();
@@ -150,7 +144,7 @@ int main(int argc, char* argv[]) {
     systemv("rm -f /data/adb/.config/AZenith/debug/AZenithPR.log");
 
     log_zenith(LOG_INFO, "Daemon started as PID %d", getpid());
-    systemv("setprop persist.sys.azenith.service ready");
+    setspid();
     systemv("setprop persist.sys.azenith.state running");
     notify("Initializing...");
     run_profiler(PERFCOMMON); // exec perfcommon
