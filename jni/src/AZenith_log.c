@@ -82,7 +82,7 @@ void log_preload(LogLevel level, const char* message, ...) {
             va_end(args);
 
             // Write to file
-            write2file(LOG_FILE, true, true, "%s %s %s: %s\n", timestamp, level_str[level], LOG_TAG, logMesg);
+            write2file(LOG_FILE_PRELOAD, true, true, "%s %s %s: %s\n", timestamp, level_str[level], LOG_TAG, logMesg);
 
             // Also write to logcat
             int android_log_level;
