@@ -121,6 +121,7 @@ int main(int argc, char* argv[]) {
     // Daemonize service
     if (daemon(0, 0)) {
         log_zenith(LOG_FATAL, "Unable to daemonize service");
+        systemv("setprop persist.sys.azenith.service \"\"");
         systemv("setprop persist.sys.azenith.state stopped");
         exit(EXIT_FAILURE);
     }
@@ -155,6 +156,7 @@ int main(int argc, char* argv[]) {
         if (access(MODULE_UPDATE, F_OK) == 0) [[clang::unlikely]] {
             log_zenith(LOG_INFO, "Module update detected, exiting.");
             notify("Please reboot your device to complete module update.");
+            systemv("setprop persist.sys.azenith.service \"\"");
             systemv("setprop persist.sys.azenith.state stopped");
             break;
         }

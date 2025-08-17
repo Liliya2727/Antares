@@ -73,7 +73,7 @@ void log_zenith(LogLevel level, const char* message, ...) {
 void log_preload(LogLevel level, const char* message, ...) {
     char val[PROP_VALUE_MAX] = {0};
     if (__system_property_get("persist.sys.azenith.debugmode", val) > 0) {
-        if (val[0] == '1') {
+        if (strcmp(val, "true") == 0) {
             char* timestamp = timern();
             char logMesg[MAX_OUTPUT_LENGTH];
             va_list args;
