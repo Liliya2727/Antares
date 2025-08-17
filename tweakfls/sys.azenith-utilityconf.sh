@@ -125,7 +125,7 @@ saveLog() {
     Fingerprint: $fingerprint
 ##########################################
 
-$(</data/adb/.config/AZenith/AZenith.log)
+$(</data/adb/.config/AZenith/debug/AZenith.log)
 EOF
 }
 
@@ -160,3 +160,5 @@ disableBypass() {
 }
 
 $@
+
+exit 0
