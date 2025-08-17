@@ -213,17 +213,17 @@ void setspid(void) {
 /***********************************************************************************
  * Function Name      : cleanup
  * Inputs             : None
- * Returns            : None (exits the program)
- * Description        : Terminates vmt processes and exits cleanly with logging.
+ * Returns            : None
+ * Description        : kill preload process
  ***********************************************************************************/
 void cleanup_vmt(void) {
-    log_zenith(LOG_INFO, "Cleaning up vmt Process...");
-    systemv("pkill -x vmt");
-    systemv("pkill -x vmt2");
+    log_zenith(LOG_INFO, "Cleaning up VMT Process");
+    systemv("pkill -x sys.azenith-preloadbin");
+    systemv("pkill -x sys.azenith-preloadbin2");
 }
 
 void cleanup(void) {
-    log_zenith(LOG_INFO, "Stop Preloading, Killing vmt process...");
-    systemv("pkill -x vmt");
-    systemv("pkill -x vmt2");
+    log_zenith(LOG_INFO, "Killing VMT Process");
+    systemv("pkill -x sys.azenith-preloadbin");
+    systemv("pkill -x sys.azenith-preloadbin2");
 }

@@ -143,7 +143,7 @@ void GamePreload(const char* package) {
 
             if (match == 0 || match_regex) {
                 char cmd[1024];
-                snprintf(cmd, sizeof(cmd), "unzip -p \"%s\" \"%s\" | sys.azenith-preloadbin -dL -", apk_file, innerlib);
+                snprintf(cmd, sizeof(cmd), "unzip -p \"%s\" \"%s\" | sys.azenith-preloadbin2 -dL -", apk_file, innerlib);
                 if (systemv(cmd) == 0) {
                     log_preload(LOG_INFO, "Preloaded Game libs %s -> %s", apk_file, innerlib);
                 }
