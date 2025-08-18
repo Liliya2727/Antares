@@ -48,26 +48,28 @@ dlog() {
 zeshia() {
     local value="$1"
     local path="$2"
+    local pathname
+    pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
     if [ ! -e "$path" ]; then
-        AZLog "File $path not found, skipping..."
+        AZLog "File $pathname not found, skipping..."
         return
     fi
     if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
-        AZLog "Cannot write to $path (permission denied)"
+        AZLog "Cannot write to $pathname (permission denied)"
         return
     fi
     echo "$value" >"$path" 2>/dev/null
     local current
     current="$(cat "$path" 2>/dev/null)"
     if [ "$current" = "$value" ]; then
-        AZLog "Set $path to $value"
+        AZLog "Set $pathname to $value"
     else
         echo "$value" >"$path" 2>/dev/null
         current="$(cat "$path" 2>/dev/null)"
         if [ "$current" = "$value" ]; then
-            AZLog "Set $path to $value (after retry)"
+            AZLog "Set $pathname to $value (after retry)"
         else
-            AZLog "Set $path to $value (can't confirm)"
+            AZLog "Set $pathname to $value (can't confirm)"
         fi
     fi
     chmod 444 "$path" 2>/dev/null
@@ -76,26 +78,28 @@ zeshia() {
 zeshiax() {
     local value="$1"
     local path="$2"
+    local pathname
+    pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
     if [ ! -e "$path" ]; then
         AZLog "File $path not found, skipping..."
         return
     fi
     if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
-        AZLog "Cannot write to $path (permission denied)"
+        AZLog "Cannot write to $pathname (permission denied)"
         return
     fi
     echo "$value" >"$path" 2>/dev/null
     local current
     current="$(cat "$path" 2>/dev/null)"
     if [ "$current" = "$value" ]; then
-        AZLog "Set $path to $value"
+        AZLog "Set $pathname to $value"
     else
         echo "$value" >"$path" 2>/dev/null
         current="$(cat "$path" 2>/dev/null)"
         if [ "$current" = "$value" ]; then
-            AZLog "Set $path to $value (after retry)"
+            AZLog "Set $pathname to $value (after retry)"
         else
-            AZLog "Set $path to $value (can't confirm)"
+            AZLog "Set $pathname to $value (can't confirm)"
         fi
     fi
 }
@@ -432,144 +436,6 @@ tensor_balance() {
 }
 
 ###############################################
-# # # # # # #  BALANCED PROFILES! # # # # # # #
-###############################################
-balanced_profile() {
-    load_default_governor() {
-        if [ -f "$DEFAULT_GOV_FILE" ]; then
-            cat "$DEFAULT_GOV_FILE"
-        else
-            echo "schedutil"
-        fi
-    }
-
-    # Load default cpu governor
-    default_cpu_gov=$(load_default_governor)
-
-    # Power level settings
-    for pl in /sys/devices/system/cpu/perf; do
-        zeshia 0 "$pl/gpu_pmu_enable"
-        zeshia 0 "$pl/fuel_gauge_enable"
-        zeshia 0 "$pl/enable"
-        zeshia 1 "$pl/charger_enable"
-    done
-
-    # Disable DND
-    if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
-        cmd notification set_dnd off && AZLog "DND disabled" || AZLog "Failed to disable DND"
-    fi
-
-    # Restore CPU Scaling Governor
-    setgov "$default_cpu_gov"
-    dlog "Applying governor to : $default_cpu_gov"
-
-    # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
-    if [ -d /proc/ppm ]; then
-        cluster=0
-        for path in /sys/devices/system/cpu/cpufreq/policy*; do
-            [ -f "$path/cpuinfo_max_freq" ] || continue
-
-            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-            cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-
-            zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-            zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-
-            policy_name=$(basename "$path")
-            dlog "Set $policy_name minfreq to $cpu_minfreq"
-
-            ((cluster++))
-        done
-    fi
-
-    for path in /sys/devices/system/cpu/*/cpufreq; do
-        [ -f "$path/cpuinfo_max_freq" ] || continue
-
-        cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-        cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-
-        zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
-        zeshia "$cpu_minfreq" "$path/scaling_min_freq"
-    done
-
-    # vm cache pressure
-    zeshia "120" "/proc/sys/vm/vfs_cache_pressure"
-
-    # Workqueue settings
-    zeshia "Y" /sys/module/workqueue/parameters/power_efficient
-    zeshia "Y" /sys/module/workqueue/parameters/disable_numa
-    zeshia "1" /sys/kernel/eara_thermal/enable
-    zeshia "1" /sys/devices/system/cpu/eas/enable
-
-    for path in /dev/stune/*; do
-        base=$(basename "$path")
-        if [[ "$base" == "top-app" || "$base" == "foreground" ]]; then
-            zeshia 0 "$path/schedtune.boost"
-            zeshia 0 "$path/schedtune.sched_boost_enabled"
-        else
-            zeshia 0 "$path/schedtune.boost"
-            zeshia 0 "$path/schedtune.sched_boost_enabled"
-        fi
-        zeshia 0 "$path/schedtune.prefer_idle"
-        zeshia 0 "$path/schedtune.colocate"
-    done
-
-    # Power level settings
-    for pl in /sys/devices/system/cpu/perf; do
-        zeshia 0 "$pl/gpu_pmu_enable"
-        zeshia 0 "$pl/fuel_gauge_enable"
-        zeshia 0 "$pl/enable"
-        zeshia 1 "$pl/charger_enable"
-    done
-
-    # CPU Max Time Percent
-    zeshia 100 /proc/sys/kernel/perf_cpu_time_max_percent
-
-    zeshia 2 /proc/sys/kernel/perf_cpu_time_max_percent
-    # Sched Energy Aware
-    zeshia 1 /proc/sys/kernel/sched_energy_aware
-
-    for cpucore in /sys/devices/system/cpu/cpu*; do
-        zeshia 0 "$cpucore/core_ctl/enable"
-        zeshia 0 "$cpucore/core_ctl/core_ctl_boost"
-    done
-
-    #  Disable battery saver module
-    [ -f /sys/module/battery_saver/parameters/enabled ] && {
-        if grep -qo '[0-9]\+' /sys/module/battery_saver/parameters/enabled; then
-            zeshia 0 /sys/module/battery_saver/parameters/enabled
-        else
-            zeshia N /sys/module/battery_saver/parameters/enabled
-        fi
-    }
-
-    #  Enable split lock mitigation
-    zeshia 1 /proc/sys/kernel/split_lock_mitigate
-
-    if [ -f "/sys/kernel/debug/sched_features" ]; then
-        #  Consider scheduling tasks that are eager to run
-        zeshia NEXT_BUDDY /sys/kernel/debug/sched_features
-        #  Schedule tasks on their origin CPU if possible
-        zeshia TTWU_QUEUE /sys/kernel/debug/sched_features
-    fi
-
-    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
-        sys.azenith-utilityconf disableBypass
-    fi
-
-    case "$(cat /data/adb/.config/AZenith/soctype)" in
-    1) mediatek_balance ;;
-    2) snapdragon_balance ;;
-    3) exynos_balance ;;
-    4) unisoc_balance ;;
-    5) tensor_balance ;;
-    esac
-
-    AZLog "Balanced Profile applied successfully!"
-
-}
-
-###############################################
 # # # # # # # MEDIATEK PERFORMANCE # # # # # # #
 ###############################################
 mediatek_performance() {
@@ -780,219 +646,6 @@ tensor_performance() {
 }
 
 ###############################################
-# # # # # # # PERFORMANCE PROFILE! # # # # # # #
-###############################################
-
-performance_profile() {
-    load_game_governor() {
-        if [ -f "$GAME_GOV_FILE" ]; then
-            cat "$GAME_GOV_FILE"
-        else
-            echo "schedutil"
-        fi
-    }
-
-    # Load default cpu governor
-    game_cpu_gov=$(load_game_governor)
-
-    # Power level settings
-    for pl in /sys/devices/system/cpu/perf; do
-        zeshia 1 "$pl/gpu_pmu_enable"
-        zeshia 1 "$pl/fuel_gauge_enable"
-        zeshia 1 "$pl/enable"
-        zeshia 1 "$pl/charger_enable"
-    done
-
-    # Set DND Mode
-    if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
-        cmd notification set_dnd priority && AZLog "DND enabled" || AZLog "Failed to enable DND"
-    else
-        AZLog "DND not enabled."
-    fi
-
-    # Set Governor Game
-    setgov "$game_cpu_gov"
-    dlog "Applying governor to : $game_cpu_gov"
-
-    # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
-    if [ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ]; then
-        if [ -d /proc/ppm ]; then
-            cluster=0
-            for path in /sys/devices/system/cpu/cpufreq/policy*; do
-                cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-
-                zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-                zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-                policy_name=$(basename "$path")
-                dlog "Set $policy_name minfreq to $cpu_maxfreq"
-                ((cluster++))
-
-            done
-        fi
-        for path in /sys/devices/system/cpu/*/cpufreq; do
-            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-
-            zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
-            zeshia "$cpu_maxfreq" "$path/scaling_min_freq"
-
-        done
-    else
-        if [ -d /proc/ppm ]; then
-            cluster=0
-            for path in /sys/devices/system/cpu/cpufreq/policy*; do
-                cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-                cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-
-                zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-                zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-                policy_name=$(basename "$path")
-                dlog "Set $policy_name minfreq to $cpu_minfreq"
-                ((cluster++))
-
-            done
-        fi
-        for path in /sys/devices/system/cpu/*/cpufreq; do
-            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-            cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-
-            zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
-            zeshia "$cpu_minfreq" "$path/scaling_min_freq"
-
-        done
-    fi
-
-    # VM Cache Pressure
-    zeshia "40" "/proc/sys/vm/vfs_cache_pressure"
-    zeshia "3" "/proc/sys/vm/drop_caches"
-
-    # Workqueue settings
-    zeshia "N" /sys/module/workqueue/parameters/power_efficient
-    zeshia "N" /sys/module/workqueue/parameters/disable_numa
-    zeshia "0" /sys/kernel/eara_thermal/enable
-    zeshia "0" /sys/devices/system/cpu/eas/enable
-    zeshia "1" /sys/devices/system/cpu/cpu2/online
-    zeshia "1" /sys/devices/system/cpu/cpu3/online
-
-    # Schedtune Settings
-    for path in /dev/stune/*; do
-        base=$(basename "$path")
-        if [[ "$base" == "top-app" || "$base" == "foreground" ]]; then
-            zeshia 30 "$path/schedtune.boost"
-            zeshia 1 "$path/schedtune.sched_boost_enabled"
-        else
-            zeshia 30 "$path/schedtune.boost"
-            zeshia 1 "$path/schedtune.sched_boost_enabled"
-        fi
-        zeshia 0 "$path/schedtune.prefer_idle"
-        zeshia 0 "$path/schedtune.colocate"
-    done
-
-    # Power level settings
-    for pl in /sys/devices/system/cpu/perf; do
-        zeshia 1 "$pl/gpu_pmu_enable"
-        zeshia 1 "$pl/fuel_gauge_enable"
-        zeshia 1 "$pl/enable"
-        zeshia 1 "$pl/charger_enable"
-    done
-
-    # CPU max tune percent
-    zeshia 1 /proc/sys/kernel/perf_cpu_time_max_percent
-
-    # Sched Energy Aware
-    zeshia 1 /proc/sys/kernel/sched_energy_aware
-
-    # CPU Core control Boost
-    for cpucore in /sys/devices/system/cpu/cpu*; do
-        zeshia 0 "$cpucore/core_ctl/enable"
-        zeshia 0 "$cpucore/core_ctl/core_ctl_boost"
-    done
-
-    clear_background_apps() {
-        AZLog "Clearing background apps..."
-
-        # Get the list of running apps sorted by CPU usage (excluding system processes and the script itself)
-        app_list=$(top -n 1 -o %CPU | awk 'NR>7 {print $1}' | while read -r pid; do
-            pkg=$(cmd package list packages -U | awk -v pid="$pid" '$2 == pid {print $1}' | cut -d':' -f2)
-            if [ -n "$pkg" ] && ! echo "$pkg" | grep -qE "com.android.systemui|com.android.settings|$(basename "$0")"; then
-                echo "$pkg"
-            fi
-        done)
-
-        # Kill apps in order of highest CPU usage
-        for app in $app_list; do
-            am force-stop "$app"
-            AZLog "Stopped app: $app"
-        done
-
-        # force stop
-        am force-stop com.instagram.android
-        am force-stop com.android.vending
-        am force-stop app.grapheneos.camera
-        am force-stop com.google.android.gm
-        am force-stop com.google.android.apps.youtube.creator
-        am force-stop com.dolby.ds1appUI
-        am force-stop com.google.android.youtube
-        am force-stop com.twitter.android
-        am force-stop nekox.messenger
-        am force-stop com.shopee.id
-        am force-stop com.vanced.android.youtube
-        am force-stop com.speedsoftware.rootexplorer
-        am force-stop com.bukalapak.android
-        am force-stop org.telegram.messenger
-        am force-stop ru.zdevs.zarchiver
-        am force-stop com.android.chrome
-        am force-stop com.whatsapp.messenger
-        am force-stop com.google.android.GoogleCameraEng
-        am force-stop com.facebook.orca
-        am force-stop com.lazada.android
-        am force-stop com.android.camera
-        am force-stop com.android.settings
-        am force-stop com.franco.kernel
-        am force-stop com.telkomsel.telkomselcm
-        am force-stop com.facebook.katana
-        am force-stop com.instagram.android
-        am force-stop com.facebook.lite
-        am kill-all
-    }
-    if [ "$(getprop persist.sys.azenithconf.clearbg)" -eq 1 ]; then
-        clear_background_apps
-        AZLog "Clearing apps"
-    fi
-
-    # Disable battery saver module
-    [ -f /sys/module/battery_saver/parameters/enabled ] && {
-        if grep -qo '[0-9]\+' /sys/module/battery_saver/parameters/enabled; then
-            zeshia 0 /sys/module/battery_saver/parameters/enabled
-        else
-            zeshia N /sys/module/battery_saver/parameters/enabled
-        fi
-    }
-
-    # Disable split lock mitigation
-    zeshia 0 /proc/sys/kernel/split_lock_mitigate
-
-    # Schedfeatures settings
-    if [ -f "/sys/kernel/debug/sched_features" ]; then
-        zeshia NEXT_BUDDY /sys/kernel/debug/sched_features
-        zeshia NO_TTWU_QUEUE /sys/kernel/debug/sched_features
-    fi
-
-    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
-        sys.azenith-utilityconf enableBypass
-    fi
-
-    case "$(cat /data/adb/.config/AZenith/soctype)" in
-    1) mediatek_performance ;;
-    2) snapdragon_performance ;;
-    3) exynos_performance ;;
-    4) unisoc_performance ;;
-    5) tensor_performance ;;
-    esac
-
-    AZLog "Performance Profile Applied Successfully!"
-
-}
-###############################################
 # # # # # # # MEDIATEK POWERSAVE # # # # # # #
 ###############################################
 mediatek_powersave() {
@@ -1036,6 +689,7 @@ mediatek_powersave() {
     zeshia "1" /sys/kernel/eara_thermal/enable
 
 }
+
 ###############################################
 # # # # # # # SNAPDRAGON POWERSAVE # # # # # # #
 ###############################################
@@ -1151,6 +805,351 @@ tensor_powersave() {
 }
 
 ###############################################
+
+###############################################
+
+###############################################
+###############################################
+# # # # # # # PROFILESCRIPT # # # # # # #
+###############################################
+
+###############################################
+# # # # # # # PERFORMANCE PROFILE! # # # # # # #
+###############################################
+
+performance_profile() {
+    load_game_governor() {
+        if [ -f "$GAME_GOV_FILE" ]; then
+            cat "$GAME_GOV_FILE"
+        else
+            echo "schedutil"
+        fi
+    }
+
+    # Load default cpu governor
+    game_cpu_gov=$(load_game_governor)
+
+    # Power level settings
+    for pl in /sys/devices/system/cpu/perf; do
+        zeshia 1 "$pl/gpu_pmu_enable"
+        zeshia 1 "$pl/fuel_gauge_enable"
+        zeshia 1 "$pl/enable"
+        zeshia 1 "$pl/charger_enable"
+    done
+
+    # Set DND Mode
+    if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
+        cmd notification set_dnd priority && dlog "DND enabled" || dlog "Failed to enable DND"
+    fi
+
+    # Set Governor Game
+    setgov "$game_cpu_gov"
+    dlog "Applying governor to : $game_cpu_gov"
+
+    # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
+    if [ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ]; then
+        if [ -d /proc/ppm ]; then
+            cluster=-1
+            for path in /sys/devices/system/cpu/cpufreq/policy*; do
+                ((cluster++))
+                cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+                zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+                zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+                policy_name=$(basename "$path")
+                dlog "Set $policy_name minfreq to $cpu_maxfreq"
+            done
+        fi
+        for path in /sys/devices/system/cpu/*/cpufreq; do
+            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+            zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
+            zeshia "$cpu_maxfreq" "$path/scaling_min_freq"
+            chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+        done
+    else
+        if [ -d /proc/ppm ]; then
+            cluster=0
+            for path in /sys/devices/system/cpu/cpufreq/policy*; do
+                cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+                cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+                zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+                zeshiax "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+                policy_name=$(basename "$path")
+                dlog "Set $policy_name minfreq to $cpu_minfreq"
+                ((cluster++))
+            done
+        fi
+        for path in /sys/devices/system/cpu/*/cpufreq; do
+            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+            cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+            zeshiax "$cpu_maxfreq" "$path/scaling_max_freq"
+            zeshiax "$cpu_minfreq" "$path/scaling_min_freq"
+            chmod -f 644 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+        done
+    fi
+
+    # VM Cache Pressure
+    zeshia "40" "/proc/sys/vm/vfs_cache_pressure"
+    zeshia "3" "/proc/sys/vm/drop_caches"
+
+    # Workqueue settings
+    zeshia "N" /sys/module/workqueue/parameters/power_efficient
+    zeshia "N" /sys/module/workqueue/parameters/disable_numa
+    zeshia "0" /sys/kernel/eara_thermal/enable
+    zeshia "0" /sys/devices/system/cpu/eas/enable
+    zeshia "1" /sys/devices/system/cpu/cpu2/online
+    zeshia "1" /sys/devices/system/cpu/cpu3/online
+
+    # Schedtune Settings
+    for path in /dev/stune/*; do
+        base=$(basename "$path")
+        if [[ "$base" == "top-app" || "$base" == "foreground" ]]; then
+            zeshia 30 "$path/schedtune.boost"
+            zeshia 1 "$path/schedtune.sched_boost_enabled"
+        else
+            zeshia 30 "$path/schedtune.boost"
+            zeshia 1 "$path/schedtune.sched_boost_enabled"
+        fi
+        zeshia 0 "$path/schedtune.prefer_idle"
+        zeshia 0 "$path/schedtune.colocate"
+    done
+
+    # Power level settings
+    for pl in /sys/devices/system/cpu/perf; do
+        zeshia 1 "$pl/gpu_pmu_enable"
+        zeshia 1 "$pl/fuel_gauge_enable"
+        zeshia 1 "$pl/enable"
+        zeshia 1 "$pl/charger_enable"
+    done
+
+    # CPU max tune percent
+    zeshia 1 /proc/sys/kernel/perf_cpu_time_max_percent
+
+    # Sched Energy Aware
+    zeshia 1 /proc/sys/kernel/sched_energy_aware
+
+    # CPU Core control Boost
+    for cpucore in /sys/devices/system/cpu/cpu*; do
+        zeshia 0 "$cpucore/core_ctl/enable"
+        zeshia 0 "$cpucore/core_ctl/core_ctl_boost"
+    done
+
+    clear_background_apps() {
+
+        # Get the list of running apps sorted by CPU usage (excluding system processes and the script itself)
+        app_list=$(top -n 1 -o %CPU | awk 'NR>7 {print $1}' | while read -r pid; do
+            pkg=$(cmd package list packages -U | awk -v pid="$pid" '$2 == pid {print $1}' | cut -d':' -f2)
+            if [ -n "$pkg" ] && ! echo "$pkg" | grep -qE "com.android.systemui|com.android.settings|$(basename "$0")"; then
+                echo "$pkg"
+            fi
+        done)
+
+        # Kill apps in order of highest CPU usage
+        for app in $app_list; do
+            am force-stop "$app"
+            AZLog "Stopped app: $app"
+        done
+
+        # force stop
+        am force-stop com.instagram.android
+        am force-stop com.android.vending
+        am force-stop app.grapheneos.camera
+        am force-stop com.google.android.gm
+        am force-stop com.google.android.apps.youtube.creator
+        am force-stop com.dolby.ds1appUI
+        am force-stop com.google.android.youtube
+        am force-stop com.twitter.android
+        am force-stop nekox.messenger
+        am force-stop com.shopee.id
+        am force-stop com.vanced.android.youtube
+        am force-stop com.speedsoftware.rootexplorer
+        am force-stop com.bukalapak.android
+        am force-stop org.telegram.messenger
+        am force-stop ru.zdevs.zarchiver
+        am force-stop com.android.chrome
+        am force-stop com.whatsapp.messenger
+        am force-stop com.google.android.GoogleCameraEng
+        am force-stop com.facebook.orca
+        am force-stop com.lazada.android
+        am force-stop com.android.camera
+        am force-stop com.android.settings
+        am force-stop com.franco.kernel
+        am force-stop com.telkomsel.telkomselcm
+        am force-stop com.facebook.katana
+        am force-stop com.instagram.android
+        am force-stop com.facebook.lite
+        am kill-all
+
+        dlog "Cleared background apps"
+    }
+    if [ "$(getprop persist.sys.azenithconf.clearbg)" -eq 1 ]; then
+        clear_background_apps $
+    fi
+
+    # Disable battery saver module
+    [ -f /sys/module/battery_saver/parameters/enabled ] && {
+        if grep -qo '[0-9]\+' /sys/module/battery_saver/parameters/enabled; then
+            zeshia 0 /sys/module/battery_saver/parameters/enabled
+        else
+            zeshia N /sys/module/battery_saver/parameters/enabled
+        fi
+    }
+
+    # Disable split lock mitigation
+    zeshia 0 /proc/sys/kernel/split_lock_mitigate
+
+    # Schedfeatures settings
+    if [ -f "/sys/kernel/debug/sched_features" ]; then
+        zeshia NEXT_BUDDY /sys/kernel/debug/sched_features
+        zeshia NO_TTWU_QUEUE /sys/kernel/debug/sched_features
+    fi
+
+    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
+        sys.azenith-utilityconf enableBypass
+    fi
+
+    case "$(cat /data/adb/.config/AZenith/soctype)" in
+    1) mediatek_performance ;;
+    2) snapdragon_performance ;;
+    3) exynos_performance ;;
+    4) unisoc_performance ;;
+    5) tensor_performance ;;
+    esac
+
+    AZLog "Performance Profile Applied Successfully!"
+
+}
+
+###############################################
+# # # # # # #  BALANCED PROFILES! # # # # # # #
+###############################################
+balanced_profile() {
+    load_default_governor() {
+        if [ -f "$DEFAULT_GOV_FILE" ]; then
+            cat "$DEFAULT_GOV_FILE"
+        else
+            echo "schedutil"
+        fi
+    }
+
+    # Load default cpu governor
+    default_cpu_gov=$(load_default_governor)
+
+    # Power level settings
+    for pl in /sys/devices/system/cpu/perf; do
+        zeshia 0 "$pl/gpu_pmu_enable"
+        zeshia 0 "$pl/fuel_gauge_enable"
+        zeshia 0 "$pl/enable"
+        zeshia 1 "$pl/charger_enable"
+    done
+
+    # Disable DND
+    if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
+        cmd notification set_dnd off && dlog "DND disabled" || dlog "Failed to disable DND"
+    fi
+
+    # Restore CPU Scaling Governor
+    setgov "$default_cpu_gov"
+    dlog "Applying governor to : $default_cpu_gov"
+
+    # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
+    if [ -d /proc/ppm ]; then
+        cluster=0
+        for path in /sys/devices/system/cpu/cpufreq/policy*; do
+            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+            cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+            zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+            zeshiax "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+            policy_name=$(basename "$path")
+            dlog "Set $policy_name minfreq to $cpu_minfreq"
+            ((cluster++))
+        done
+    fi
+    for path in /sys/devices/system/cpu/*/cpufreq; do
+        cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+        cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+        zeshiax "$cpu_maxfreq" "$path/scaling_max_freq"
+        zeshiax "$cpu_minfreq" "$path/scaling_min_freq"
+        chmod -f 644 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+    done
+
+    # vm cache pressure
+    zeshia "120" "/proc/sys/vm/vfs_cache_pressure"
+
+    # Workqueue settings
+    zeshia "Y" /sys/module/workqueue/parameters/power_efficient
+    zeshia "Y" /sys/module/workqueue/parameters/disable_numa
+    zeshia "1" /sys/kernel/eara_thermal/enable
+    zeshia "1" /sys/devices/system/cpu/eas/enable
+
+    for path in /dev/stune/*; do
+        base=$(basename "$path")
+        if [[ "$base" == "top-app" || "$base" == "foreground" ]]; then
+            zeshia 0 "$path/schedtune.boost"
+            zeshia 0 "$path/schedtune.sched_boost_enabled"
+        else
+            zeshia 0 "$path/schedtune.boost"
+            zeshia 0 "$path/schedtune.sched_boost_enabled"
+        fi
+        zeshia 0 "$path/schedtune.prefer_idle"
+        zeshia 0 "$path/schedtune.colocate"
+    done
+
+    # Power level settings
+    for pl in /sys/devices/system/cpu/perf; do
+        zeshia 0 "$pl/gpu_pmu_enable"
+        zeshia 0 "$pl/fuel_gauge_enable"
+        zeshia 0 "$pl/enable"
+        zeshia 1 "$pl/charger_enable"
+    done
+
+    # CPU Max Time Percent
+    zeshia 100 /proc/sys/kernel/perf_cpu_time_max_percent
+
+    zeshia 2 /proc/sys/kernel/perf_cpu_time_max_percent
+    # Sched Energy Aware
+    zeshia 1 /proc/sys/kernel/sched_energy_aware
+
+    for cpucore in /sys/devices/system/cpu/cpu*; do
+        zeshia 0 "$cpucore/core_ctl/enable"
+        zeshia 0 "$cpucore/core_ctl/core_ctl_boost"
+    done
+
+    #  Disable battery saver module
+    [ -f /sys/module/battery_saver/parameters/enabled ] && {
+        if grep -qo '[0-9]\+' /sys/module/battery_saver/parameters/enabled; then
+            zeshia 0 /sys/module/battery_saver/parameters/enabled
+        else
+            zeshia N /sys/module/battery_saver/parameters/enabled
+        fi
+    }
+
+    #  Enable split lock mitigation
+    zeshia 1 /proc/sys/kernel/split_lock_mitigate
+
+    if [ -f "/sys/kernel/debug/sched_features" ]; then
+        #  Consider scheduling tasks that are eager to run
+        zeshia NEXT_BUDDY /sys/kernel/debug/sched_features
+        #  Schedule tasks on their origin CPU if possible
+        zeshia TTWU_QUEUE /sys/kernel/debug/sched_features
+    fi
+
+    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
+        sys.azenith-utilityconf disableBypass
+    fi
+
+    case "$(cat /data/adb/.config/AZenith/soctype)" in
+    1) mediatek_balance ;;
+    2) snapdragon_balance ;;
+    3) exynos_balance ;;
+    4) unisoc_balance ;;
+    5) tensor_balance ;;
+    esac
+
+    AZLog "Balanced Profile applied successfully!"
+
+}
+
+###############################################
 # # # # # # # POWERSAVE PROFILE # # # # # # #
 ###############################################
 
@@ -1177,8 +1176,8 @@ eco_mode() {
     done
 
     # Disable DND
-    if [ "$(getprop sys.azenith.dnd)" -eq 1 ]; then
-        cmd notification set_dnd off && AZLog "DND disabled" || AZLog "Failed to disable DND"
+    if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
+        cmd notification set_dnd off && dlog "DND disabled" || dlog "Failed to disable DND"
     fi
 
     # CPU Freq Limiter
@@ -1191,26 +1190,36 @@ eco_mode() {
         for path in /sys/devices/system/cpu/cpufreq/policy*; do
             cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
             cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-
-            new_maxfreq=$((cpu_maxfreq * $limiter / 100))
-            new_minfreq=$((cpu_maxfreq * 40 / 100))
-
+            new_maxfreq=$((cpu_maxfreq * limiter / 100))
+            target_minfreq=$((cpu_maxfreq * 40 / 100))
+            if [ -f "$path/scaling_available_frequencies" ]; then
+                new_minfreq=$(cat "$path/scaling_available_frequencies" |
+                    tr -s ' ' '\n' |
+                    awk -v t="$target_minfreq" '$1 <= t {val=$1} END{print val}')
+            else
+                new_minfreq=$target_minfreq
+            fi
             zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-            zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+            zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
             policy_name=$(basename "$path")
-            dlog "Set $policy_name maxfreq to $limiter% of maxfreq $new_maxfreq and minfreq $cpu_minfreq"
+            dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$new_minfreq"
             ((cluster++))
         done
     fi
     for path in /sys/devices/system/cpu/cpufreq/policy*; do
         cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
         cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-
-        new_maxfreq=$((cpu_maxfreq * $limiter / 100))
-        new_minfreq=$((cpu_maxfreq * 40 / 100))
-
+        new_maxfreq=$((cpu_maxfreq * limiter / 100))
+        target_minfreq=$((cpu_maxfreq * 40 / 100))
+        if [ -f "$path/scaling_available_frequencies" ]; then
+            new_minfreq=$(cat "$path/scaling_available_frequencies" |
+                tr -s ' ' '\n' |
+                awk -v t="$target_minfreq" '$1 <= t {val=$1} END{print val}')
+        else
+            new_minfreq=$target_minfreq
+        fi
         zeshia "$new_maxfreq" "$path/scaling_max_freq"
-        zeshia "$cpu_minfreq" "$path/scaling_min_freq"
+        zeshia "$new_minfreq" "$path/scaling_min_freq"
     done
 
     # VM Cache Pressure
@@ -1274,6 +1283,15 @@ initialize() {
             }
         done
     fi
+
+    jit() {
+        for app in $(cmd package list packages | cut -f 2 -d ":"); do
+            {
+                echo "$app | $(cmd package compile -m speed-profile "$app")" >>"$LOG_FILE"
+            } &
+        done
+        disown
+    }
 
     # Revert governor
     custom_gov="$CONF/custom_default_cpu_gov"
@@ -1534,6 +1552,28 @@ EOF
         AZLog "Thermal service Disabled"
     }
 
+    disabletrace() {
+        for trace_file in \
+            /sys/kernel/tracing/instances/mmstat/trace \
+            /sys/kernel/tracing/trace \
+            $(find /sys/kernel/tracing/per_cpu/ -name trace 2>/dev/null); do
+            zeshia "" "$trace_file"
+        done
+        zeshia "0" /sys/kernel/tracing/options/overwrite
+        zeshia "0" /sys/kernel/tracing/options/record-tgids
+        for f in /sys/kernel/tracing/*; do
+            [ -w "$f" ] && echo "0" >"$f" 2>/dev/null
+        done
+        cmd accessibility stop-trace 2>/dev/null
+        cmd input_method tracing stop 2>/dev/null
+        cmd window tracing stop 2>/dev/null
+        cmd window tracing size 0 2>/dev/null
+        cmd migard dump-trace false 2>/dev/null
+        cmd migard start-trace false 2>/dev/null
+        cmd migard stop-trace true 2>/dev/null
+        cmd migard trace-buffer-size 0 2>/dev/null
+    }
+
     kill_logd() {
         zeshia 0 /sys/kernel/ccci/debug
         zeshia 0 /sys/kernel/tracing/tracing_on
@@ -1583,6 +1623,12 @@ EOF
     if [ "$(getprop persist.sys.azenithconf.schedtunes)" -eq 1 ]; then
         schedtunes
     fi
+    if [ "$(getprop persist.sys.azenithconf.justintime)" -eq 1 ]; then
+        jit
+    fi
+    if [ "$(getprop persist.sys.azenithconf.disabletrace)" -eq 1 ]; then
+        disabletrace
+    fi
 
     vsync_value="$(cat /data/adb/.config/AZenith/customVsync)"
     case "$vsync_value" in
@@ -1600,8 +1646,6 @@ EOF
         sys.azenith-utilityconf disableBypass
     fi
 }
-
-###############################################
 
 ###############################################
 # # # # # # # MAIN FUNCTION! # # # # # # #
