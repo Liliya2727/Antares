@@ -51,25 +51,25 @@ zeshia() {
     local pathname
     pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
     if [ ! -e "$path" ]; then
-        AZLog "File $pathname not found, skipping..."
+        AZLog "File /$pathname not found, skipping..."
         return
     fi
     if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
-        AZLog "Cannot write to $pathname (permission denied)"
+        AZLog "Cannot write to /$pathname (permission denied)"
         return
     fi
     echo "$value" >"$path" 2>/dev/null
     local current
     current="$(cat "$path" 2>/dev/null)"
     if [ "$current" = "$value" ]; then
-        AZLog "Set $pathname to $value"
+        AZLog "Set /$pathname to $value"
     else
         echo "$value" >"$path" 2>/dev/null
         current="$(cat "$path" 2>/dev/null)"
         if [ "$current" = "$value" ]; then
-            AZLog "Set $pathname to $value (after retry)"
+            AZLog "Set /$pathname to $value (after retry)"
         else
-            AZLog "Set $pathname to $value (can't confirm)"
+            AZLog "Set /$pathname to $value"
         fi
     fi
     chmod 444 "$path" 2>/dev/null
@@ -81,25 +81,25 @@ zeshiax() {
     local pathname
     pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
     if [ ! -e "$path" ]; then
-        AZLog "File $path not found, skipping..."
+        AZLog "File /$pathname not found, skipping..."
         return
     fi
     if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
-        AZLog "Cannot write to $pathname (permission denied)"
+        AZLog "Cannot write to /$pathname (permission denied)"
         return
     fi
     echo "$value" >"$path" 2>/dev/null
     local current
     current="$(cat "$path" 2>/dev/null)"
     if [ "$current" = "$value" ]; then
-        AZLog "Set $pathname to $value"
+        AZLog "Set /$pathname to $value"
     else
         echo "$value" >"$path" 2>/dev/null
         current="$(cat "$path" 2>/dev/null)"
         if [ "$current" = "$value" ]; then
             AZLog "Set $pathname to $value (after retry)"
         else
-            AZLog "Set $pathname to $value (can't confirm)"
+            AZLog "Set /$pathname to $value"
         fi
     fi
 }
@@ -1630,22 +1630,12 @@ EOF
     if [ "$(getprop persist.sys.azenithconf.disabletrace)" -eq 1 ]; then
         disabletrace
     fi
-
-    vsync_value="$(cat /data/adb/.config/AZenith/customVsync)"
-    case "$vsync_value" in
-    60hz | 90hz | 120hz)
-        disablevsync "$vsync_value"
-        ;;
-    Disabled)
-        AZLog "disable vsync disabled"
-        ;;
-    esac
-
-    sync
-
     if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
         sys.azenith-utilityconf disableBypass
     fi
+    # Set up disable vsync
+    sys.azenith-utilityconf
+    AZLog "Initializing Complete!!"
 }
 
 ###############################################

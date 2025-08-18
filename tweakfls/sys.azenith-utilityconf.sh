@@ -133,7 +133,6 @@ case "$vsync_value" in
     disablevsync "$vsync_value"
     ;;
 Disabled)
-    AZLog "disable vsync disabled"
     ;;
 esac
 
