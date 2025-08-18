@@ -115,12 +115,17 @@ char* timern(void) {
  * Description        : Display a toast notification using bellavita.toast app.
  ***********************************************************************************/
 void toast(const char* message) {
-    int exit = systemv("su -lp 2000 -c \"/system/bin/am start -a android.intent.action.MAIN "
-                       "-e toasttext '%s' -n bellavita.toast/.MainActivity >/dev/null 2>&1\"",
-                       message);
+    char val[PROP_VALUE_MAX] = {0};
+    if (__system_property_get("persist.sys.azenithconf.showtoast", val) > 0) {
+        if (val[0] == '1') {
+            int exit = systemv("su -lp 2000 -c \"/system/bin/am start -a android.intent.action.MAIN "
+                               "-e toasttext '%s' -n bellavita.toast/.MainActivity >/dev/null 2>&1\"",
+                               message);
 
-    if (exit != 0) [[clang::unlikely]] {
-        log_zenith(LOG_WARN, "Unable to show toast message: %s", message);
+            if (exit != 0) [[clang::unlikely]] {
+                log_zenith(LOG_WARN, "Unable to show toast message: %s", message);
+            }
+        }
     }
 }
 
@@ -157,7 +162,7 @@ doorprize:
  ***********************************************************************************/
 void checkstate(void) {
     char state[64] = {0};
-    FILE *fp = popen("getprop persist.sys.azenith.state", "r");
+    FILE* fp = popen("getprop persist.sys.azenith.state", "r");
     if (fp) {
         fgets(state, sizeof(state), fp);
         pclose(fp);
