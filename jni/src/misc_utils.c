@@ -218,12 +218,12 @@ void setspid(void) {
  ***********************************************************************************/
 void cleanup_vmt(void) {
     log_zenith(LOG_INFO, "Cleaning up VMT Process");
-    systemv("pkill -x sys.azenith-preloadbin");
-    systemv("pkill -x sys.azenith-preloadbin2");
+    systemv("pkill -f -9 sys.azenith-preloadbin");
+    systemv("pkill -f -9 sys.azenith-preloadbin2");
 }
 
 void cleanup(void) {
     log_zenith(LOG_INFO, "Killing VMT Process");
-    systemv("pkill -x sys.azenith-preloadbin");
-    systemv("pkill -x sys.azenith-preloadbin2");
+    systemv("pkill -f -9 sys.azenith-preloadbin");
+    systemv("pkill -f -9 sys.azenith-preloadbin2");
 }
