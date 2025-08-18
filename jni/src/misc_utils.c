@@ -15,6 +15,7 @@
  */
 
 #include <AZenith.h>
+#include <sys/system_properties.h>
 
 /***********************************************************************************
  * Function Name      : trim_newline
