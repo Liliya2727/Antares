@@ -1287,7 +1287,8 @@ initialize() {
     jit() {
         for app in $(cmd package list packages | cut -f 2 -d ":"); do
             {
-                echo "$app | $(cmd package compile -m speed-profile "$app")" >>"$LOG_FILE"
+                echo "$app | $(cmd package compile -m speed-profile "$app")"
+                AZLog "$app | Success"
             } &
         done
         disown
