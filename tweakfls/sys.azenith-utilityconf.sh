@@ -45,29 +45,60 @@ dlog() {
 zeshia() {
     local value="$1"
     local path="$2"
+    local pathname
+    pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
     if [ ! -e "$path" ]; then
-        AZLog "File $path not found, skipping..."
+        AZLog "File $pathname not found, skipping..."
         return
     fi
     if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
-        AZLog "Cannot write to $path (permission denied)"
+        AZLog "Cannot write to $pathname (permission denied)"
         return
     fi
     echo "$value" >"$path" 2>/dev/null
     local current
     current="$(cat "$path" 2>/dev/null)"
     if [ "$current" = "$value" ]; then
-        AZLog "Set $path to $value"
+        AZLog "Set $pathname to $value"
     else
         echo "$value" >"$path" 2>/dev/null
         current="$(cat "$path" 2>/dev/null)"
         if [ "$current" = "$value" ]; then
-            AZLog "Set $path to $value (after retry)"
+            AZLog "Set $pathname to $value (after retry)"
         else
-            AZLog "Set $path to $value (can't confirm)"
+            AZLog "Set $pathname to $value (can't confirm)"
         fi
     fi
     chmod 444 "$path" 2>/dev/null
+}
+
+zeshiax() {
+    local value="$1"
+    local path="$2"
+    local pathname
+    pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
+    if [ ! -e "$path" ]; then
+        AZLog "File $path not found, skipping..."
+        return
+    fi
+    if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
+        AZLog "Cannot write to $pathname (permission denied)"
+        return
+    fi
+    echo "$value" >"$path" 2>/dev/null
+    local current
+    current="$(cat "$path" 2>/dev/null)"
+    if [ "$current" = "$value" ]; then
+        AZLog "Set $pathname to $value"
+    else
+        echo "$value" >"$path" 2>/dev/null
+        current="$(cat "$path" 2>/dev/null)"
+        if [ "$current" = "$value" ]; then
+            AZLog "Set $pathname to $value (after retry)"
+        else
+            AZLog "Set $pathname to $value (can't confirm)"
+        fi
+    fi
 }
 
 setsgov() {
