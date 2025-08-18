@@ -117,6 +117,20 @@ which_midfreq() {
     mid_opp=$(((total_opp + 1) / 2))
     tr ' ' '\n' <"$1" | grep -v '^[[:space:]]*$' | sort -nr | head -n $mid_opp | tail -n 1
 }
+
+setfreq() {
+    local file="$1" target="$2" chosen=""
+    if [ -f "$file" ]; then
+        chosen=$(tr -s ' ' '\n' <"$file" |
+            awk -v t="$target" '
+                {diff = (t - $1 >= 0 ? t - $1 : $1 - t)}
+                NR==1 || diff < mindiff {mindiff = diff; val=$1}
+                END {print val}')
+    else
+        chosen="$target"
+    fi
+    echo "$chosen"
+}
 cpufreq_ppm_max_perf() {
     cluster=-1
     for path in /sys/devices/system/cpu/cpufreq/policy*; do
@@ -1188,17 +1202,11 @@ eco_mode() {
     if [ -d /proc/ppm ]; then
         cluster=0
         for path in /sys/devices/system/cpu/cpufreq/policy*; do
-            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-            cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-            new_maxfreq=$((cpu_maxfreq * limiter / 100))
-            target_minfreq=$((cpu_maxfreq * 40 / 100))
-            if [ -f "$path/scaling_available_frequencies" ]; then
-                new_minfreq=$(cat "$path/scaling_available_frequencies" |
-                    tr -s ' ' '\n' |
-                    awk -v t="$target_minfreq" '$1 <= t {val=$1} END{print val}')
-            else
-                new_minfreq=$target_minfreq
-            fi
+            cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+            new_max_target=$((cpu_maxfreq * limiter / 100))
+            target_min_target=$((cpu_maxfreq * 40 / 100))
+            new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
+            new_minfreq=$(setfreq "$path/scaling_available_frequencies" "$target_min_target")
             zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
             zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
             policy_name=$(basename "$path")
@@ -1207,19 +1215,14 @@ eco_mode() {
         done
     fi
     for path in /sys/devices/system/cpu/cpufreq/policy*; do
-        cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-        cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-        new_maxfreq=$((cpu_maxfreq * limiter / 100))
-        target_minfreq=$((cpu_maxfreq * 40 / 100))
-        if [ -f "$path/scaling_available_frequencies" ]; then
-            new_minfreq=$(cat "$path/scaling_available_frequencies" |
-                tr -s ' ' '\n' |
-                awk -v t="$target_minfreq" '$1 <= t {val=$1} END{print val}')
-        else
-            new_minfreq=$target_minfreq
-        fi
+        cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+        new_max_target=$((cpu_maxfreq * limiter / 100))
+        target_min_target=$((cpu_maxfreq * 40 / 100))
+        new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
+        new_minfreq=$(setfreq "$path/scaling_available_frequencies" "$target_min_target")
         zeshia "$new_maxfreq" "$path/scaling_max_freq"
         zeshia "$new_minfreq" "$path/scaling_min_freq"
+        chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
     done
 
     # VM Cache Pressure
