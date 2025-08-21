@@ -228,8 +228,52 @@ void cleanup_vmt(void) {
     systemv("pkill -f -9 sys.azenith-preloadbin2");
 }
 
+/***********************************************************************************
+ * Function Name      : cleanup
+ * Inputs             : None
+ * Returns            : None
+ * Description        : kill preload process
+ ***********************************************************************************/
 void cleanup(void) {
     log_zenith(LOG_INFO, "Killing VMT Process");
     systemv("pkill -f -9 sys.azenith-preloadbin");
     systemv("pkill -f -9 sys.azenith-preloadbin2");
+}
+
+/***********************************************************************************
+ * Function Name      : preload
+ * Inputs             : gamepkg
+ * Returns            : None
+ * Description        : Run preloads on loop
+ ***********************************************************************************/
+void preload(const char* pkg, unsigned int* LOOP_INTERVAL) {
+    char val[PROP_VALUE_MAX] = {0};
+    if (__system_property_get("persist.sys.azenithconf.APreload", val) > 0) {
+        pid_t pid = fork();
+        if (pid == 0) {
+            GamePreload(pkg);
+            _exit(0);
+        } else if (pid > 0) {
+            *LOOP_INTERVAL = 35;
+            did_log_preload = false;
+            preload_active = true;
+        } else {
+            log_zenith(LOG_ERROR, "Failed to fork process for GamePreload");
+        }
+    }
+}
+
+/***********************************************************************************
+ * Function Name      : stop preload
+ * Inputs             : none
+ * Returns            : None
+ * Description        : stop if preload is running
+ ***********************************************************************************/
+void stop_preloading(unsigned int* LOOP_INTERVAL) {
+    if (preload_active) {
+        cleanup();
+        *LOOP_INTERVAL = 15;
+        did_log_preload = true;
+        preload_active = false;
+    }
 }

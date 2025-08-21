@@ -16,54 +16,7 @@
 
 #include <AZenith.h>
 #include <libgen.h>
-#include <sys/system_properties.h>
-
-
 unsigned int LOOP_INTERVAL = 15;
-
-void start_preload_if_needed(const char* pkg, unsigned int* LOOP_INTERVAL) {
-    char val[PROP_VALUE_MAX] = {0};
-    if (__system_property_get("persist.sys.azenithconf.APreload", val) > 0) {
-        if (val[0] == '1') {
-
-            // Fork the preload task to run in a separate process
-            pid_t pid = fork();
-            if (pid == 0) {
-                // In the child process
-                GamePreload(pkg); // Run the preload logic in the background
-                _exit(0);         // Ensure the child exits cleanly without affecting the parent
-            } else if (pid > 0) {
-                // In the parent process
-                *LOOP_INTERVAL = 35; // Increase the loop interval for performance profile
-                preload_active = true;
-            } else {
-                // Fork failed
-                log_zenith(LOG_ERROR, "Failed to fork process for GamePreload");
-            }
-        } else {
-            *LOOP_INTERVAL = 15; // Reset the loop interval if preload is disabled
-            preload_active = false;
-        }
-    }
-}
-
-void stop_preload_if_active(unsigned int* LOOP_INTERVAL) {
-    if (preload_active) {
-        cleanup();
-        preload_active = false;
-        *LOOP_INTERVAL = 15; // reset
-    }
-}
-
-void startpr(const char* pkg) {
-    char val[PROP_VALUE_MAX] = {0};
-    if (__system_property_get("persist.sys.azenithconf.APreload", val) > 0) {
-        if (val[0] == '1') {
-            log_zenith(LOG_INFO, "Start Preloading game package %s", pkg);
-        }
-    }
-}
-
 char* gamestart = NULL;
 pid_t game_pid = 0;
 
@@ -134,6 +87,7 @@ int main(int argc, char* argv[]) {
     bool need_profile_checkup = false;
     MLBBState mlbb_is_running = MLBB_NOT_RUNNING;
     ProfileMode cur_mode = PERFCOMMON;
+    static bool did_log_preload = true;
 
     // Remove old logs before start initializing script
     systemv("rm -f /data/adb/.config/AZenith/debug/AZenith.log");
@@ -170,7 +124,7 @@ int main(int argc, char* argv[]) {
             gamestart = get_gamestart();
         } else if (game_pid != 0 && kill(game_pid, 0) == -1) [[clang::unlikely]] {
             log_zenith(LOG_INFO, "Game %s exited, resetting profile...", gamestart);
-            stop_preload_if_active(&LOOP_INTERVAL);
+            stop_preloading(&LOOP_INTERVAL);
             game_pid = 0;
             free(gamestart);
             gamestart = get_gamestart();
@@ -183,8 +137,9 @@ int main(int argc, char* argv[]) {
             mlbb_is_running = handle_mlbb(gamestart);
 
         if (gamestart && get_screenstate() && mlbb_is_running != MLBB_RUN_BG) {
+            // Preload on loop
+            preload(gamestart, &LOOP_INTERVAL);
             // Bail out if we already on performance profile
-            start_preload_if_needed(gamestart, &LOOP_INTERVAL);
             if (!need_profile_checkup && cur_mode == PERFORMANCE_PROFILE)
                 continue;
 
@@ -203,6 +158,10 @@ int main(int argc, char* argv[]) {
             log_zenith(LOG_INFO, "Applying performance profile for %s", gamestart);
             toast("Applying Performance Profile");
             run_profiler(PERFORMANCE_PROFILE);
+            if (!did_log_preload) {
+                log_zenith(LOG_INFO, "Start Preloading game package %s", gamestart);
+                did_log_preload = true;
+            }
             set_priority(game_pid);
             startpr(gamestart);
         } else if (get_low_power_state()) {
