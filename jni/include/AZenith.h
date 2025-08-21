@@ -24,7 +24,6 @@
 #define PROCESSED_FILE_LIST INTDIR "/preload/processed_files.txt"
 
 extern unsigned int LOOP_INTERVAL;
-extern bool did_log_preload;
 #define MAX_DATA_LENGTH 1024
 #define MAX_COMMAND_LENGTH 600
 #define MAX_OUTPUT_LENGTH 256
@@ -92,6 +91,7 @@ extern void cleanup_vmt(void);
 extern void cleanup(void);
 
 static bool preload_active = false;
+static bool did_log_preload = true;
 void sighandler(const int signal);
 char* trim_newline(char* string);
 void notify(const char* message);
