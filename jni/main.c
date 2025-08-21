@@ -163,7 +163,6 @@ int main(int argc, char* argv[]) {
                 did_log_preload = true;
             }
             set_priority(game_pid);
-            startpr(gamestart);
         } else if (get_low_power_state()) {
             // Bail out if we already on powersave profile
             if (cur_mode == ECO_MODE)

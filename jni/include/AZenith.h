@@ -85,7 +85,9 @@ extern pid_t game_pid;
 
 // Misc Utilities
 extern void GamePreload(const char* package);
-extern void cleanup_vmt(void); // from misc.c
+extern void preload(const char* pkg, unsigned int* LOOP_INTERVAL);
+extern void stop_preloading(unsigned int* LOOP_INTERVAL);
+extern void cleanup_vmt(void);
 extern void cleanup(void);
 
 static bool preload_active = false;
