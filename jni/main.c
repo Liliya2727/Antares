@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
     bool need_profile_checkup = false;
     MLBBState mlbb_is_running = MLBB_NOT_RUNNING;
     ProfileMode cur_mode = PERFCOMMON;
-    static bool did_log_preload = true;
+    bool did_log_preload = true;
 
     // Remove old logs before start initializing script
     systemv("rm -f /data/adb/.config/AZenith/debug/AZenith.log");

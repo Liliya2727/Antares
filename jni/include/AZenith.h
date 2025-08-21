@@ -24,6 +24,7 @@
 #define PROCESSED_FILE_LIST INTDIR "/preload/processed_files.txt"
 
 extern unsigned int LOOP_INTERVAL;
+extern bool did_log_preload;
 #define MAX_DATA_LENGTH 1024
 #define MAX_COMMAND_LENGTH 600
 #define MAX_OUTPUT_LENGTH 256
