@@ -36,15 +36,6 @@ AZLog() {
     fi
 }
 
-dlog() {
-    local timestamp message log_tag
-    timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
-    message="$1"
-    log_tag="AZenith"
-    echo "$timestamp I $log_tag: $message" >>"$logdaemonpath"
-    log -t "$log_tag" "$message"
-}
-
 zeshia() {
     local value="$1"
     local path="$2"
@@ -853,12 +844,64 @@ performance_profile() {
 
     # Set DND Mode
     if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
-        cmd notification set_dnd priority && dlog "DND enabled" || dlog "Failed to enable DND"
+        cmd notification set_dnd priority && sys.azenith-service_log AZenith I "DND enabled" || sys.azenith-service_log AZenith I "Failed to enable DND"
+    fi
+
+    clear_background_apps() {
+
+        # Get the list of running apps sorted by CPU usage (excluding system processes and the script itself)
+        app_list=$(top -n 1 -o %CPU | awk 'NR>7 {print $1}' | while read -r pid; do
+            pkg=$(cmd package list packages -U | awk -v pid="$pid" '$2 == pid {print $1}' | cut -d':' -f2)
+            if [ -n "$pkg" ] && ! echo "$pkg" | grep -qE "com.android.systemui|com.android.settings|$(basename "$0")"; then
+                echo "$pkg"
+            fi
+        done)
+
+        # Kill apps in order of highest CPU usage
+        for app in $app_list; do
+            am force-stop "$app"
+            AZLog "Stopped app: $app"
+        done
+
+        # force stop
+        am force-stop com.instagram.android
+        am force-stop com.android.vending
+        am force-stop app.grapheneos.camera
+        am force-stop com.google.android.gm
+        am force-stop com.google.android.apps.youtube.creator
+        am force-stop com.dolby.ds1appUI
+        am force-stop com.google.android.youtube
+        am force-stop com.twitter.android
+        am force-stop nekox.messenger
+        am force-stop com.shopee.id
+        am force-stop com.vanced.android.youtube
+        am force-stop com.speedsoftware.rootexplorer
+        am force-stop com.bukalapak.android
+        am force-stop org.telegram.messenger
+        am force-stop ru.zdevs.zarchiver
+        am force-stop com.android.chrome
+        am force-stop com.whatsapp.messenger
+        am force-stop com.google.android.GoogleCameraEng
+        am force-stop com.facebook.orca
+        am force-stop com.lazada.android
+        am force-stop com.android.camera
+        am force-stop com.android.settings
+        am force-stop com.franco.kernel
+        am force-stop com.telkomsel.telkomselcm
+        am force-stop com.facebook.katana
+        am force-stop com.instagram.android
+        am force-stop com.facebook.lite
+        am kill-all
+
+        sys.azenith-service_log AZenith I "Cleared background apps"
+    }
+    if [ "$(getprop persist.sys.azenithconf.clearbg)" -eq 1 ]; then
+        clear_background_apps &
     fi
 
     # Set Governor Game
     setgov "$game_cpu_gov"
-    dlog "Applying governor to : $game_cpu_gov"
+    sys.azenith-service_log AZenith I "Applying governor to : $game_cpu_gov"
 
     # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
     if [ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ]; then
@@ -870,7 +913,7 @@ performance_profile() {
                 zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
                 zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
                 policy_name=$(basename "$path")
-                dlog "Set $policy_name minfreq to $cpu_maxfreq"
+                sys.azenith-service_log AZenith I "Set $policy_name minfreq to $cpu_maxfreq"
             done
         fi
         for path in /sys/devices/system/cpu/*/cpufreq; do
@@ -888,7 +931,7 @@ performance_profile() {
                 zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
                 zeshiax "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
                 policy_name=$(basename "$path")
-                dlog "Set $policy_name minfreq to $cpu_minfreq"
+                sys.azenith-service_log AZenith I "Set $policy_name minfreq to $cpu_minfreq"
                 ((cluster++))
             done
         fi
@@ -946,58 +989,6 @@ performance_profile() {
         zeshia 0 "$cpucore/core_ctl/enable"
         zeshia 0 "$cpucore/core_ctl/core_ctl_boost"
     done
-
-    clear_background_apps() {
-
-        # Get the list of running apps sorted by CPU usage (excluding system processes and the script itself)
-        app_list=$(top -n 1 -o %CPU | awk 'NR>7 {print $1}' | while read -r pid; do
-            pkg=$(cmd package list packages -U | awk -v pid="$pid" '$2 == pid {print $1}' | cut -d':' -f2)
-            if [ -n "$pkg" ] && ! echo "$pkg" | grep -qE "com.android.systemui|com.android.settings|$(basename "$0")"; then
-                echo "$pkg"
-            fi
-        done)
-
-        # Kill apps in order of highest CPU usage
-        for app in $app_list; do
-            am force-stop "$app"
-            AZLog "Stopped app: $app"
-        done
-
-        # force stop
-        am force-stop com.instagram.android
-        am force-stop com.android.vending
-        am force-stop app.grapheneos.camera
-        am force-stop com.google.android.gm
-        am force-stop com.google.android.apps.youtube.creator
-        am force-stop com.dolby.ds1appUI
-        am force-stop com.google.android.youtube
-        am force-stop com.twitter.android
-        am force-stop nekox.messenger
-        am force-stop com.shopee.id
-        am force-stop com.vanced.android.youtube
-        am force-stop com.speedsoftware.rootexplorer
-        am force-stop com.bukalapak.android
-        am force-stop org.telegram.messenger
-        am force-stop ru.zdevs.zarchiver
-        am force-stop com.android.chrome
-        am force-stop com.whatsapp.messenger
-        am force-stop com.google.android.GoogleCameraEng
-        am force-stop com.facebook.orca
-        am force-stop com.lazada.android
-        am force-stop com.android.camera
-        am force-stop com.android.settings
-        am force-stop com.franco.kernel
-        am force-stop com.telkomsel.telkomselcm
-        am force-stop com.facebook.katana
-        am force-stop com.instagram.android
-        am force-stop com.facebook.lite
-        am kill-all
-
-        dlog "Cleared background apps"
-    }
-    if [ "$(getprop persist.sys.azenithconf.clearbg)" -eq 1 ]; then
-        clear_background_apps $
-    fi
 
     # Disable battery saver module
     [ -f /sys/module/battery_saver/parameters/enabled ] && {
@@ -1058,12 +1049,12 @@ balanced_profile() {
 
     # Disable DND
     if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
-        cmd notification set_dnd off && dlog "DND disabled" || dlog "Failed to disable DND"
+        cmd notification set_dnd off && sys.azenith-service_log AZenith I "DND disabled" || sys.azenith-service_log AZenith I "Failed to disable DND"
     fi
 
     # Restore CPU Scaling Governor
     setgov "$default_cpu_gov"
-    dlog "Applying governor to : $default_cpu_gov"
+    sys.azenith-service_log AZenith I "Applying governor to : $default_cpu_gov"
 
     # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
     if [ -d /proc/ppm ]; then
@@ -1074,7 +1065,7 @@ balanced_profile() {
             zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
             zeshiax "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
             policy_name=$(basename "$path")
-            dlog "Set $policy_name minfreq to $cpu_minfreq"
+            sys.azenith-service_log AZenith I "Set $policy_name minfreq to $cpu_minfreq"
             ((cluster++))
         done
     fi
@@ -1179,7 +1170,7 @@ eco_mode() {
     powersave_cpu_gov=$(load_powersave_governor)
 
     setgov "$powersave_cpu_gov"
-    dlog "Applying governor to : $powersave_cpu_gov"
+    sys.azenith-service_log AZenith I "Applying governor to : $powersave_cpu_gov"
 
     # Power level settings
     for pl in /sys/devices/system/cpu/perf; do
@@ -1191,7 +1182,7 @@ eco_mode() {
 
     # Disable DND
     if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
-        cmd notification set_dnd off && dlog "DND disabled" || dlog "Failed to disable DND"
+        cmd notification set_dnd off && sys.azenith-service_log AZenith I "DND disabled" || sys.azenith-service_log AZenith I "Failed to disable DND"
     fi
 
     # CPU Freq Limiter
@@ -1210,7 +1201,7 @@ eco_mode() {
             zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
             zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
             policy_name=$(basename "$path")
-            dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$new_minfreq"
+            sys.azenith-service_log AZenith I "Set $policy_name maxfreq=$new_maxfreq minfreq=$new_minfreq"
             ((cluster++))
         done
     fi
