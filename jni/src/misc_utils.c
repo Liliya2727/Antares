@@ -16,8 +16,6 @@
 
 #include <AZenith.h>
 #include <sys/system_properties.h>
-bool did_log_preload = true;
-bool preload_active = false;
 
 /***********************************************************************************
  * Function Name      : trim_newline

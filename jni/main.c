@@ -17,8 +17,6 @@
 #include <AZenith.h>
 #include <libgen.h>
 unsigned int LOOP_INTERVAL = 15;
-bool did_log_preload = true;
-bool preload_active = false;
 char* gamestart = NULL;
 pid_t game_pid = 0;
 
@@ -100,6 +98,7 @@ int main(int argc, char* argv[]) {
     systemv("setprop persist.sys.azenith.state running");
     notify("Initializing...");
     run_profiler(PERFCOMMON); // exec perfcommon
+    static bool did_notify_start = false;
     // Cleanup VMT before initiate it Again
     cleanup_vmt();
 
