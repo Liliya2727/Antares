@@ -89,20 +89,20 @@ int main(int argc, char* argv[]) {
     bool need_profile_checkup = false;
     MLBBState mlbb_is_running = MLBB_NOT_RUNNING;
     ProfileMode cur_mode = PERFCOMMON;
+    static bool did_notify_start = false;
 
     // Remove old logs before start initializing script
     systemv("rm -f /data/adb/.config/AZenith/debug/AZenith.log");
     systemv("rm -f /data/adb/.config/AZenith/debug/AZenithVerbose.log");
     systemv("rm -f /data/adb/.config/AZenith/debug/AZenithPR.log");
 
+    // Initiate Daemon
     log_zenith(LOG_INFO, "Daemon started as PID %d", getpid());
     setspid();
     systemv("setprop persist.sys.azenith.state running");
-    notify("Initializing...");
-    run_profiler(PERFCOMMON); // exec perfcommon
-    static bool did_notify_start = false;
-    // Cleanup VMT before initiate it Again
     cleanup_vmt();
+    notify("Initializing...");
+    run_profiler(PERFCOMMON);
 
     while (1) {
         sleep(LOOP_INTERVAL);
@@ -158,12 +158,12 @@ int main(int argc, char* argv[]) {
             need_profile_checkup = false;
             log_zenith(LOG_INFO, "Applying performance profile for %s", gamestart);
             toast("Applying Performance Profile");
-            run_profiler(PERFORMANCE_PROFILE);
+            set_priority(game_pid);
             if (!did_log_preload) {
                 log_zenith(LOG_INFO, "Start Preloading game package %s", gamestart);
                 did_log_preload = true;
             }
-            set_priority(game_pid);
+            run_profiler(PERFORMANCE_PROFILE);
         } else if (get_low_power_state()) {
             // Bail out if we already on powersave profile
             if (cur_mode == ECO_MODE)

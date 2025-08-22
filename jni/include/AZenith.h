@@ -88,8 +88,6 @@ extern void GamePreload(const char* package);
 extern void preload(const char* pkg, unsigned int* LOOP_INTERVAL);
 extern void stop_preloading(unsigned int* LOOP_INTERVAL);
 extern void cleanup_vmt(void);
-extern void cleanup(void);
-
 extern bool preload_active;
 extern bool did_log_preload;
 void sighandler(const int signal);

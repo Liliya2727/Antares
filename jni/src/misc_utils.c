@@ -223,21 +223,13 @@ void setspid(void) {
  * Description        : kill preload process
  ***********************************************************************************/
 void cleanup_vmt(void) {
-    log_zenith(LOG_INFO, "Cleaning up VMT Process");
-    systemv("pkill -f -9 sys.azenith-preloadbin");
-    systemv("pkill -f -9 sys.azenith-preloadbin2");
-}
-
-/***********************************************************************************
- * Function Name      : cleanup
- * Inputs             : None
- * Returns            : None
- * Description        : kill preload process
- ***********************************************************************************/
-void cleanup(void) {
-    log_zenith(LOG_INFO, "Killing VMT Process");
-    systemv("pkill -f -9 sys.azenith-preloadbin");
-    systemv("pkill -f -9 sys.azenith-preloadbin2");
+    int pr1 = systemv("/system/bin/toybox pidof sys.azenith-preloadbin > /dev/null 2>&1");
+    int pr2 = systemv("/system/bin/toybox pidof sys.azenith-preloadbin2 > /dev/null 2>&1");
+    if (pr1 == 0 || pr2 == 0) {
+        log_zenith(LOG_INFO, "Killing restover preload processes");
+        systemv("pkill -9 -f sys.azenith-preloadbin");
+        systemv("pkill -9 -f sys.azenith-preloadbin2");
+    }
 }
 
 /***********************************************************************************
@@ -273,7 +265,7 @@ void preload(const char* pkg, unsigned int* LOOP_INTERVAL) {
  ***********************************************************************************/
 void stop_preloading(unsigned int* LOOP_INTERVAL) {
     if (preload_active) {
-        cleanup();
+        cleanup_vmt();
         *LOOP_INTERVAL = 15;
         did_log_preload = true;
         preload_active = false;
