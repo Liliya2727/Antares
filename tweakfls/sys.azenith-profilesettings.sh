@@ -827,8 +827,8 @@ tensor_powersave() {
 
 performance_profile() {
     load_game_governor() {
-        if [ -n "$(getprop persist.sys.azenithconf.custom_game_cpu_gov)" ]; then
-            getprop persist.sys.azenithconf.custom_game_cpu_gov
+        if [ -n "$(getprop persist.sys.azenith.custom_game_cpu_gov)" ]; then
+            getprop persist.sys.azenith.custom_game_cpu_gov
         else
             echo "schedutil"
         fi
@@ -848,6 +848,11 @@ performance_profile() {
     # Set DND Mode
     if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
         cmd notification set_dnd priority && dlog "DND enabled" || dlog "Failed to enable DND"
+    fi
+
+    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
+        sys.azenith-utilityconf enableBypass
+        dlog "Bypass Charge Enabled"
     fi
 
     clear_background_apps() {
@@ -1011,11 +1016,6 @@ performance_profile() {
         zeshia NO_TTWU_QUEUE /sys/kernel/debug/sched_features
     fi
 
-    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
-        sys.azenith-utilityconf enableBypass
-        dlog "Bypass Charge Enabled"
-    fi
-
     case "$(getprop persist.sys.azenithdebug.soctype)" in
     1) mediatek_performance ;;
     2) snapdragon_performance ;;
@@ -1033,8 +1033,8 @@ performance_profile() {
 ###############################################
 balanced_profile() {
     load_default_governor() {
-        if [ -n "$(getprop persist.sys.azenithconf.custom_default_cpu_gov)" ]; then
-            getprop persist.sys.azenithconf.custom_default_cpu_gov
+        if [ -n "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ]; then
+            getprop persist.sys.azenith.custom_default_cpu_gov
         else
             echo "schedutil"
         fi
@@ -1054,6 +1054,11 @@ balanced_profile() {
     # Disable DND
     if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
         cmd notification set_dnd off && dlog "DND disabled" || dlog "Failed to disable DND"
+    fi
+
+    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
+        sys.azenith-utilityconf disableBypass
+        dlog "Bypass Charge Disabled"
     fi
 
     # Restore CPU Scaling Governor
@@ -1166,8 +1171,8 @@ balanced_profile() {
 eco_mode() {
     # Load Powersave Governor
     load_powersave_governor() {
-        if [ -n "$(getprop persist.sys.azenithconf.custom_powersave_cpu_gov)" ]; then
-            getprop persist.sys.azenithconf.custom_powersave_cpu_gov
+        if [ -n "$(getprop persist.sys.azenith.custom_powersave_cpu_gov)" ]; then
+            getprop persist.sys.azenith.custom_powersave_cpu_gov
         else
             echo "powersave"
         fi
@@ -1188,6 +1193,11 @@ eco_mode() {
     # Disable DND
     if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
         cmd notification set_dnd off && dlog "DND disabled" || dlog "Failed to disable DND"
+    fi
+
+    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
+        sys.azenith-utilityconf disableBypass
+        dlog "Bypass Charge Disabled"
     fi
 
     # CPU Freq Limiter
@@ -1240,11 +1250,6 @@ eco_mode() {
     if [ -f "/sys/kernel/debug/sched_features" ]; then
         zeshia NO_NEXT_BUDDY /sys/kernel/debug/sched_features
         zeshia NO_TTWU_QUEUE /sys/kernel/debug/sched_features
-    fi
-
-    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
-        sys.azenith-utilityconf disableBypass
-        dlog "Bypass Charge Disabled"
     fi
 
     case "$(getprop persist.sys.azenithdebug.soctype)" in
