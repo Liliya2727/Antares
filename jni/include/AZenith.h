@@ -90,8 +90,8 @@ extern void stop_preloading(unsigned int* LOOP_INTERVAL);
 extern void cleanup_vmt(void);
 extern void cleanup(void);
 
-extern bool preload_active = false;
-extern bool did_log_preload = true;
+extern bool preload_active;
+extern bool did_log_preload;
 void sighandler(const int signal);
 char* trim_newline(char* string);
 void notify(const char* message);

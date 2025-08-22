@@ -18,6 +18,8 @@
 #include <libgen.h>
 unsigned int LOOP_INTERVAL = 15;
 char* gamestart = NULL;
+bool preload_active = false;
+bool did_log_preload = true;
 pid_t game_pid = 0;
 
 int main(int argc, char* argv[]) {
