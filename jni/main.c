@@ -17,6 +17,8 @@
 #include <AZenith.h>
 #include <libgen.h>
 unsigned int LOOP_INTERVAL = 15;
+bool did_log_preload = true;
+bool preload_active = false;
 char* gamestart = NULL;
 pid_t game_pid = 0;
 
@@ -87,7 +89,6 @@ int main(int argc, char* argv[]) {
     bool need_profile_checkup = false;
     MLBBState mlbb_is_running = MLBB_NOT_RUNNING;
     ProfileMode cur_mode = PERFCOMMON;
-    bool did_log_preload = true;
 
     // Remove old logs before start initializing script
     systemv("rm -f /data/adb/.config/AZenith/debug/AZenith.log");

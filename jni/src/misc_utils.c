@@ -16,6 +16,8 @@
 
 #include <AZenith.h>
 #include <sys/system_properties.h>
+bool did_log_preload = true;
+bool preload_active = false;
 
 /***********************************************************************************
  * Function Name      : trim_newline
@@ -249,16 +251,18 @@ void cleanup(void) {
 void preload(const char* pkg, unsigned int* LOOP_INTERVAL) {
     char val[PROP_VALUE_MAX] = {0};
     if (__system_property_get("persist.sys.azenithconf.APreload", val) > 0) {
-        pid_t pid = fork();
-        if (pid == 0) {
-            GamePreload(pkg);
-            _exit(0);
-        } else if (pid > 0) {
-            *LOOP_INTERVAL = 35;
-            did_log_preload = false;
-            preload_active = true;
-        } else {
-            log_zenith(LOG_ERROR, "Failed to fork process for GamePreload");
+        if (val[0] == '1') {
+            pid_t pid = fork();
+            if (pid == 0) {
+                GamePreload(pkg);
+                _exit(0);
+            } else if (pid > 0) {
+                *LOOP_INTERVAL = 35;
+                did_log_preload = false;
+                preload_active = true;
+            } else {
+                log_zenith(LOG_ERROR, "Failed to fork process for GamePreload");
+            }
         }
     }
 }
