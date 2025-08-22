@@ -20,9 +20,6 @@
 
 MODDIR=${0%/*}
 logpath="/data/adb/.config/AZenith/debug/AZenithVerbose.log"
-GAME_GOV_FILE="/data/adb/.config/AZenith/custom_game_cpu_gov"
-DEFAULT_GOV_FILE="/data/adb/.config/AZenith/custom_default_cpu_gov"
-POWERSAVE_GOV_FILE="/data/adb/.config/AZenith/custom_powersave_cpu_gov"
 
 AZLog() {
     if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
@@ -39,7 +36,7 @@ dlog() {
     local message log_tag
     message="$1"
     log_tag="AZenith"
-    sys.azenith-service_log "$log_tag" I "$message"
+    sys.azenith-service_log "$log_tag" 1 "$message"
 }
 
 zeshia() {
@@ -830,8 +827,8 @@ tensor_powersave() {
 
 performance_profile() {
     load_game_governor() {
-        if [ -f "$GAME_GOV_FILE" ]; then
-            cat "$GAME_GOV_FILE"
+        if [ -n "$(getprop persist.sys.azenithconf.custom_game_cpu_gov)" ]; then
+            getprop persist.sys.azenithconf.custom_game_cpu_gov
         else
             echo "schedutil"
         fi
@@ -996,7 +993,6 @@ performance_profile() {
         zeshia 0 "$cpucore/core_ctl/core_ctl_boost"
     done
 
-
     # Disable battery saver module
     [ -f /sys/module/battery_saver/parameters/enabled ] && {
         if grep -qo '[0-9]\+' /sys/module/battery_saver/parameters/enabled; then
@@ -1017,9 +1013,10 @@ performance_profile() {
 
     if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
         sys.azenith-utilityconf enableBypass
+        dlog "Bypass Charge Enabled"
     fi
 
-    case "$(cat /data/adb/.config/AZenith/soctype)" in
+    case "$(getprop persist.sys.azenithdebug.soctype)" in
     1) mediatek_performance ;;
     2) snapdragon_performance ;;
     3) exynos_performance ;;
@@ -1036,8 +1033,8 @@ performance_profile() {
 ###############################################
 balanced_profile() {
     load_default_governor() {
-        if [ -f "$DEFAULT_GOV_FILE" ]; then
-            cat "$DEFAULT_GOV_FILE"
+        if [ -n "$(getprop persist.sys.azenithconf.custom_default_cpu_gov)" ]; then
+            getprop persist.sys.azenithconf.custom_default_cpu_gov
         else
             echo "schedutil"
         fi
@@ -1147,9 +1144,10 @@ balanced_profile() {
 
     if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
         sys.azenith-utilityconf disableBypass
+        dlog "Bypass Charge Disabled"
     fi
 
-    case "$(cat /data/adb/.config/AZenith/soctype)" in
+    case "$(getprop persist.sys.azenithdebug.soctype)" in
     1) mediatek_balance ;;
     2) snapdragon_balance ;;
     3) exynos_balance ;;
@@ -1168,8 +1166,8 @@ balanced_profile() {
 eco_mode() {
     # Load Powersave Governor
     load_powersave_governor() {
-        if [ -f "$POWERSAVE_GOV_FILE" ]; then
-            cat "$POWERSAVE_GOV_FILE"
+        if [ -n "$(getprop persist.sys.azenithconf.custom_powersave_cpu_gov)" ]; then
+            getprop persist.sys.azenithconf.custom_powersave_cpu_gov
         else
             echo "powersave"
         fi
@@ -1246,9 +1244,10 @@ eco_mode() {
 
     if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
         sys.azenith-utilityconf disableBypass
+        dlog "Bypass Charge Disabled"
     fi
 
-    case "$(cat /data/adb/.config/AZenith/soctype)" in
+    case "$(getprop persist.sys.azenithdebug.soctype)" in
     1) mediatek_powersave ;;
     2) snapdragon_powersave ;;
     3) exynos_powersave ;;
@@ -1266,24 +1265,44 @@ eco_mode() {
 
 initialize() {
 
-    MODULE_CONFIG="/data/adb/.config/AZenith"
-    CONF="/data/adb/.config/AZenith"
+    # Parse CPU Governor
     CPU="/sys/devices/system/cpu/cpu0/cpufreq"
-    # Parse Governor to use
     chmod 644 "$CPU/scaling_governor"
     default_gov=$(cat "$CPU/scaling_governor")
-    echo "$default_gov" >$CONF/default_cpu_gov
+    setprop persist.sys.azenith.default_cpu_gov "$default_gov"
 
-    # Fallback to normal gov if default is performance
-    if [ "$default_gov" == "performance" ] && [ ! -f $CONF/custom_default_cpu_gov ]; then
+    # Fallback if default is performance
+    if [ "$default_gov" == "performance" ] && [ -z "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ]; then
         for gov in scx schedhorizon walt sched_pixel sugov_ext uag schedplus energy_step schedutil interactive conservative powersave; do
-            grep -q "$gov" "$CPU/scaling_available_governors" && {
-                echo "$gov" >$CONF/default_cpu_gov
+            if grep -q "$gov" "$CPU/scaling_available_governors"; then
+                setprop persist.sys.azenith.default_cpu_gov "$gov"
                 default_gov="$gov"
                 break
-            }
+            fi
         done
     fi
+    
+    # Revert to normal CPU Governor
+    [ -n "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ] && default_gov=$(getprop persist.sys.azenith.custom_default_cpu_gov)
+    chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+    echo "$default_gov" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null
+    chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+    chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
+    [ -z "$(getprop persist.sys.azenith.custom_powersave_cpu_gov)" ] && setprop persist.sys.azenith.custom_powersave_cpu_gov "$default_gov"
+    [ -z "$(getprop persist.sys.azenith.custom_game_cpu_gov)" ] && setprop persist.sys.azenith.custom_game_cpu_gov "$default_gov"
+
+    # Restore saved display boost
+    val=$(getprop persist.sys.azenithconf.schemeconfig)
+    r=$(echo $val | awk '{print $1}')
+    g=$(echo $val | awk '{print $2}')
+    b=$(echo $val | awk '{print $3}')
+    s=$(echo $val | awk '{print $4}')
+    rf=$(awk "BEGIN {print $r/1000}")
+    gf=$(awk "BEGIN {print $g/1000}")
+    bf=$(awk "BEGIN {print $b/1000}")
+    sf=$(awk "BEGIN {print $s/1000}")
+    service call SurfaceFlinger 1015 i32 1 f $rf f 0 f 0 f 0 f 0 f $gf f 0 f 0 f 0 f 0 f $bf f 0 f 0 f 0 f 0 f 1
+    service call SurfaceFlinger 1022 f $sf
 
     jit() {
         for app in $(cmd package list packages | cut -f 2 -d ":"); do
@@ -1294,16 +1313,6 @@ initialize() {
         done
         disown
     }
-
-    # Revert governor
-    custom_gov="$CONF/custom_default_cpu_gov"
-    [ -f "$custom_gov" ] && default_gov=$(cat "$custom_gov")
-    chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-    echo "$default_gov" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-    chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-    chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
-    [ ! -f $CONF/custom_powersave_cpu_gov ] && echo "$default_gov" >$CONF/custom_powersave_cpu_gov
-    [ ! -f $CONF/custom_game_cpu_gov ] && echo "$default_gov" >$CONF/custom_game_cpu_gov
 
     # Disable all kernel panic mechanisms
     for param in hung_task_timeout_secs panic_on_oom panic_on_oops panic softlockup_panic; do

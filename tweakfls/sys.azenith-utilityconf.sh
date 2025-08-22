@@ -20,7 +20,6 @@
 
 MODDIR=${0%/*}
 logpath="/data/adb/.config/AZenith/debug/AZenithVerbose.log"
-logdaemonpath="/data/adb/.config/AZenith/debug/AZenith.log"
 
 AZLog() {
     if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
@@ -34,12 +33,10 @@ AZLog() {
 }
 
 dlog() {
-    local timestamp message log_tag
-    timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
+    local message log_tag
     message="$1"
     log_tag="AZenith"
-    echo "$timestamp I $log_tag: $message" >>"$logdaemonpath"
-    log -t "$log_tag" "$message"
+    sys.azenith-service_log "$log_tag" 1 "$message"
 }
 
 zeshia() {
@@ -101,7 +98,6 @@ zeshiax() {
     fi
 }
 
-
 setsgov() {
 	chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 	echo "$1" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
@@ -128,10 +124,11 @@ disablevsync() {
     esac
 }
 
-vsync_value="$(cat /data/adb/.config/AZenith/customVsync)"
+vsync_value="$(getprop persist.sys.azenithconf.vsync)"
 case "$vsync_value" in
 60hz | 90hz | 120hz)
     disablevsync "$vsync_value"
+    dlog "VSync Restored: $vsync_value"
     ;;
 Disabled)
     ;;
