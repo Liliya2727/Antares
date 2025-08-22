@@ -20,7 +20,6 @@
 
 MODDIR=${0%/*}
 logpath="/data/adb/.config/AZenith/debug/AZenithVerbose.log"
-logdaemonpath="/data/adb/.config/AZenith/debug/AZenith.log"
 GAME_GOV_FILE="/data/adb/.config/AZenith/custom_game_cpu_gov"
 DEFAULT_GOV_FILE="/data/adb/.config/AZenith/custom_default_cpu_gov"
 POWERSAVE_GOV_FILE="/data/adb/.config/AZenith/custom_powersave_cpu_gov"
@@ -34,6 +33,13 @@ AZLog() {
         echo "$timestamp I $log_tag: $message" >>"$logpath"
         log -t "$log_tag" "$message"
     fi
+}
+
+dlog() {
+    local message log_tag
+    message="$1"
+    log_tag="AZenith"
+    sys.azenith-service_log "$log_tag" I "$message"
 }
 
 zeshia() {
@@ -844,7 +850,7 @@ performance_profile() {
 
     # Set DND Mode
     if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
-        cmd notification set_dnd priority && sys.azenith-service_log AZenith I "DND enabled" || sys.azenith-service_log AZenith I "Failed to enable DND"
+        cmd notification set_dnd priority && dlog "DND enabled" || dlog "Failed to enable DND"
     fi
 
     clear_background_apps() {
@@ -893,15 +899,15 @@ performance_profile() {
         am force-stop com.facebook.lite
         am kill-all
 
-        sys.azenith-service_log AZenith I "Cleared background apps"
+        dlog "Cleared background apps"
     }
     if [ "$(getprop persist.sys.azenithconf.clearbg)" -eq 1 ]; then
-        clear_background_apps &
+        clear_background_apps $
     fi
 
     # Set Governor Game
     setgov "$game_cpu_gov"
-    sys.azenith-service_log AZenith I "Applying governor to : $game_cpu_gov"
+    dlog "Applying governor to : $game_cpu_gov"
 
     # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
     if [ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ]; then
@@ -913,7 +919,7 @@ performance_profile() {
                 zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
                 zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
                 policy_name=$(basename "$path")
-                sys.azenith-service_log AZenith I "Set $policy_name minfreq to $cpu_maxfreq"
+                dlog "Set $policy_name minfreq to $cpu_maxfreq"
             done
         fi
         for path in /sys/devices/system/cpu/*/cpufreq; do
@@ -931,7 +937,7 @@ performance_profile() {
                 zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
                 zeshiax "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
                 policy_name=$(basename "$path")
-                sys.azenith-service_log AZenith I "Set $policy_name minfreq to $cpu_minfreq"
+                dlog "Set $policy_name minfreq to $cpu_minfreq"
                 ((cluster++))
             done
         fi
@@ -989,6 +995,7 @@ performance_profile() {
         zeshia 0 "$cpucore/core_ctl/enable"
         zeshia 0 "$cpucore/core_ctl/core_ctl_boost"
     done
+
 
     # Disable battery saver module
     [ -f /sys/module/battery_saver/parameters/enabled ] && {
@@ -1049,12 +1056,12 @@ balanced_profile() {
 
     # Disable DND
     if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
-        cmd notification set_dnd off && sys.azenith-service_log AZenith I "DND disabled" || sys.azenith-service_log AZenith I "Failed to disable DND"
+        cmd notification set_dnd off && dlog "DND disabled" || dlog "Failed to disable DND"
     fi
 
     # Restore CPU Scaling Governor
     setgov "$default_cpu_gov"
-    sys.azenith-service_log AZenith I "Applying governor to : $default_cpu_gov"
+    dlog "Applying governor to : $default_cpu_gov"
 
     # Restore Max CPU Frequency if its from ECO Mode or using Limit Frequency
     if [ -d /proc/ppm ]; then
@@ -1065,7 +1072,7 @@ balanced_profile() {
             zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
             zeshiax "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
             policy_name=$(basename "$path")
-            sys.azenith-service_log AZenith I "Set $policy_name minfreq to $cpu_minfreq"
+            dlog "Set $policy_name minfreq to $cpu_minfreq"
             ((cluster++))
         done
     fi
@@ -1170,7 +1177,7 @@ eco_mode() {
     powersave_cpu_gov=$(load_powersave_governor)
 
     setgov "$powersave_cpu_gov"
-    sys.azenith-service_log AZenith I "Applying governor to : $powersave_cpu_gov"
+    dlog "Applying governor to : $powersave_cpu_gov"
 
     # Power level settings
     for pl in /sys/devices/system/cpu/perf; do
@@ -1182,7 +1189,7 @@ eco_mode() {
 
     # Disable DND
     if [ "$(getprop persist.sys.azenithconf.dnd)" -eq 1 ]; then
-        cmd notification set_dnd off && sys.azenith-service_log AZenith I "DND disabled" || sys.azenith-service_log AZenith I "Failed to disable DND"
+        cmd notification set_dnd off && dlog "DND disabled" || dlog "Failed to disable DND"
     fi
 
     # CPU Freq Limiter
@@ -1201,7 +1208,7 @@ eco_mode() {
             zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
             zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
             policy_name=$(basename "$path")
-            sys.azenith-service_log AZenith I "Set $policy_name maxfreq=$new_maxfreq minfreq=$new_minfreq"
+            dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$new_minfreq"
             ((cluster++))
         done
     fi
