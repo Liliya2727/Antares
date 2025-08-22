@@ -100,7 +100,6 @@ int main(int argc, char* argv[]) {
     systemv("setprop persist.sys.azenith.state running");
     notify("Initializing...");
     run_profiler(PERFCOMMON); // exec perfcommon
-    static bool did_notify_start = false;
     // Cleanup VMT before initiate it Again
     cleanup_vmt();
 
