@@ -1147,11 +1147,6 @@ balanced_profile() {
         zeshia TTWU_QUEUE /sys/kernel/debug/sched_features
     fi
 
-    if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
-        sys.azenith-utilityconf disableBypass
-        dlog "Bypass Charge Disabled"
-    fi
-
     case "$(getprop persist.sys.azenithdebug.soctype)" in
     1) mediatek_balance ;;
     2) snapdragon_balance ;;
