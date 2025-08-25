@@ -1016,6 +1016,12 @@ performance_profile() {
         zeshia NO_TTWU_QUEUE /sys/kernel/debug/sched_features
     fi
 
+    if [ "$(getprop persist.sys.azenithconf.scale)" -eq 1 ]; then
+        hg=$(getprop persist.sys.azenithconf.hgsize)
+        wd=$(getprop persist.sys.azenithconf.wdsize)
+        wm size "$wm"x"$wd"
+    fi
+
     case "$(getprop persist.sys.azenithdebug.soctype)" in
     1) mediatek_performance ;;
     2) snapdragon_performance ;;
@@ -1145,6 +1151,10 @@ balanced_profile() {
         zeshia NEXT_BUDDY /sys/kernel/debug/sched_features
         #  Schedule tasks on their origin CPU if possible
         zeshia TTWU_QUEUE /sys/kernel/debug/sched_features
+    fi
+
+    if [ "$(getprop persist.sys.azenithconf.scale)" -eq 1 ]; then
+        wm size reset
     fi
 
     case "$(getprop persist.sys.azenithdebug.soctype)" in
@@ -1281,7 +1291,7 @@ initialize() {
             fi
         done
     fi
-    
+
     # Revert to normal CPU Governor
     [ -n "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ] && default_gov=$(getprop persist.sys.azenith.custom_default_cpu_gov)
     chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
