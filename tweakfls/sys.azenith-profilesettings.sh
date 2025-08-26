@@ -1019,7 +1019,7 @@ performance_profile() {
     if [ "$(getprop persist.sys.azenithconf.scale)" -eq 1 ]; then
         hg=$(getprop persist.sys.azenithconf.hgsize)
         wd=$(getprop persist.sys.azenithconf.wdsize)
-        wm size "$wm"x"$wd"
+        wm size "$wd"x"$hg"
     fi
 
     case "$(getprop persist.sys.azenithdebug.soctype)" in
