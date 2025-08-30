@@ -58,7 +58,6 @@ void GamePreload(const char* package) {
         return;
     }
 
-    // Resolve APK path
     char apk_path[256] = {0};
     char cmd_apk[512];
     snprintf(cmd_apk, sizeof(cmd_apk), "cmd package path %s | head -n1 | cut -d: -f2", package);
@@ -72,7 +71,6 @@ void GamePreload(const char* package) {
     pclose(apk);
     apk_path[strcspn(apk_path, "\n")] = 0;
 
-    // ==== lib path preload (vmt -dL /path/to/lib.so) ====
     char* last_slash = strrchr(apk_path, '/');
     if (!last_slash)
         return;
@@ -104,7 +102,6 @@ void GamePreload(const char* package) {
             while (fgets(lib, sizeof(lib), pipe)) {
                 lib[strcspn(lib, "\n")] = 0;
 
-                // Check already processed
                 rewind(processed);
                 char check[512];
                 bool already_done = false;
@@ -131,7 +128,6 @@ void GamePreload(const char* package) {
         }
     }
 
-    // ==== split apk streaming preload (vmt -dL - via systemv) ====
     char split_cmd[512];
     snprintf(split_cmd, sizeof(split_cmd), "ls %s/*.apk 2>/dev/null", apk_path);
     FILE* apk_list = popen(split_cmd, "r");
@@ -156,7 +152,6 @@ void GamePreload(const char* package) {
         while (fgets(innerlib, sizeof(innerlib), liblist)) {
             innerlib[strcspn(innerlib, "\n")] = 0;
 
-            // Check match using strings/regex
             char check_cmd[768];
             snprintf(check_cmd, sizeof(check_cmd), "unzip -p \"%s\" \"%s\" | strings | grep -Eq \"%s\"", apk_file, innerlib, GAME_LIB);
             int match = system(check_cmd);
