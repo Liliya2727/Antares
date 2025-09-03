@@ -104,8 +104,6 @@ bool return_true(void);
 bool return_false(void);
 
 // Preload
-bool is_processed(const char* lib);
-void add_processed(const char* lib);
 int so_visitor(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf);
 void scan_split_apk(const char* apk_file);
 

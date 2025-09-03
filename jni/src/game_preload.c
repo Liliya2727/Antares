@@ -18,56 +18,14 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <ftw.h>
+#include <miniz.h>
 #include <regex.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <miniz.h>
 #include <unistd.h>
 
-static regex_t g_regex;
-static FILE* g_processed_fp = NULL;
-static char** g_processed_libs = NULL;
-static size_t g_processed_count = 0;
-
-/***********************************************************************************
- * Function Name      : is_processed
- * Inputs             : lib (const char *) - Path of the library to check
- * Returns            : bool - true if the library is already in the processed list,
- *                              false otherwise
- * Description        : Checks whether a given library path has already been
- *                      preloaded and recorded in the in-memory processed list.
- * Notes              : 
- *   - Uses g_processed_libs[] and g_processed_count as global state.
- *   - String comparison is exact (full path match required).
- *   - Intended to avoid duplicate preloads.
- ***********************************************************************************/
-bool is_processed(const char* lib) {
-    for (size_t i = 0; i < g_processed_count; i++) {
-        if (strcmp(lib, g_processed_libs[i]) == 0)
-            return true;
-    }
-    return false;
-}
-
-/***********************************************************************************
- * Function Name      : add_to_processed
- * Inputs             : lib (const char *) - Path of the library to mark as processed
- * Returns            : void
- * Description        : Appends a library path to the PROCESSED_FILE_LIST to prevent
- *                      redundant preloading of the same .so file.
- * Notes              : 
- *   - Opens the processed file list in append mode.
- *   - Each library is stored as a newline-terminated string.
- *   - Caller is responsible for ensuring the library path is valid.
- ***********************************************************************************/
-void add_processed(const char* lib) {
-    g_processed_libs = realloc(g_processed_libs, (g_processed_count + 1) * sizeof(char*));
-    g_processed_libs[g_processed_count++] = strdup(lib);
-    fprintf(g_processed_fp, "%s\n", lib);
-    fflush(g_processed_fp);
-}
 
 /***********************************************************************************
  * Function Name      : so_visitor
@@ -79,7 +37,7 @@ void add_processed(const char* lib) {
  * Description        : nftw() callback used to scan .so files in directories.
  *                      Matches library filenames against GAME_LIB patterns and
  *                      preloads valid entries while avoiding duplicates.
- * Notes              : 
+ * Notes              :
  *   - Called automatically by nftw() during directory traversal.
  *   - Only processes files ending with ".so".
  *   - Skips already processed entries listed in PROCESSED_FILE_LIST.
@@ -108,7 +66,7 @@ int so_visitor(const char* fpath, const struct stat* sb, int typeflag, struct FT
  * Description        : Opens the APK (ZIP) with miniz, iterates over all entries,
  *                      and checks for .so libraries. Matches against GAME_LIB regex,
  *                      and preloads valid shared libraries.
- * Notes              : 
+ * Notes              :
  *   - Avoids libzip/unzip external dependencies.
  *   - Uses in-memory buffer for reading .so entries.
  *   - Spawns preload binary through a pipe.
@@ -229,25 +187,18 @@ void GamePreload(const char* package) {
         return;
     *last_slash = '\0';
 
-    // Open processed list
-    g_processed_fp = fopen(PROCESSED_FILE_LIST, "a+");
-    if (!g_processed_fp) {
+    // Open processed list (append+read like old version)
+    FILE* processed = fopen(PROCESSED_FILE_LIST, "a+");
+    if (!processed) {
         log_preload(LOG_ERROR, "Cannot open processed file list");
         return;
     }
 
-    // Load processed libs into memory
-    char line[512];
-    while (fgets(line, sizeof(line), g_processed_fp)) {
-        line[strcspn(line, "\n")] = 0;
-        g_processed_libs = realloc(g_processed_libs, (g_processed_count + 1) * sizeof(char*));
-        g_processed_libs[g_processed_count++] = strdup(line);
-    }
-
     // Compile regex
-    if (regcomp(&g_regex, GAME_LIB, REG_EXTENDED | REG_NOSUB) != 0) {
+    regex_t regex;
+    if (regcomp(&regex, GAME_LIB, REG_EXTENDED | REG_NOSUB) != 0) {
         log_preload(LOG_ERROR, "Regex compile failed");
-        fclose(g_processed_fp);
+        fclose(processed);
         return;
     }
 
@@ -273,9 +224,8 @@ void GamePreload(const char* package) {
     }
 
     // Cleanup
-    regfree(&g_regex);
-    fclose(g_processed_fp);
-    for (size_t i = 0; i < g_processed_count; i++)
-        free(g_processed_libs[i]);
-    free(g_processed_libs);
+    regfree(&regex);
+    fclose(processed);
+
+    return 0;
 }
