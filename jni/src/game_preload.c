@@ -23,8 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <miniz.h>
 #include <unistd.h>
-#include <zip.h>
 
 static regex_t g_regex;
 static FILE* g_processed_fp = NULL;
@@ -110,68 +110,84 @@ int so_visitor(const char* fpath, const struct stat* sb, int typeflag, struct FT
  *   - Skips already processed files based on PROCESSED_FILE_LIST.
  *   - Invoked by GamePreload() as part of game library preloading.
  ***********************************************************************************/
-void scan_split_apk(const char* apk_file) {
-    int err = 0;
-    zip_t* za = zip_open(apk_file, 0, &err);
-    if (!za)
-        return;
+#include "miniz.h"
+#include <regex.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
-    zip_int64_t n = zip_get_num_entries(za, 0);
-    for (zip_int64_t i = 0; i < n; i++) {
-        const char* name = zip_get_name(za, i, 0);
+extern regex_t g_regex;  // your global regex
+
+/***********************************************************************************
+ * Function Name      : scan_split_apk
+ * Inputs             : apk_file (const char *) - Path to the APK file
+ * Returns            : void
+ * Description        : Opens the APK (ZIP) with miniz, iterates over all entries,
+ *                      and checks for .so libraries. Matches against GAME_LIB regex,
+ *                      and preloads valid shared libraries.
+ * Notes              : 
+ *   - Avoids libzip/unzip external dependencies.
+ *   - Uses in-memory buffer for reading .so entries.
+ *   - Spawns preload binary through a pipe.
+ ***********************************************************************************/
+void scan_split_apk(const char* apk_file) {
+    mz_zip_archive zip;
+    memset(&zip, 0, sizeof(zip));
+
+    if (!mz_zip_reader_init_file(&zip, apk_file, 0)) {
+        fprintf(stderr, "Failed to open APK: %s\n", apk_file);
+        return;
+    }
+
+    int num_files = (int)mz_zip_reader_get_num_files(&zip);
+    for (int i = 0; i < num_files; i++) {
+        mz_zip_archive_file_stat st;
+        if (!mz_zip_reader_file_stat(&zip, i, &st))
+            continue;
+
+        const char* name = st.m_filename;
         if (!name || !strstr(name, ".so"))
             continue;
 
-        struct zip_stat st;
-        zip_stat_init(&st);
-        if (zip_stat_index(za, i, 0, &st) == 0) {
-            zip_file_t* zf = zip_fopen_index(za, i, 0);
-            if (!zf)
-                continue;
+        size_t size = 0;
+        void* buf = mz_zip_reader_extract_to_heap(&zip, i, &size, 0);
+        if (!buf)
+            continue;
 
-            char* buf = malloc(st.size);
-            if (!buf) {
-                zip_fclose(zf);
-                continue;
-            }
-
-            zip_fread(zf, buf, st.size);
-            zip_fclose(zf);
-
-            // Regex match on path or file contents
-            bool match = (regexec(&g_regex, name, 0, NULL, 0) == 0);
-            if (!match) {
-                if (regexec(&g_regex, buf, 0, NULL, 0) == 0) {
-                    match = true;
-                }
-            }
-
-            if (match) {
-                // Preload from buffer
-                int fds[2];
-                if (pipe(fds) == 0) {
-                    pid_t pid = fork();
-                    if (pid == 0) {
-                        dup2(fds[0], STDIN_FILENO);
-                        close(fds[0]);
-                        close(fds[1]);
-                        execlp("sys.azenith-preloadbin2", "sys.azenith-preloadbin2", "-dL", "-", NULL);
-                        _exit(1);
-                    } else if (pid > 0) {
-                        close(fds[0]);
-                        write(fds[1], buf, st.size);
-                        close(fds[1]);
-                        waitpid(pid, NULL, 0);
-                        log_preload(LOG_INFO, "Preloaded Game libs %s -> %s", apk_file, name);
-                    }
-                }
-            }
-
-            free(buf);
+        // Regex match on path or file contents
+        bool match = (regexec(&g_regex, name, 0, NULL, 0) == 0);
+        if (!match) {
+            if (regexec(&g_regex, buf, 0, NULL, 0) == 0)
+                match = true;
         }
+
+        if (match) {
+            int fds[2];
+            if (pipe(fds) == 0) {
+                pid_t pid = fork();
+                if (pid == 0) {
+                    dup2(fds[0], STDIN_FILENO);
+                    close(fds[0]);
+                    close(fds[1]);
+                    execlp("sys.azenith-preloadbin2", "sys.azenith-preloadbin2", "-dL", "-", NULL);
+                    _exit(1);
+                } else if (pid > 0) {
+                    close(fds[0]);
+                    write(fds[1], buf, size);
+                    close(fds[1]);
+                    waitpid(pid, NULL, 0);
+                    printf("Preloaded Game libs %s -> %s\n", apk_file, name);
+                }
+            }
+        }
+
+        mz_free(buf);
     }
 
-    zip_close(za);
+    mz_zip_reader_end(&zip);
 }
 
 /***********************************************************************************
