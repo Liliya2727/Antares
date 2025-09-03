@@ -84,7 +84,7 @@ void add_processed(const char* lib) {
  *   - Only processes files ending with ".so".
  *   - Skips already processed entries listed in PROCESSED_FILE_LIST.
  ***********************************************************************************/
-int so_visitor(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf) {
+int so_visitor(const char* fpath, int typeflag) {
     if (typeflag == FTW_F && strstr(fpath, ".so")) {
         if (!is_processed(fpath) && regexec(&g_regex, fpath, 0, NULL, 0) == 0) {
             char cmd[600];
