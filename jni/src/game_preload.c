@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+static regex_t g_regex;
 /***********************************************************************************
  * Function Name      : so_visitor
  * Inputs             : fpath (const char *)  - Path of the current file
