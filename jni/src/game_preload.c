@@ -84,7 +84,10 @@ void add_processed(const char* lib) {
  *   - Only processes files ending with ".so".
  *   - Skips already processed entries listed in PROCESSED_FILE_LIST.
  ***********************************************************************************/
-int so_visitor(const char* fpath, int typeflag) {
+int so_visitor(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf) {
+    (void)sb;
+    (void)ftwbuf;
+
     if (typeflag == FTW_F && strstr(fpath, ".so")) {
         if (!is_processed(fpath) && regexec(&g_regex, fpath, 0, NULL, 0) == 0) {
             char cmd[600];
@@ -97,29 +100,6 @@ int so_visitor(const char* fpath, int typeflag) {
     }
     return 0;
 }
-
-/***********************************************************************************
- * Function Name      : ScanSplitAPKs
- * Inputs             : package (const char *) - Package name of the target app
- * Returns            : void
- * Description        : Scans base and split APKs of the given package using libzip.
- *                      Iterates over archive entries, filters shared libraries (.so)
- *                      against GAME_LIB patterns, and preloads valid matches.
- * Notes              : 
- *   - Avoids using external commands like unzip/awk (faster and safer).
- *   - Skips already processed files based on PROCESSED_FILE_LIST.
- *   - Invoked by GamePreload() as part of game library preloading.
- ***********************************************************************************/
-#include "miniz.h"
-#include <regex.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-
-extern regex_t g_regex;  // your global regex
 
 /***********************************************************************************
  * Function Name      : scan_split_apk
