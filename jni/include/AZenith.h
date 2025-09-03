@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/file.h>
+#include <sys/stat.h>
+#include <ftw.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <time.h>

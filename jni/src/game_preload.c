@@ -43,7 +43,7 @@ static size_t g_processed_count = 0;
  *   - String comparison is exact (full path match required).
  *   - Intended to avoid duplicate preloads.
  ***********************************************************************************/
-static bool is_processed(const char* lib) {
+bool is_processed(const char* lib) {
     for (size_t i = 0; i < g_processed_count; i++) {
         if (strcmp(lib, g_processed_libs[i]) == 0)
             return true;
@@ -62,7 +62,7 @@ static bool is_processed(const char* lib) {
  *   - Each library is stored as a newline-terminated string.
  *   - Caller is responsible for ensuring the library path is valid.
  ***********************************************************************************/
-static void add_processed(const char* lib) {
+void add_processed(const char* lib) {
     g_processed_libs = realloc(g_processed_libs, (g_processed_count + 1) * sizeof(char*));
     g_processed_libs[g_processed_count++] = strdup(lib);
     fprintf(g_processed_fp, "%s\n", lib);
@@ -84,7 +84,7 @@ static void add_processed(const char* lib) {
  *   - Only processes files ending with ".so".
  *   - Skips already processed entries listed in PROCESSED_FILE_LIST.
  ***********************************************************************************/
-static int so_visitor(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf) {
+int so_visitor(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf) {
     if (typeflag == FTW_F && strstr(fpath, ".so")) {
         if (!is_processed(fpath) && regexec(&g_regex, fpath, 0, NULL, 0) == 0) {
             char cmd[600];
@@ -110,7 +110,7 @@ static int so_visitor(const char* fpath, const struct stat* sb, int typeflag, st
  *   - Skips already processed files based on PROCESSED_FILE_LIST.
  *   - Invoked by GamePreload() as part of game library preloading.
  ***********************************************************************************/
-static void scan_split_apk(const char* apk_file) {
+void scan_split_apk(const char* apk_file) {
     int err = 0;
     zip_t* za = zip_open(apk_file, 0, &err);
     if (!za)
