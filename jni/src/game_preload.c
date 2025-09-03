@@ -26,7 +26,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-
 /***********************************************************************************
  * Function Name      : so_visitor
  * Inputs             : fpath (const char *)  - Path of the current file
@@ -47,14 +46,33 @@ int so_visitor(const char* fpath, const struct stat* sb, int typeflag, struct FT
     (void)ftwbuf;
 
     if (typeflag == FTW_F && strstr(fpath, ".so")) {
-        if (!is_processed(fpath) && regexec(&g_regex, fpath, 0, NULL, 0) == 0) {
+        FILE* processed = fopen(PROCESSED_FILE_LIST, "a+");
+        if (!processed) {
+            log_preload(LOG_ERROR, "Cannot open processed file list");
+            return 0;
+        }
+
+        bool already_done = false;
+        char check[512];
+        rewind(processed);
+        while (fgets(check, sizeof(check), processed)) {
+            check[strcspn(check, "\n")] = 0;
+            if (strcmp(fpath, check) == 0) {
+                already_done = true;
+                break;
+            }
+        }
+
+        if (!already_done && regexec(&g_regex, fpath, 0, NULL, 0) == 0) {
             char cmd[600];
             snprintf(cmd, sizeof(cmd), "sys.azenith-preloadbin -dL \"%s\"", fpath);
             if (systemv(cmd) == 0) {
-                add_processed(fpath);
+                fprintf(processed, "%s\n", fpath);
                 log_preload(LOG_INFO, "Preloaded native: %s", fpath);
             }
         }
+
+        fclose(processed);
     }
     return 0;
 }
@@ -76,7 +94,7 @@ void scan_split_apk(const char* apk_file) {
     memset(&zip, 0, sizeof(zip));
 
     if (!mz_zip_reader_init_file(&zip, apk_file, 0)) {
-        fprintf(stderr, "Failed to open APK: %s\n", apk_file);
+        log_preload(LOG_WARN, "Failed to open APK: %s", apk_file);
         return;
     }
 
@@ -95,7 +113,6 @@ void scan_split_apk(const char* apk_file) {
         if (!buf)
             continue;
 
-        // Regex match on path or file contents
         bool match = (regexec(&g_regex, name, 0, NULL, 0) == 0);
         if (!match) {
             if (regexec(&g_regex, buf, 0, NULL, 0) == 0)
@@ -103,23 +120,45 @@ void scan_split_apk(const char* apk_file) {
         }
 
         if (match) {
-            int fds[2];
-            if (pipe(fds) == 0) {
-                pid_t pid = fork();
-                if (pid == 0) {
-                    dup2(fds[0], STDIN_FILENO);
-                    close(fds[0]);
-                    close(fds[1]);
-                    execlp("sys.azenith-preloadbin2", "sys.azenith-preloadbin2", "-dL", "-", NULL);
-                    _exit(1);
-                } else if (pid > 0) {
-                    close(fds[0]);
-                    write(fds[1], buf, size);
-                    close(fds[1]);
-                    waitpid(pid, NULL, 0);
-                    printf("Preloaded Game libs %s -> %s\n", apk_file, name);
+            // Check if already processed
+            FILE* processed = fopen(PROCESSED_FILE_LIST, "a+");
+            if (!processed) {
+                mz_free(buf);
+                continue;
+            }
+
+            bool already_done = false;
+            char check[512];
+            rewind(processed);
+            while (fgets(check, sizeof(check), processed)) {
+                check[strcspn(check, "\n")] = 0;
+                if (strcmp(name, check) == 0) {
+                    already_done = true;
+                    break;
                 }
             }
+
+            if (!already_done) {
+                int fds[2];
+                if (pipe(fds) == 0) {
+                    pid_t pid = fork();
+                    if (pid == 0) {
+                        dup2(fds[0], STDIN_FILENO);
+                        close(fds[0]);
+                        close(fds[1]);
+                        execlp("sys.azenith-preloadbin2", "sys.azenith-preloadbin2", "-dL", "-", NULL);
+                        _exit(1);
+                    } else if (pid > 0) {
+                        close(fds[0]);
+                        write(fds[1], buf, size);
+                        close(fds[1]);
+                        waitpid(pid, NULL, 0);
+                        fprintf(processed, "%s\n", name);
+                        log_preload(LOG_INFO, "Preloaded Game libs %s -> %s", apk_file, name);
+                    }
+                }
+            }
+            fclose(processed);
         }
 
         mz_free(buf);
@@ -161,7 +200,6 @@ void GamePreload(const char* package) {
         return;
     }
 
-    // Get apk base path (via cmd tool, minimal parsing)
     char apk_path[256] = {0};
     {
         char cmd[256];
@@ -181,20 +219,17 @@ void GamePreload(const char* package) {
             memmove(apk_path, colon + 1, strlen(colon));
     }
 
-    // Chop to base dir
     char* last_slash = strrchr(apk_path, '/');
     if (!last_slash)
         return;
     *last_slash = '\0';
 
-    // Open processed list (append+read like old version)
     FILE* processed = fopen(PROCESSED_FILE_LIST, "a+");
     if (!processed) {
         log_preload(LOG_ERROR, "Cannot open processed file list");
         return;
     }
 
-    // Compile regex
     regex_t regex;
     if (regcomp(&regex, GAME_LIB, REG_EXTENDED | REG_NOSUB) != 0) {
         log_preload(LOG_ERROR, "Regex compile failed");
@@ -202,14 +237,12 @@ void GamePreload(const char* package) {
         return;
     }
 
-    // Scan lib/arm64 with nftw
     char lib_path[300];
     snprintf(lib_path, sizeof(lib_path), "%s/lib/arm64", apk_path);
     if (access(lib_path, F_OK) == 0) {
         nftw(lib_path, so_visitor, 10, FTW_PHYS);
     }
 
-    // Scan split APKs with libzip
     DIR* d = opendir(apk_path);
     if (d) {
         struct dirent* de;
@@ -223,9 +256,8 @@ void GamePreload(const char* package) {
         closedir(d);
     }
 
-    // Cleanup
     regfree(&regex);
     fclose(processed);
 
-    return 0;
+    _exit(0);
 }
