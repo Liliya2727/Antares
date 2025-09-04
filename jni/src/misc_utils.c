@@ -93,20 +93,28 @@ char* timern(void) {
  * Function Name      : sighandler
  * Inputs             : int signal - exit signal
  * Returns            : None
- * Description        : Handle exit signal.
+ * Description        : Handle exit and child termination signals.
  ***********************************************************************************/
-[[noreturn]] void sighandler(const int signal) {
+void sighandler(const int signal) {
     switch (signal) {
     case SIGTERM:
         log_zenith(LOG_INFO, "Received SIGTERM, exiting.");
-        break;
+        _exit(EXIT_SUCCESS);
+
     case SIGINT:
         log_zenith(LOG_INFO, "Received SIGINT, exiting.");
+        _exit(EXIT_SUCCESS);
+
+    case SIGCHLD: {
+        int status;
+        pid_t pid;
+        // Reap all terminated children
+        while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+            log_zenith(LOG_DEBUG, "Reaped child process %d", pid);
+        }
         break;
     }
-
-    // Exit gracefully
-    _exit(EXIT_SUCCESS);
+    }
 }
 
 /***********************************************************************************
