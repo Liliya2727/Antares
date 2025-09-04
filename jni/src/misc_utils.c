@@ -245,7 +245,6 @@ void preload(const char* pkg, unsigned int* LOOP_INTERVAL) {
             pid_t pid = fork();
             if (pid == 0) {
                 GamePreload(pkg);
-                _exit(0);
             } else if (pid > 0) {
                 *LOOP_INTERVAL = 35;
                 did_log_preload = false;

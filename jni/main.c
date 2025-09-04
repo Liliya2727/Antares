@@ -84,6 +84,7 @@ int main(int argc, char* argv[]) {
     // Register signal handlers
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
+    signal(SIGCHLD, SIG_IGN);
 
     // Initialize variables
     bool need_profile_checkup = false;
