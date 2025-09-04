@@ -93,28 +93,20 @@ char* timern(void) {
  * Function Name      : sighandler
  * Inputs             : int signal - exit signal
  * Returns            : None
- * Description        : Handle exit and child termination signals.
+ * Description        : Handle exit signal.
  ***********************************************************************************/
-void sighandler(const int signal) {
+[[noreturn]] void sighandler(const int signal) {
     switch (signal) {
     case SIGTERM:
         log_zenith(LOG_INFO, "Received SIGTERM, exiting.");
-        _exit(EXIT_SUCCESS);
-
+        break;
     case SIGINT:
         log_zenith(LOG_INFO, "Received SIGINT, exiting.");
-        _exit(EXIT_SUCCESS);
-
-    case SIGCHLD: {
-        int status;
-        pid_t pid;
-        // Reap all terminated children
-        while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-            log_zenith(LOG_DEBUG, "Reaped child process %d", pid);
-        }
         break;
     }
-    }
+
+    // Exit gracefully
+    _exit(EXIT_SUCCESS);
 }
 
 /***********************************************************************************
@@ -252,7 +244,12 @@ void preload(const char* pkg, unsigned int* LOOP_INTERVAL) {
         if (val[0] == '1') {
             pid_t pid = fork();
             if (pid == 0) {
-                GamePreload(pkg);
+                pid_t pid2 = fork();
+                if (pid2 == 0) {
+                    GamePreload(pkg);
+                    _exit(0);
+                }
+                _exit(0);
             } else if (pid > 0) {
                 *LOOP_INTERVAL = 35;
                 did_log_preload = false;
