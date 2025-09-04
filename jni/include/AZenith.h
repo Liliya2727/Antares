@@ -103,10 +103,6 @@ void setspid(void);
 bool return_true(void);
 bool return_false(void);
 
-// Preload
-int so_visitor(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf);
-void scan_split_apk(const char* apk_file);
-
 // Shell and Command execution
 char* execute_command(const char* format, ...);
 char* execute_direct(const char* path, const char* arg0, ...);

@@ -10,7 +10,6 @@ LOCAL_SRC_FILES := \
     src/file_utils.c \
     src/process_utils.c \
     src/misc_utils.c \
-    src/miniz.c \
     src/game_preload.c \
     src/mlbb_handler.c
 
