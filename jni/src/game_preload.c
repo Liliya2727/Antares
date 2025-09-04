@@ -171,5 +171,4 @@ void GamePreload(const char* package) {
     pclose(apk_list);
     fclose(processed);
     regfree(&regex);
-    _exit(0);
 }

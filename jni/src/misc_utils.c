@@ -273,5 +273,10 @@ void stop_preloading(unsigned int* LOOP_INTERVAL) {
         *LOOP_INTERVAL = 15;
         did_log_preload = true;
         preload_active = false;
+        int status;
+        pid_t wpid;
+        while ((wpid = waitpid(-1, &status, WNOHANG)) > 0) {
+            log_zenith(LOG_DEBUG, "Reaped child process %d", wpid);
+        }
     }
 }
