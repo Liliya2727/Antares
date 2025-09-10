@@ -275,7 +275,7 @@ void stop_preloading(unsigned int* LOOP_INTERVAL) {
         preload_active = false;
         int status;
         pid_t wpid;
-        while (waitpid(-1, &status, WNOHANG) > 0) {
+        while ((wpid = waitpid(-1, &status, WNOHANG)) > 0) {
         }
     }
 }
