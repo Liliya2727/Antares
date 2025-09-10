@@ -120,7 +120,7 @@ void toast(const char* message) {
     if (__system_property_get("persist.sys.azenithconf.showtoast", val) > 0) {
         if (val[0] == '1') {
             int exit = systemv("su -lp 2000 -c \"/system/bin/am start -a android.intent.action.MAIN "
-                               "-e toasttext '%s' -n bellavita.toast/.MainActivity >/dev/null 2>&1\"",
+                               "-e toasttext '%s' -n azenith.toast/.MainActivity >/dev/null 2>&1\"",
                                message);
 
             if (exit != 0) [[clang::unlikely]] {
@@ -275,8 +275,7 @@ void stop_preloading(unsigned int* LOOP_INTERVAL) {
         preload_active = false;
         int status;
         pid_t wpid;
-        while ((wpid = waitpid(-1, &status, WNOHANG)) > 0) {
-            log_zenith(LOG_DEBUG, "Reaped child process %d", wpid);
+        while (waitpid(-1, &status, WNOHANG) > 0) {
         }
     }
 }
