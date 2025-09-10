@@ -104,6 +104,33 @@ setsgov() {
 	chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 }
 
+setFrequency() {
+	limiter=$(echo "$1" | sed -e 's/Disabled/100/' -e 's/%//g')
+    if [ -d /proc/ppm ]; then
+        cluster=0
+        for path in /sys/devices/system/cpu/cpufreq/policy*; do
+            cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+			cpu_minfreq=$(<"$path/cpuinfo_min_freq")
+            new_max_target=$((cpu_maxfreq * limiter / 100))
+            new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
+            zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+            zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+            policy_name=$(basename "$path")
+            dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$cpu_minfreq"
+            ((cluster++))
+        done
+    fi
+    for path in /sys/devices/system/cpu/cpufreq/policy*; do
+        cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
+        new_max_target=$((cpu_maxfreq * limiter / 100))
+        new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
+        zeshia "$new_maxfreq" "$path/scaling_max_freq"
+        zeshia "$cpu_minfreq" "$path/scaling_min_freq"
+        chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+    done
+}
+
 FSTrim() {
     for mount in /system /vendor /data /cache /metadata /odm /system_ext /product; do
         if mountpoint -q "$mount"; then
