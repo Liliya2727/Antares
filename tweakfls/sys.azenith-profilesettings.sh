@@ -1207,10 +1207,8 @@ eco_mode() {
 		dlog "Bypass Charge Disabled"
 	fi
 
-	# CPU Freq Limiter
-	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
-
 	# Limit cpu freq
+	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
 	if [ -d /proc/ppm ]; then
 		cluster=0
 		for path in /sys/devices/system/cpu/cpufreq/policy*; do
