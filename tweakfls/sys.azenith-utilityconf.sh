@@ -35,7 +35,7 @@ AZLog() {
 dlog() {
 	local message log_tag
 	message="$1"
-	log_tag="AZenith_WebUI"
+	log_tag="AZenith"
 	sys.azenith-service_log "$log_tag" 1 "$message"
 }
 
@@ -105,9 +105,23 @@ setsgov() {
 }
 
 setsfreqs() {
-	value="$1"
-	limiter=$(echo "$value" | sed -e 's/Disabled/100/' -e 's/%//g')
-	curprofile=$(cat /data/adb/.config/AZenith/current_profile 2>/dev/null)
+
+	setfreq() {
+		local file="$1" target="$2" chosen=""
+		if [ -f "$file" ]; then
+			chosen=$(tr -s ' ' '\n' <"$file" |
+				awk -v t="$target" '
+                {diff = (t - $1 >= 0 ? t - $1 : $1 - t)}
+                NR==1 || diff < mindiff {mindiff = diff; val=$1}
+                END {print val}')
+		else
+			chosen="$target"
+		fi
+		echo "$chosen"
+	}
+
+	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
+	curprofile=$(cat /data/adb/.config/AZenith/API/current_profile 2>/dev/null)
 	if [ -d /proc/ppm ]; then
 		cluster=0
 		for path in /sys/devices/system/cpu/cpufreq/policy*; do
@@ -117,12 +131,10 @@ setsfreqs() {
 			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
 			[ "$curprofile" = "3" ] && {
 				target_min_target=$((cpu_maxfreq * 40 / 100))
-				new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
 				new_minfreq=$(setfreq "$path/scaling_available_frequencies" "$target_min_target")
 				zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
 				zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
 				policy_name=$(basename "$path")
-				dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$new_minfreq"
 				((cluster++))
 				continue
 			}
@@ -133,20 +145,16 @@ setsfreqs() {
 			((cluster++))
 		done
 	fi
-	for path in /sys/devices/system/cpu/cpufreq/policy*; do
+	for path in /sys/devices/system/cpu/*/cpufreq; do
 		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
 		cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
 		new_max_target=$((cpu_maxfreq * limiter / 100))
 		new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
 		[ "$curprofile" = "3" ] && {
 			target_min_target=$((cpu_maxfreq * 40 / 100))
-			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
 			new_minfreq=$(setfreq "$path/scaling_available_frequencies" "$target_min_target")
-			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-			zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-			policy_name=$(basename "$path")
-			dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$new_minfreq"
-			((cluster++))
+			zeshia "$new_maxfreq" "$path/scaling_max_freq"
+			zeshia "$new_minfreq" "$path/scaling_min_freq"
 			continue
 		}
 		zeshia "$new_maxfreq" "$path/scaling_max_freq"
