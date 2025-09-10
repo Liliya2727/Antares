@@ -1084,7 +1084,7 @@ balanced_profile() {
 			((cluster++))
 		done
 	fi
-	for path in /sys/devices/system/cpu/cpufreq/policy*; do
+	for path in /sys/devices/system/cpu/*/cpufreq; do
 		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
 		cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
 		new_max_target=$((cpu_maxfreq * limiter / 100))
@@ -1224,7 +1224,7 @@ eco_mode() {
 			((cluster++))
 		done
 	fi
-	for path in /sys/devices/system/cpu/cpufreq/policy*; do
+	for path in /sys/devices/system/cpu/*/cpufreq; do
 		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
 		new_max_target=$((cpu_maxfreq * limiter / 100))
 		target_min_target=$((cpu_maxfreq * 40 / 100))

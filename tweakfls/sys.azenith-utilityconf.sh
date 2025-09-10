@@ -22,80 +22,80 @@ MODDIR=${0%/*}
 logpath="/data/adb/.config/AZenith/debug/AZenithVerbose.log"
 
 AZLog() {
-    if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
-        local timestamp message log_tag
-        timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
-        message="$1"
-        log_tag="AZenith"
-        echo "$timestamp I $log_tag: $message" >>"$logpath"
-        log -t "$log_tag" "$message"
-    fi
+	if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
+		local timestamp message log_tag
+		timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
+		message="$1"
+		log_tag="AZenith"
+		echo "$timestamp I $log_tag: $message" >>"$logpath"
+		log -t "$log_tag" "$message"
+	fi
 }
 
 dlog() {
-    local message log_tag
-    message="$1"
-    log_tag="AZenith WebUI"
-    sys.azenith-service_log "$log_tag" 1 "$message"
+	local message log_tag
+	message="$1"
+	log_tag="AZenith_WebUI"
+	sys.azenith-service_log "$log_tag" 1 "$message"
 }
 
 zeshia() {
-    local value="$1"
-    local path="$2"
-    local pathname
-    pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
-    if [ ! -e "$path" ]; then
-        AZLog "File /$pathname not found, skipping..."
-        return
-    fi
-    if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
-        AZLog "Cannot write to /$pathname (permission denied)"
-        return
-    fi
-    echo "$value" >"$path" 2>/dev/null
-    local current
-    current="$(cat "$path" 2>/dev/null)"
-    if [ "$current" = "$value" ]; then
-        AZLog "Set /$pathname to $value"
-    else
-        echo "$value" >"$path" 2>/dev/null
-        current="$(cat "$path" 2>/dev/null)"
-        if [ "$current" = "$value" ]; then
-            AZLog "Set /$pathname to $value (after retry)"
-        else
-            AZLog "Set /$pathname to $value"
-        fi
-    fi
-    chmod 444 "$path" 2>/dev/null
+	local value="$1"
+	local path="$2"
+	local pathname
+	pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
+	if [ ! -e "$path" ]; then
+		AZLog "File /$pathname not found, skipping..."
+		return
+	fi
+	if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
+		AZLog "Cannot write to /$pathname (permission denied)"
+		return
+	fi
+	echo "$value" >"$path" 2>/dev/null
+	local current
+	current="$(cat "$path" 2>/dev/null)"
+	if [ "$current" = "$value" ]; then
+		AZLog "Set /$pathname to $value"
+	else
+		echo "$value" >"$path" 2>/dev/null
+		current="$(cat "$path" 2>/dev/null)"
+		if [ "$current" = "$value" ]; then
+			AZLog "Set /$pathname to $value (after retry)"
+		else
+			AZLog "Set /$pathname to $value"
+		fi
+	fi
+	chmod 444 "$path" 2>/dev/null
 }
 
 zeshiax() {
-    local value="$1"
-    local path="$2"
-    local pathname
-    pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
-    if [ ! -e "$path" ]; then
-        AZLog "File /$pathname not found, skipping..."
-        return
-    fi
-    if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
-        AZLog "Cannot write to /$pathname (permission denied)"
-        return
-    fi
-    echo "$value" >"$path" 2>/dev/null
-    local current
-    current="$(cat "$path" 2>/dev/null)"
-    if [ "$current" = "$value" ]; then
-        AZLog "Set /$pathname to $value"
-    else
-        echo "$value" >"$path" 2>/dev/null
-        current="$(cat "$path" 2>/dev/null)"
-        if [ "$current" = "$value" ]; then
-            AZLog "Set $pathname to $value (after retry)"
-        else
-            AZLog "Set /$pathname to $value"
-        fi
-    fi
+	local value="$1"
+	local path="$2"
+	local pathname
+	pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
+	if [ ! -e "$path" ]; then
+		AZLog "File /$pathname not found, skipping..."
+		return
+	fi
+	if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
+		AZLog "Cannot write to /$pathname (permission denied)"
+		return
+	fi
+	echo "$value" >"$path" 2>/dev/null
+	local current
+	current="$(cat "$path" 2>/dev/null)"
+	if [ "$current" = "$value" ]; then
+		AZLog "Set /$pathname to $value"
+	else
+		echo "$value" >"$path" 2>/dev/null
+		current="$(cat "$path" 2>/dev/null)"
+		if [ "$current" = "$value" ]; then
+			AZLog "Set $pathname to $value (after retry)"
+		else
+			AZLog "Set /$pathname to $value"
+		fi
+	fi
 }
 
 setsgov() {
@@ -104,73 +104,96 @@ setsgov() {
 	chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 }
 
-setFrequency() {
-	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
-    if [ -d /proc/ppm ]; then
-        cluster=0
-        for path in /sys/devices/system/cpu/cpufreq/policy*; do
-            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+setsfreqs() {
+	value="$1"
+	limiter=$(echo "$value" | sed -e 's/Disabled/100/' -e 's/%//g')
+	curprofile=$(cat /data/adb/.config/AZenith/current_profile 2>/dev/null)
+	if [ -d /proc/ppm ]; then
+		cluster=0
+		for path in /sys/devices/system/cpu/cpufreq/policy*; do
+			cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
 			cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-            new_max_target=$((cpu_maxfreq * limiter / 100))
-            new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
-            zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-            zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-            policy_name=$(basename "$path")
-            dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$cpu_minfreq"
-            ((cluster++))
-        done
-    fi
-    for path in /sys/devices/system/cpu/cpufreq/policy*; do
-        cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+			new_max_target=$((cpu_maxfreq * limiter / 100))
+			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
+			[ "$curprofile" = "3" ] && {
+				target_min_target=$((cpu_maxfreq * 40 / 100))
+				new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
+				new_minfreq=$(setfreq "$path/scaling_available_frequencies" "$target_min_target")
+				zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+				zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+				policy_name=$(basename "$path")
+				dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$new_minfreq"
+				((cluster++))
+				continue
+			}
+			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+			zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+			policy_name=$(basename "$path")
+			dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$cpu_minfreq"
+			((cluster++))
+		done
+	fi
+	for path in /sys/devices/system/cpu/cpufreq/policy*; do
+		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
 		cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-        new_max_target=$((cpu_maxfreq * limiter / 100))
-        new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
-        zeshia "$new_maxfreq" "$path/scaling_max_freq"
-        zeshia "$cpu_minfreq" "$path/scaling_min_freq"
-        chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
-    done
+		new_max_target=$((cpu_maxfreq * limiter / 100))
+		new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
+		[ "$curprofile" = "3" ] && {
+			target_min_target=$((cpu_maxfreq * 40 / 100))
+			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
+			new_minfreq=$(setfreq "$path/scaling_available_frequencies" "$target_min_target")
+			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+			zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+			policy_name=$(basename "$path")
+			dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$new_minfreq"
+			((cluster++))
+			continue
+		}
+		zeshia "$new_maxfreq" "$path/scaling_max_freq"
+		zeshia "$cpu_minfreq" "$path/scaling_min_freq"
+		chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+	done
 }
 
 FSTrim() {
-    for mount in /system /vendor /data /cache /metadata /odm /system_ext /product; do
-        if mountpoint -q "$mount"; then
-            fstrim -v "$mount"
-            AZLog "Trimmed: $mount"
-        else
-            AZLog "Skipped (not mounted): $mount"
-        fi
-    done
+	for mount in /system /vendor /data /cache /metadata /odm /system_ext /product; do
+		if mountpoint -q "$mount"; then
+			fstrim -v "$mount"
+			AZLog "Trimmed: $mount"
+		else
+			AZLog "Skipped (not mounted): $mount"
+		fi
+	done
 }
 
 disablevsync() {
-    case "$1" in
-    60hz) service call SurfaceFlinger 1035 i32 2 ;;
-    90hz) service call SurfaceFlinger 1035 i32 1 ;;
-    120hz) service call SurfaceFlinger 1035 i32 0 ;;
-    Disabled) service call SurfaceFlinger 1035 i32 2 ;;
-    esac
+	case "$1" in
+	60hz) service call SurfaceFlinger 1035 i32 2 ;;
+	90hz) service call SurfaceFlinger 1035 i32 1 ;;
+	120hz) service call SurfaceFlinger 1035 i32 0 ;;
+	Disabled) service call SurfaceFlinger 1035 i32 2 ;;
+	esac
 }
 
 vsync_value="$(getprop persist.sys.azenithconf.vsync)"
 case "$vsync_value" in
 60hz | 90hz | 120hz)
-    disablevsync "$vsync_value"
-    dlog "VSync Restored: $vsync_value"
-    ;;
-Disabled)
-    ;;
+	disablevsync "$vsync_value"
+	dlog "VSync Restored: $vsync_value"
+	;;
+Disabled) ;;
 esac
 
 saveLog() {
-    log_file="/sdcard/AZenithLog$(date +"%Y-%m-%d_%H_%M").txt"
-    echo "$log_file"
+	log_file="/sdcard/AZenithLog$(date +"%Y-%m-%d_%H_%M").txt"
+	echo "$log_file"
 
-    module_ver=$(awk -F'=' '/version=/ {print $2}' /data/adb/modules/AZenith/module.prop)
-    android_sdk=$(getprop ro.build.version.sdk)
-    kernel_info=$(uname -r -m)
-    fingerprint=$(getprop ro.build.fingerprint)
+	module_ver=$(awk -F'=' '/version=/ {print $2}' /data/adb/modules/AZenith/module.prop)
+	android_sdk=$(getprop ro.build.version.sdk)
+	kernel_info=$(uname -r -m)
+	fingerprint=$(getprop ro.build.fingerprint)
 
-    cat <<EOF >"$log_file"
+	cat <<EOF >"$log_file"
 ##########################################
              AZenith Process Log
     
@@ -186,32 +209,32 @@ EOF
 
 # Bypass Charge
 enableBypass() {
-    applypath() {
-        if [ -e "$2" ]; then
-            zeshia "$1" "$2"
-            return 0
-        fi
-        return 1
-    }
-    applypath "1" "/sys/devices/platform/charger/bypass_charger" && return
-    applypath "0 1" "/proc/mtk_battery_cmd/current_cmd" && return
-    applypath "1" "/sys/devices/platform/charger/tran_aichg_disable_charger" && return
-    applypath "1" "/sys/devices/platform/mt-battery/disable_charger" && return
+	applypath() {
+		if [ -e "$2" ]; then
+			zeshia "$1" "$2"
+			return 0
+		fi
+		return 1
+	}
+	applypath "1" "/sys/devices/platform/charger/bypass_charger" && return
+	applypath "0 1" "/proc/mtk_battery_cmd/current_cmd" && return
+	applypath "1" "/sys/devices/platform/charger/tran_aichg_disable_charger" && return
+	applypath "1" "/sys/devices/platform/mt-battery/disable_charger" && return
 }
 
 disableBypass() {
-    # Disable Bypass Charge
-    applypath() {
-        if [ -e "$2" ]; then
-            zeshia "$1" "$2"
-            return 0
-        fi
-        return 1
-    }
-    applypath "0" "/sys/devices/platform/charger/bypass_charger" && return
-    applypath "0 0" "/proc/mtk_battery_cmd/current_cmd" && return
-    applypath "0" "/sys/devices/platform/charger/tran_aichg_disable_charger" && return
-    applypath "0" "/sys/devices/platform/mt-battery/disable_charger" && return
+	# Disable Bypass Charge
+	applypath() {
+		if [ -e "$2" ]; then
+			zeshia "$1" "$2"
+			return 0
+		fi
+		return 1
+	}
+	applypath "0" "/sys/devices/platform/charger/bypass_charger" && return
+	applypath "0 0" "/proc/mtk_battery_cmd/current_cmd" && return
+	applypath "0" "/sys/devices/platform/charger/tran_aichg_disable_charger" && return
+	applypath "0" "/sys/devices/platform/mt-battery/disable_charger" && return
 }
 
 $@
