@@ -898,6 +898,16 @@ performance_profile() {
 	fi
 
 	# Set Governor Game
+	load_default_governor() {
+		if [ -n "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ]; then
+			getprop persist.sys.azenith.custom_default_cpu_gov
+		else
+			echo "schedutil"
+		fi
+	}
+
+	# Load default cpu governor
+	default_cpu_gov=$(load_default_governor)
 	[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 0 ] &&
 		setgov "performance" && dlog "Applying governor to : performance" ||
 		setgov "$default_cpu_gov" && dlog "Applying governor to : $default_cpu_gov"
@@ -908,7 +918,7 @@ performance_profile() {
 		for path in /sys/devices/system/cpu/cpufreq/policy*; do
 			((cluster++))
 			cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-			cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+			cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
 			[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
 				new_midtarget=$((cpu_maxfreq * 60 / 100))
 				new_midfreq=$(setfreq "$path/scaling_available_frequencies" "$new_midtarget")
@@ -1059,12 +1069,12 @@ balanced_profile() {
 	dlog "Applying governor to : $default_cpu_gov"
 
 	# Limit cpu freq
-	limiter=$(getprop persist.sys.azenithdebug.freqlist | sed -e 's/Disabled/100/' -e 's/%//g')
+	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
 	if [ -d /proc/ppm ]; then
 		cluster=0
 		for path in /sys/devices/system/cpu/cpufreq/policy*; do
-			cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
-			cpu_minfreq=$(<"$path/cpuinfo_min_freq")
+			cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+			cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
 			new_max_target=$((cpu_maxfreq * limiter / 100))
 			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
 			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
@@ -1075,8 +1085,8 @@ balanced_profile() {
 		done
 	fi
 	for path in /sys/devices/system/cpu/cpufreq/policy*; do
-		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
-		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
+		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+		cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
 		new_max_target=$((cpu_maxfreq * limiter / 100))
 		new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
 		zeshia "$new_maxfreq" "$path/scaling_max_freq"
@@ -1198,14 +1208,13 @@ eco_mode() {
 	fi
 
 	# CPU Freq Limiter
-	limiter=$(getprop persist.sys.azenithdebug.freqlist | sed -e 's/Disabled/100/' -e 's/%//g')
-	AZLog "Cpu limit is set to $limiter"
+	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
 
 	# Limit cpu freq
 	if [ -d /proc/ppm ]; then
 		cluster=0
 		for path in /sys/devices/system/cpu/cpufreq/policy*; do
-			cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+			cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
 			new_max_target=$((cpu_maxfreq * limiter / 100))
 			target_min_target=$((cpu_maxfreq * 40 / 100))
 			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
@@ -1218,7 +1227,7 @@ eco_mode() {
 		done
 	fi
 	for path in /sys/devices/system/cpu/cpufreq/policy*; do
-		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
 		new_max_target=$((cpu_maxfreq * limiter / 100))
 		target_min_target=$((cpu_maxfreq * 40 / 100))
 		new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")

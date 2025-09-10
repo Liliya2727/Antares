@@ -35,7 +35,7 @@ AZLog() {
 dlog() {
     local message log_tag
     message="$1"
-    log_tag="AZenith"
+    log_tag="AZenith WebUI"
     sys.azenith-service_log "$log_tag" 1 "$message"
 }
 
@@ -105,12 +105,12 @@ setsgov() {
 }
 
 setFrequency() {
-	limiter=$(echo "$1" | sed -e 's/Disabled/100/' -e 's/%//g')
+	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
     if [ -d /proc/ppm ]; then
         cluster=0
         for path in /sys/devices/system/cpu/cpufreq/policy*; do
-            cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
-			cpu_minfreq=$(<"$path/cpuinfo_min_freq")
+            cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+			cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
             new_max_target=$((cpu_maxfreq * limiter / 100))
             new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
             zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
@@ -121,8 +121,8 @@ setFrequency() {
         done
     fi
     for path in /sys/devices/system/cpu/cpufreq/policy*; do
-        cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
-		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
+        cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+		cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
         new_max_target=$((cpu_maxfreq * limiter / 100))
         new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
         zeshia "$new_maxfreq" "$path/scaling_max_freq"
