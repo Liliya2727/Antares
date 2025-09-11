@@ -104,22 +104,21 @@ setsgov() {
 	chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 }
 
-setsfreqs() {
-
-	setfreq() {
-		local file="$1" target="$2" chosen=""
-		if [ -f "$file" ]; then
-			chosen=$(tr -s ' ' '\n' <"$file" |
-				awk -v t="$target" '
+setfreq() {
+	local file="$1" target="$2" chosen=""
+	if [ -f "$file" ]; then
+		chosen=$(tr -s ' ' '\n' <"$file" |
+			awk -v t="$target" '
                 {diff = (t - $1 >= 0 ? t - $1 : $1 - t)}
                 NR==1 || diff < mindiff {mindiff = diff; val=$1}
                 END {print val}')
-		else
-			chosen="$target"
-		fi
-		echo "$chosen"
-	}
+	else
+		chosen="$target"
+	fi
+	echo "$chosen"
+}
 
+setsfreqs() {
 	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
 	curprofile=$(cat /data/adb/.config/AZenith/API/current_profile 2>/dev/null)
 	if [ -d /proc/ppm ]; then
@@ -140,8 +139,6 @@ setsfreqs() {
 			}
 			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
 			zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-			policy_name=$(basename "$path")
-			dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$cpu_minfreq"
 			((cluster++))
 		done
 	fi
@@ -157,6 +154,73 @@ setsfreqs() {
 			zeshia "$new_minfreq" "$path/scaling_min_freq"
 			continue
 		}
+		zeshia "$new_maxfreq" "$path/scaling_max_freq"
+		zeshia "$cpu_minfreq" "$path/scaling_min_freq"
+		chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+	done
+}
+
+apply_game_freqs() {
+	# Fix Target OPP Index
+	if [ -d /proc/ppm ]; then
+		cluster=-1
+		for path in /sys/devices/system/cpu/cpufreq/policy*; do
+			((cluster++))
+			cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+			cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
+			[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
+				new_midtarget=$((cpu_maxfreq * 60 / 100))
+				new_midfreq=$(setfreq "$path/scaling_available_frequencies" "$new_midtarget")
+				zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+				zeshiax "$cluster $new_midfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+				policy_name=$(basename "$path")
+				dlog "Set $policy_name minfreq to $new_midfreq"
+				continue
+			}
+			zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+			zeshiax "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+			policy_name=$(basename "$path")
+			dlog "Set $policy_name minfreq to $cpu_minfreq"
+		done
+	fi
+	for path in /sys/devices/system/cpu/*/cpufreq; do
+		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+		cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+		[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
+			new_midtarget=$((cpu_maxfreq * 60 / 100))
+			new_midfreq=$(setfreq "$path/scaling_available_frequencies" "$new_midtarget")
+			zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+			zeshiax "$cluster $new_midfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+			continue
+		}
+		zeshiax "$cpu_maxfreq" "$path/scaling_max_freq"
+		zeshiax "$cpu_minfreq" "$path/scaling_min_freq"
+		chmod -f 644 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+	done
+}
+
+apply_default_freqs() {
+	# Limit cpu freq
+	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
+	if [ -d /proc/ppm ]; then
+		cluster=0
+		for path in /sys/devices/system/cpu/cpufreq/policy*; do
+			cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+			cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+			new_max_target=$((cpu_maxfreq * limiter / 100))
+			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
+			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+			zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+			policy_name=$(basename "$path")
+			dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$cpu_minfreq"
+			((cluster++))
+		done
+	fi
+	for path in /sys/devices/system/cpu/*/cpufreq; do
+		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+		cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+		new_max_target=$((cpu_maxfreq * limiter / 100))
+		new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
 		zeshia "$new_maxfreq" "$path/scaling_max_freq"
 		zeshia "$cpu_minfreq" "$path/scaling_min_freq"
 		chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq

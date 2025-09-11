@@ -897,7 +897,7 @@ performance_profile() {
 		clear_background_apps $
 	fi
 
-	# Set Governor Game
+	# Load Default Governor
 	load_default_governor() {
 		if [ -n "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ]; then
 			getprop persist.sys.azenith.custom_default_cpu_gov
@@ -906,7 +906,7 @@ performance_profile() {
 		fi
 	}
 
-	# Load default cpu governor
+	# Apply Game Governor
 	default_cpu_gov=$(load_default_governor)
 	[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 0 ] &&
 		setgov "performance" && dlog "Applying governor to : performance" ||
