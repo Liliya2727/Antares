@@ -920,28 +920,32 @@ performance_profile() {
 			cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
 			cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
 			[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
-				new_midtarget=$((cpu_maxfreq * 60 / 100))
+				new_maxtarget=$((cpu_maxfreq * 90 / 100))
+				new_midtarget=$((cpu_maxfreq * 50 / 100))
 				new_midfreq=$(setfreq "$path/scaling_available_frequencies" "$new_midtarget")
-				zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+				new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_maxtarget")
+				zeshiax "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
 				zeshiax "$cluster $new_midfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
 				policy_name=$(basename "$path")
-				dlog "Set $policy_name minfreq to $new_midfreq"
+				dlog "Set $policy_name minfreq to $new_midfreq and maxfreq to $new_maxfreq"
 				continue
 			}
 			zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
 			zeshiax "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
 			policy_name=$(basename "$path")
-			dlog "Set $policy_name minfreq to $cpu_minfreq"
+			dlog "Set $policy_name minfreq to $cpu_minfreq and maxfreq to $cpu_maxfreq"
 		done
 	fi
 	for path in /sys/devices/system/cpu/*/cpufreq; do
 		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-		cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+		cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
 		[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
-			new_midtarget=$((cpu_maxfreq * 60 / 100))
+			new_maxtarget=$((cpu_maxfreq * 90 / 100))
+			new_midtarget=$((cpu_maxfreq * 50 / 100))
 			new_midfreq=$(setfreq "$path/scaling_available_frequencies" "$new_midtarget")
-			zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-			zeshiax "$cluster $new_midfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_maxtarget")
+			zeshiax "$new_maxfreq" "$path/scaling_max_freq"
+			zeshiax "$new_midfreq" "$path/scaling_min_freq"
 			continue
 		}
 		zeshiax "$cpu_maxfreq" "$path/scaling_max_freq"
