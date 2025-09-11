@@ -119,6 +119,19 @@ setfreq() {
 }
 
 setsfreqs() {
+	setfreq() {
+		local file="$1" target="$2" chosen=""
+		if [ -f "$file" ]; then
+			chosen=$(tr -s ' ' '\n' <"$file" |
+				awk -v t="$target" '
+                {diff = (t - $1 >= 0 ? t - $1 : $1 - t)}
+                NR==1 || diff < mindiff {mindiff = diff; val=$1}
+                END {print val}')
+		else
+			chosen="$target"
+		fi
+		echo "$chosen"
+	}
 	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
 	curprofile=$(cat /data/adb/.config/AZenith/API/current_profile 2>/dev/null)
 	if [ -d /proc/ppm ]; then
@@ -133,7 +146,6 @@ setsfreqs() {
 				new_minfreq=$(setfreq "$path/scaling_available_frequencies" "$target_min_target")
 				zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
 				zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-				policy_name=$(basename "$path")
 				((cluster++))
 				continue
 			}
@@ -161,6 +173,19 @@ setsfreqs() {
 }
 
 apply_game_freqs() {
+	setfreq() {
+		local file="$1" target="$2" chosen=""
+		if [ -f "$file" ]; then
+			chosen=$(tr -s ' ' '\n' <"$file" |
+				awk -v t="$target" '
+                {diff = (t - $1 >= 0 ? t - $1 : $1 - t)}
+                NR==1 || diff < mindiff {mindiff = diff; val=$1}
+                END {print val}')
+		else
+			chosen="$target"
+		fi
+		echo "$chosen"
+	}
 	# Fix Target OPP Index
 	if [ -d /proc/ppm ]; then
 		cluster=-1
@@ -173,8 +198,6 @@ apply_game_freqs() {
 				new_midfreq=$(setfreq "$path/scaling_available_frequencies" "$new_midtarget")
 				zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
 				zeshiax "$cluster $new_midfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-				policy_name=$(basename "$path")
-				dlog "Set $policy_name minfreq to $new_midfreq"
 				continue
 			}
 			zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
@@ -200,6 +223,19 @@ apply_game_freqs() {
 }
 
 apply_default_freqs() {
+	setfreq() {
+		local file="$1" target="$2" chosen=""
+		if [ -f "$file" ]; then
+			chosen=$(tr -s ' ' '\n' <"$file" |
+				awk -v t="$target" '
+                {diff = (t - $1 >= 0 ? t - $1 : $1 - t)}
+                NR==1 || diff < mindiff {mindiff = diff; val=$1}
+                END {print val}')
+		else
+			chosen="$target"
+		fi
+		echo "$chosen"
+	}
 	# Limit cpu freq
 	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
 	if [ -d /proc/ppm ]; then
@@ -211,8 +247,6 @@ apply_default_freqs() {
 			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
 			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
 			zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-			policy_name=$(basename "$path")
-			dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$cpu_minfreq"
 			((cluster++))
 		done
 	fi
