@@ -122,11 +122,11 @@ int main(int argc, char* argv[]) {
         // Apply frequencies
         if (get_screenstate()) {
             if (cur_mode == BALANCED_PROFILE)
-                systemv("setprop sys.azenith-utilityconf apply_default_freqs");
+                systemv("sys.azenith-utilityconf apply_default_freqs");
             else if (cur_mode == ECO_MODE)
                 ; // Do nothing
             else if (cur_mode == PERFORMANCE_PROFILE)
-                systemv("setprop sys.azenith-utilityconf apply_game_freqs");
+                systemv("sys.azenith-utilityconf apply_game_freqs");
         } else {
             // Screen Off, Do Nothing
         }
