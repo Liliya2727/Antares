@@ -224,45 +224,6 @@ apply_game_freqs() {
 	done
 }
 
-apply_default_freqs() {
-	setfreq() {
-		local file="$1" target="$2" chosen=""
-		if [ -f "$file" ]; then
-			chosen=$(tr -s ' ' '\n' <"$file" |
-				awk -v t="$target" '
-                {diff = (t - $1 >= 0 ? t - $1 : $1 - t)}
-                NR==1 || diff < mindiff {mindiff = diff; val=$1}
-                END {print val}')
-		else
-			chosen="$target"
-		fi
-		echo "$chosen"
-	}
-	# Limit cpu freq
-	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
-	if [ -d /proc/ppm ]; then
-		cluster=0
-		for path in /sys/devices/system/cpu/cpufreq/policy*; do
-			cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-			cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-			new_max_target=$((cpu_maxfreq * limiter / 100))
-			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
-			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-			zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-			((cluster++))
-		done
-	fi
-	for path in /sys/devices/system/cpu/*/cpufreq; do
-		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-		cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-		new_max_target=$((cpu_maxfreq * limiter / 100))
-		new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
-		zeshia "$new_maxfreq" "$path/scaling_max_freq"
-		zeshia "$cpu_minfreq" "$path/scaling_min_freq"
-		chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
-	done
-}
-
 FSTrim() {
 	for mount in /system /vendor /data /cache /metadata /odm /system_ext /product; do
 		if mountpoint -q "$mount"; then
