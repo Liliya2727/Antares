@@ -1023,13 +1023,15 @@ performance_profile() {
 		wm size "$wd"x"$hg"
 	fi
 
-	case "$(getprop persist.sys.azenithdebug.soctype)" in
-	1) mediatek_performance ;;
-	2) snapdragon_performance ;;
-	3) exynos_performance ;;
-	4) unisoc_performance ;;
-	5) tensor_performance ;;
-	esac
+	if [ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 0 ]; then
+		case "$(getprop persist.sys.azenithdebug.soctype)" in
+		1) mediatek_performance ;;
+		2) snapdragon_performance ;;
+		3) exynos_performance ;;
+		4) unisoc_performance ;;
+		5) tensor_performance ;;
+		esac
+	fi
 
 	AZLog "Performance Profile Applied Successfully!"
 
@@ -1163,13 +1165,15 @@ balanced_profile() {
 		wm size reset
 	fi
 
-	case "$(getprop persist.sys.azenithdebug.soctype)" in
-	1) mediatek_balance ;;
-	2) snapdragon_balance ;;
-	3) exynos_balance ;;
-	4) unisoc_balance ;;
-	5) tensor_balance ;;
-	esac
+	if [ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 0 ]; then
+		case "$(getprop persist.sys.azenithdebug.soctype)" in
+		1) mediatek_balance ;;
+		2) snapdragon_balance ;;
+		3) exynos_balance ;;
+		4) unisoc_balance ;;
+		5) tensor_balance ;;
+		esac
+	fi
 
 	AZLog "Balanced Profile applied successfully!"
 
