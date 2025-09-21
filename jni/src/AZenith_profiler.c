@@ -137,7 +137,7 @@ bool get_low_power_state_normal(void) {
  *                      the current profile (e.g., "1" for performance, "2" for balanced, etc.).
  * Note               : Caller is responsible for freeing the returned string.
  ***********************************************************************************/
-char* get_current_profile_value(void) {
+int get_current_profile_value(void) {
     FILE *fp;
     char buffer[10];
 
