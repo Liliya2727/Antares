@@ -18,6 +18,7 @@
 
 MODDIR=${0%/*}
 logpath="/data/adb/.config/AZenith/debug/AZenithVerbose.log"
+logpath2="/data/adb/.config/AZenith/debug/AZenith.log"
 
 AZLog() {
 	if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
@@ -31,10 +32,12 @@ AZLog() {
 }
 
 dlog() {
-	local message log_tag
+	local timestamp message log_tag
+	timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
 	message="$1"
 	log_tag="AZenith"
-	sys.azenith-service_log "$log_tag" 1 "$message"
+	echo "$timestamp I $log_tag: $message" >>"$logpath2"
+	log -t "$log_tag" "$message"
 }
 
 zeshia() {
