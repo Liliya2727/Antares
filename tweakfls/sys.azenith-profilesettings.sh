@@ -248,34 +248,32 @@ setgov() {
 	chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
 }
 
-setsfreqppm() {
+setfreqppm() {
 	curprofile=$(cat /data/adb/.config/AZenith/API/current_profile 2>/dev/null)
-	if [ -d /proc/ppm ]; then
-		cluster=0
-		for path in /sys/devices/system/cpu/cpufreq/policy*; do
-			cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-			cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-			new_max_target=$((cpu_maxfreq * limiter / 100))
-			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
-			[ "$curprofile" = "3" ] && {
-				target_min_target=$((cpu_maxfreq * 40 / 100))
-				new_minfreq=$(setfreq "$path/scaling_available_frequencies" "$target_min_target")
-				zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-				zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-				((cluster++))
-				continue
-			}
+	cluster=0
+	for path in /sys/devices/system/cpu/cpufreq/policy*; do
+		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
+		new_max_target=$((cpu_maxfreq * limiter / 100))
+		new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
+		[ "$curprofile" = "3" ] && {
+			target_min_target=$((cpu_maxfreq * 40 / 100))
+			new_minfreq=$(setfreq "$path/scaling_available_frequencies" "$target_min_target")
 			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-			zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+			zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
 			((cluster++))
-		done
-	fi
+			continue
+		}
+		zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+		zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+		((cluster++))
+	done
 }
 
-setfreqs() {
+setfreq() {
 	for path in /sys/devices/system/cpu/*/cpufreq; do
-		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-		cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
 		new_max_target=$((cpu_maxfreq * limiter / 100))
 		new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
 		[ "$curprofile" = "3" ] && {
@@ -294,8 +292,8 @@ setfreqs() {
 setsgamefreqppm() {
 	for path in /sys/devices/system/cpu/cpufreq/policy*; do
 		((cluster++))
-		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-		cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
+		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+		cpu_minfreq=$(<"$path/cpuinfo_max_freq")
 		[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
 			new_maxtarget=$((cpu_maxfreq * 90 / 100))
 			new_midtarget=$((cpu_maxfreq * 50 / 100))
@@ -312,8 +310,8 @@ setsgamefreqppm() {
 
 setgamefreq() {
 	for path in /sys/devices/system/cpu/*/cpufreq; do
-		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-		cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
+		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
+		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
 		[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
 			new_maxtarget=$((cpu_maxfreq * 90 / 100))
 			new_midtarget=$((cpu_maxfreq * 50 / 100))
@@ -330,10 +328,10 @@ setgamefreq() {
 }
 
 applyfreqbalance() {
-	[ -d /proc/ppm ] && setfreqsppm || setfreqs
+	[ -d /proc/ppm ] && setfreqppm || setfreq
 }
 
-applygamefreqbalance() {
+applyfreqgame() {
 	[ -d /proc/ppm ] && setgamefreqppm || setgamefreq
 }
 
@@ -1004,7 +1002,7 @@ performance_profile() {
 	fi
 
 	# Fix Target OPP Index
-	[ -d /proc/ppm ] && setsgamefreqppm || setgamefreq
+	[ -d /proc/ppm ] && setgamefreqppm || setgamefreq
 
 	# VM Cache Pressure
 	zeshia "40" "/proc/sys/vm/vfs_cache_pressure"
@@ -1128,8 +1126,7 @@ balanced_profile() {
 	dlog "Applying governor to : $default_cpu_gov"
 
 	# Limit cpu freq
-	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
-	[ -d /proc/ppm ] && setsfreqppm || setfreqs
+	[ -d /proc/ppm ] && setfreqppm || setfreq
 
 	# vm cache pressure
 	zeshia "120" "/proc/sys/vm/vfs_cache_pressure"
@@ -1247,7 +1244,7 @@ eco_mode() {
 	fi
 
 	# Limit cpu freq
-	[ -d /proc/ppm ] && setsfreqppm || setfreqs
+	[ -d /proc/ppm ] && setfreqppm || setfreq
 
 	# VM Cache Pressure
 	zeshia "120" "/proc/sys/vm/vfs_cache_pressure"
