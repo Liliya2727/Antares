@@ -16,7 +16,6 @@
 # limitations under the License.
 #
 
-# shellcheck disable=SC2013
 
 MODDIR=${0%/*}
 logpath="/data/adb/.config/AZenith/debug/AZenithVerbose.log"
