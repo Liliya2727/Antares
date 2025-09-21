@@ -279,3 +279,24 @@ void stop_preloading(unsigned int* LOOP_INTERVAL) {
         }
     }
 }
+
+/***********************************************************************************
+ * Function Name      : apply_frequencies
+ * Inputs             : None
+ * Returns            : None
+ * Description        : apply frequencies based on profile file
+ ***********************************************************************************/
+void apply_frequencies() {
+    int profile_val = get_profile_from_file();
+    if (get_screenstate()) {
+        if (profile_val == 1) { // 1 = Performance
+            systemv("sys.azenith-utilityconf apply_game_freqs");
+        } else if (profile_val == 2) { // 2 = Balanced
+            systemv("sys.azenith-utilityconf setsfreqs");
+        } else if (profile_val == 3) { // 3 = Eco Mode
+            systemv("sys.azenith-utilityconf setsfreqs");
+        }
+    } else {
+        // Screen Off, Do Nothing
+    }
+}

@@ -102,6 +102,7 @@ char* timern(void);
 void setspid(void);
 bool return_true(void);
 bool return_false(void);
+void apply_frequencies();
 
 // Shell and Command execution
 char* execute_command(const char* format, ...);
@@ -127,6 +128,7 @@ extern pid_t mlbb_pid;
 MLBBState handle_mlbb(const char* gamestart);
 
 // Profiler
+char* get_current_profile_value(void);
 extern bool (*get_screenstate)(void);
 extern bool (*get_low_power_state)(void);
 char* get_gamestart(void);

@@ -120,16 +120,7 @@ int main(int argc, char* argv[]) {
         checkstate();
 
         // Apply frequencies
-        if (get_screenstate()) {
-            if (cur_mode == BALANCED_PROFILE)
-                systemv("sys.azenith-utilityconf setsfreqs");
-            else if (cur_mode == ECO_MODE)
-                systemv("sys.azenith-utilityconf setsfreqs");
-            else if (cur_mode == PERFORMANCE_PROFILE)
-                systemv("sys.azenith-utilityconf apply_game_freqs");
-        } else {
-            // Screen Off, Do Nothing
-        }
+        apply_frequencies();
 
         // Only fetch gamestart when user not in-game
         // prevent overhead from dumpsys commands.

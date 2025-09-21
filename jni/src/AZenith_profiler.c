@@ -127,3 +127,33 @@ bool get_low_power_state_normal(void) {
 
     return false;
 }
+
+/***********************************************************************************
+ * Function Name      : get_current_profile_value
+ * Inputs             : None
+ * Returns            : char* (dynamically allocated string with the current profile value)
+ * Description        : Reads the current performance profile value from a specific file.
+ *                      The file is expected to contain a single integer value representing
+ *                      the current profile (e.g., "1" for performance, "2" for balanced, etc.).
+ * Note               : Caller is responsible for freeing the returned string.
+ ***********************************************************************************/
+char* get_current_profile_value(void) {
+    FILE *fp;
+    char buffer[10];
+
+    fp = fopen("/data/adb/.config/AZenith/API/current_profile", "r");
+    if (fp == NULL) {
+        log_zenith(LOG_ERROR, "Failed to open profile file");
+        return strdup("0");
+    }
+
+    if (fgets(buffer, sizeof(buffer), fp) != NULL) {
+
+        buffer[strcspn(buffer, "\n")] = 0;
+        fclose(fp);
+        return strdup(buffer);
+    }
+    fclose(fp);
+    return strdup("0");
+}
+
