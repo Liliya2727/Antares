@@ -290,11 +290,11 @@ void apply_frequencies() {
     char* profile_val = get_current_profile_value();
     if (get_screenstate()) {
         if (strcmp(profile_val, "1") == 0) {
-            systemv("sys.azenith-utilityconf apply_game_freqs");
+            systemv("sys.azenith-profilesettings applygamefreqbalance");
         } else if (strcmp(profile_val, "2") == 0) {
-            systemv("sys.azenith-utilityconf setsfreqs");
+            systemv("sys.azenith-profilesettings applyfreqbalance");
         } else if (strcmp(profile_val, "3") == 0) { 
-            systemv("sys.azenith-utilityconf setsfreqs");
+            systemv("sys.azenith-profilesettings applyfreqbalance");
         }
     } else {
         // Screen Off, Do Nothing
