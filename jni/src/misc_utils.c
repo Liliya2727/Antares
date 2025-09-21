@@ -287,7 +287,7 @@ void stop_preloading(unsigned int* LOOP_INTERVAL) {
  * Description        : apply frequencies based on profile file
  ***********************************************************************************/
 void apply_frequencies() {
-    int profile_val = get_profile_from_file();
+    int profile_val = get_current_profile_value();
     if (get_screenstate()) {
         if (profile_val == 1) { // 1 = Performance
             systemv("sys.azenith-utilityconf apply_game_freqs");
