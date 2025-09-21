@@ -16,9 +16,12 @@
 # limitations under the License.
 #
 
+# shellcheck disable=SC2013
+
 MODDIR=${0%/*}
 logpath="/data/adb/.config/AZenith/debug/AZenithVerbose.log"
 logpath2="/data/adb/.config/AZenith/debug/AZenith.log"
+limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
 
 AZLog() {
 	if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
@@ -32,12 +35,10 @@ AZLog() {
 }
 
 dlog() {
-	local timestamp message log_tag
-	timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
+	local message log_tag
 	message="$1"
 	log_tag="AZenith"
-	echo "$timestamp I $log_tag: $message" >>"$logpath2"
-	log -t "$log_tag" "$message"
+	sys.azenith-service_log "$log_tag" 1 "$message"
 }
 
 zeshia() {
@@ -247,7 +248,94 @@ setgov() {
 	chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
 }
 
-sync
+setsfreqppm() {
+	curprofile=$(cat /data/adb/.config/AZenith/API/current_profile 2>/dev/null)
+	if [ -d /proc/ppm ]; then
+		cluster=0
+		for path in /sys/devices/system/cpu/cpufreq/policy*; do
+			cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+			cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+			new_max_target=$((cpu_maxfreq * limiter / 100))
+			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
+			[ "$curprofile" = "3" ] && {
+				target_min_target=$((cpu_maxfreq * 40 / 100))
+				new_minfreq=$(setfreq "$path/scaling_available_frequencies" "$target_min_target")
+				zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+				zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+				((cluster++))
+				continue
+			}
+			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+			zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+			((cluster++))
+		done
+	fi
+}
+
+setfreqs() {
+	for path in /sys/devices/system/cpu/*/cpufreq; do
+		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+		cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
+		new_max_target=$((cpu_maxfreq * limiter / 100))
+		new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
+		[ "$curprofile" = "3" ] && {
+			target_min_target=$((cpu_maxfreq * 40 / 100))
+			new_minfreq=$(setfreq "$path/scaling_available_frequencies" "$target_min_target")
+			zeshia "$new_maxfreq" "$path/scaling_max_freq"
+			zeshia "$new_minfreq" "$path/scaling_min_freq"
+			continue
+		}
+		zeshia "$new_maxfreq" "$path/scaling_max_freq"
+		zeshia "$cpu_minfreq" "$path/scaling_min_freq"
+		chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+	done
+}
+
+setsgamefreqppm() {
+	for path in /sys/devices/system/cpu/cpufreq/policy*; do
+		((cluster++))
+		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+		cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
+		[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
+			new_maxtarget=$((cpu_maxfreq * 90 / 100))
+			new_midtarget=$((cpu_maxfreq * 50 / 100))
+			new_midfreq=$(setfreq "$path/scaling_available_frequencies" "$new_midtarget")
+			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_maxtarget")
+			zeshiax "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+			zeshiax "$cluster $new_midfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+			continue
+		}
+		zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+		zeshiax "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+	done
+}
+
+setgamefreq() {
+	for path in /sys/devices/system/cpu/*/cpufreq; do
+		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
+		cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
+		[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
+			new_maxtarget=$((cpu_maxfreq * 90 / 100))
+			new_midtarget=$((cpu_maxfreq * 50 / 100))
+			new_midfreq=$(setfreq "$path/scaling_available_frequencies" "$new_midtarget")
+			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_maxtarget")
+			zeshiax "$new_maxfreq" "$path/scaling_max_freq"
+			zeshiax "$new_midfreq" "$path/scaling_min_freq"
+			continue
+		}
+		zeshiax "$cpu_maxfreq" "$path/scaling_max_freq"
+		zeshiax "$cpu_minfreq" "$path/scaling_min_freq"
+		chmod -f 644 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+	done
+}
+
+applyfreqbalance() {
+	[ -d /proc/ppm ] && setfreqsppm || setfreqs
+}
+
+applygamefreqbalance() {
+	[ -d /proc/ppm ] && setgamefreqppm || setgamefreq
+}
 
 ###############################################
 # # # # # # #  MEDIATEK BALANCE # # # # # # #
@@ -916,45 +1004,7 @@ performance_profile() {
 	fi
 
 	# Fix Target OPP Index
-	if [ -d /proc/ppm ]; then
-		cluster=-1
-		for path in /sys/devices/system/cpu/cpufreq/policy*; do
-			((cluster++))
-			cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-			cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
-			[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
-				new_maxtarget=$((cpu_maxfreq * 90 / 100))
-				new_midtarget=$((cpu_maxfreq * 50 / 100))
-				new_midfreq=$(setfreq "$path/scaling_available_frequencies" "$new_midtarget")
-				new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_maxtarget")
-				zeshiax "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-				zeshiax "$cluster $new_midfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-				policy_name=$(basename "$path")
-				dlog "Set $policy_name minfreq to $new_midfreq and maxfreq to $new_maxfreq"
-				continue
-			}
-			zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-			zeshiax "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-			policy_name=$(basename "$path")
-			dlog "Set $policy_name minfreq to $cpu_minfreq and maxfreq to $cpu_maxfreq"
-		done
-	fi
-	for path in /sys/devices/system/cpu/*/cpufreq; do
-		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-		cpu_minfreq=$(cat "$path/cpuinfo_max_freq")
-		[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
-			new_maxtarget=$((cpu_maxfreq * 90 / 100))
-			new_midtarget=$((cpu_maxfreq * 50 / 100))
-			new_midfreq=$(setfreq "$path/scaling_available_frequencies" "$new_midtarget")
-			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_maxtarget")
-			zeshiax "$new_maxfreq" "$path/scaling_max_freq"
-			zeshiax "$new_midfreq" "$path/scaling_min_freq"
-			continue
-		}
-		zeshiax "$cpu_maxfreq" "$path/scaling_max_freq"
-		zeshiax "$cpu_minfreq" "$path/scaling_min_freq"
-		chmod -f 644 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
-	done
+	[ -d /proc/ppm ] && setsgamefreqppm || setgamefreq
 
 	# VM Cache Pressure
 	zeshia "40" "/proc/sys/vm/vfs_cache_pressure"
@@ -1079,29 +1129,7 @@ balanced_profile() {
 
 	# Limit cpu freq
 	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
-	if [ -d /proc/ppm ]; then
-		cluster=0
-		for path in /sys/devices/system/cpu/cpufreq/policy*; do
-			cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-			cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-			new_max_target=$((cpu_maxfreq * limiter / 100))
-			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
-			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-			zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-			policy_name=$(basename "$path")
-			dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$cpu_minfreq"
-			((cluster++))
-		done
-	fi
-	for path in /sys/devices/system/cpu/*/cpufreq; do
-		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-		cpu_minfreq=$(cat "$path/cpuinfo_min_freq")
-		new_max_target=$((cpu_maxfreq * limiter / 100))
-		new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
-		zeshia "$new_maxfreq" "$path/scaling_max_freq"
-		zeshia "$cpu_minfreq" "$path/scaling_min_freq"
-		chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
-	done
+	[ -d /proc/ppm ] && setsfreqppm || setfreqs
 
 	# vm cache pressure
 	zeshia "120" "/proc/sys/vm/vfs_cache_pressure"
@@ -1219,32 +1247,7 @@ eco_mode() {
 	fi
 
 	# Limit cpu freq
-	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
-	if [ -d /proc/ppm ]; then
-		cluster=0
-		for path in /sys/devices/system/cpu/cpufreq/policy*; do
-			cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-			new_max_target=$((cpu_maxfreq * limiter / 100))
-			target_min_target=$((cpu_maxfreq * 40 / 100))
-			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
-			new_minfreq=$(setfreq "$path/scaling_available_frequencies" "$target_min_target")
-			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-			zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
-			policy_name=$(basename "$path")
-			dlog "Set $policy_name maxfreq=$new_maxfreq minfreq=$new_minfreq"
-			((cluster++))
-		done
-	fi
-	for path in /sys/devices/system/cpu/*/cpufreq; do
-		cpu_maxfreq=$(cat "$path/cpuinfo_max_freq")
-		new_max_target=$((cpu_maxfreq * limiter / 100))
-		target_min_target=$((cpu_maxfreq * 40 / 100))
-		new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_max_target")
-		new_minfreq=$(setfreq "$path/scaling_available_frequencies" "$target_min_target")
-		zeshia "$new_maxfreq" "$path/scaling_max_freq"
-		zeshia "$new_minfreq" "$path/scaling_min_freq"
-		chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
-	done
+	[ -d /proc/ppm ] && setsfreqppm || setfreqs
 
 	# VM Cache Pressure
 	zeshia "120" "/proc/sys/vm/vfs_cache_pressure"
@@ -1285,6 +1288,23 @@ eco_mode() {
 
 initialize() {
 
+	# Disable all kernel panic mechanisms
+	for param in hung_task_timeout_secs panic_on_oom panic_on_oops panic softlockup_panic; do
+		zeshia "0" "/proc/sys/kernel/$param"
+	done
+
+	# Tweaking scheduler to reduce latency
+	zeshia 500000 /proc/sys/kernel/sched_migration_cost_ns
+	zeshia 1000000 /proc/sys/kernel/sched_min_granularity_ns
+	zeshia 500000 /proc/sys/kernel/sched_wakeup_granularity_ns
+	# Disable read-ahead for swap devices
+	zeshia 0 /proc/sys/vm/page-cluster
+	# Update /proc/stat less often to reduce jitter
+	zeshia 20 /proc/sys/vm/stat_interval
+	# Disable compaction_proactiveness
+	zeshia 0 /proc/sys/vm/compaction_proactiveness
+	zeshia 255 /proc/sys/kernel/sched_lib_mask_force
+
 	# Parse CPU Governor
 	CPU="/sys/devices/system/cpu/cpu0/cpufreq"
 	chmod 644 "$CPU/scaling_governor"
@@ -1310,18 +1330,20 @@ initialize() {
 	chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
 	[ -z "$(getprop persist.sys.azenith.custom_powersave_cpu_gov)" ] && setprop persist.sys.azenith.custom_powersave_cpu_gov "$default_gov"
 
-	# Restore saved display boost
-	val=$(getprop persist.sys.azenithconf.schemeconfig)
-	r=$(echo $val | awk '{print $1}')
-	g=$(echo $val | awk '{print $2}')
-	b=$(echo $val | awk '{print $3}')
-	s=$(echo $val | awk '{print $4}')
-	rf=$(awk "BEGIN {print $r/1000}")
-	gf=$(awk "BEGIN {print $g/1000}")
-	bf=$(awk "BEGIN {print $b/1000}")
-	sf=$(awk "BEGIN {print $s/1000}")
-	service call SurfaceFlinger 1015 i32 1 f $rf f 0 f 0 f 0 f 0 f $gf f 0 f 0 f 0 f 0 f $bf f 0 f 0 f 0 f 0 f 1
-	service call SurfaceFlinger 1022 f $sf
+	if [ "$(getprop persist.sys.azenithconf.schemeconfig)" != "1000 1000 1000 1000" ]; then
+		# Restore saved display boost
+		val=$(getprop persist.sys.azenithconf.schemeconfig)
+		r=$(echo $val | awk '{print $1}')
+		g=$(echo $val | awk '{print $2}')
+		b=$(echo $val | awk '{print $3}')
+		s=$(echo $val | awk '{print $4}')
+		rf=$(awk "BEGIN {print $r/1000}")
+		gf=$(awk "BEGIN {print $g/1000}")
+		bf=$(awk "BEGIN {print $b/1000}")
+		sf=$(awk "BEGIN {print $s/1000}")
+		service call SurfaceFlinger 1015 i32 1 f $rf f 0 f 0 f 0 f 0 f $gf f 0 f 0 f 0 f 0 f $bf f 0 f 0 f 0 f 0 f 1
+		service call SurfaceFlinger 1022 f $sf
+	fi
 
 	jit() {
 		for app in $(cmd package list packages | cut -f 2 -d ":"); do
@@ -1332,26 +1354,6 @@ initialize() {
 		done
 		disown
 	}
-
-	# Disable all kernel panic mechanisms
-	for param in hung_task_timeout_secs panic_on_oom panic_on_oops panic softlockup_panic; do
-		zeshia "0" "/proc/sys/kernel/$param"
-	done
-
-	# Tweaking scheduler to reduce latency
-	zeshia 500000 /proc/sys/kernel/sched_migration_cost_ns
-	zeshia 1000000 /proc/sys/kernel/sched_min_granularity_ns
-	zeshia 500000 /proc/sys/kernel/sched_wakeup_granularity_ns
-	# Disable read-ahead for swap devices
-	zeshia 0 /proc/sys/vm/page-cluster
-	# Update /proc/stat less often to reduce jitter
-	zeshia 20 /proc/sys/vm/stat_interval
-	# Disable compaction_proactiveness
-	zeshia 0 /proc/sys/vm/compaction_proactiveness
-
-	zeshia 255 /proc/sys/kernel/sched_lib_mask_force
-
-	sync
 
 	schedtunes() {
 		settunes() {
@@ -1664,6 +1666,7 @@ EOF
 	fi
 	# Set up disable vsync
 	sys.azenith-utilityconf
+	sync
 	AZLog "Initializing Complete!!"
 }
 
