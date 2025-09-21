@@ -22,6 +22,7 @@ MODDIR=${0%/*}
 logpath="/data/adb/.config/AZenith/debug/AZenithVerbose.log"
 logpath2="/data/adb/.config/AZenith/debug/AZenith.log"
 limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
+curprofile=$(<"/data/adb/.config/AZenith/API/current_profile")
 
 AZLog() {
 	if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
@@ -128,6 +129,8 @@ setfreq() {
 	echo "$chosen"
 }
 cpufreq_ppm_max_perf() {
+	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
+	curprofile=$(<"/data/adb/.config/AZenith/API/current_profile")
 	cluster=-1
 	for path in /sys/devices/system/cpu/cpufreq/policy*; do
 		((cluster++))
@@ -249,7 +252,8 @@ setgov() {
 }
 
 setfreqppm() {
-	curprofile=$(cat /data/adb/.config/AZenith/API/current_profile 2>/dev/null)
+	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
+	curprofile=$(<"/data/adb/.config/AZenith/API/current_profile")
 	cluster=0
 	for path in /sys/devices/system/cpu/cpufreq/policy*; do
 		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
@@ -271,6 +275,8 @@ setfreqppm() {
 }
 
 setfreq() {
+	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
+	curprofile=$(<"/data/adb/.config/AZenith/API/current_profile")
 	for path in /sys/devices/system/cpu/*/cpufreq; do
 		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
 		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
@@ -289,13 +295,14 @@ setfreq() {
 	done
 }
 
-setsgamefreqppm() {
+setgamefreqppm() {
+	cluster=-1
 	for path in /sys/devices/system/cpu/cpufreq/policy*; do
 		((cluster++))
 		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
 		cpu_minfreq=$(<"$path/cpuinfo_max_freq")
 		[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
-			new_maxtarget=$((cpu_maxfreq * 90 / 100))
+			new_maxtarget=$((cpu_maxfreq * 100 / 100))
 			new_midtarget=$((cpu_maxfreq * 50 / 100))
 			new_midfreq=$(setfreq "$path/scaling_available_frequencies" "$new_midtarget")
 			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_maxtarget")
@@ -313,7 +320,7 @@ setgamefreq() {
 		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
 		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
 		[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
-			new_maxtarget=$((cpu_maxfreq * 90 / 100))
+			new_maxtarget=$((cpu_maxfreq * 100 / 100))
 			new_midtarget=$((cpu_maxfreq * 50 / 100))
 			new_midfreq=$(setfreq "$path/scaling_available_frequencies" "$new_midtarget")
 			new_maxfreq=$(setfreq "$path/scaling_available_frequencies" "$new_maxtarget")
