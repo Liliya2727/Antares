@@ -1293,7 +1293,7 @@ initialize() {
 
 	# Fallback if default is performance
 	if [ "$default_gov" == "performance" ] && [ -z "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ]; then
-		for gov in scx schedhorizon walt sched_pixel sugov_ext uag schedplus energy_step schedutil interactive conservative powersave; do
+		for gov in scx schedhorizon walt sched_pixel sugov_ext uag schedplus energy_step ondemand schedutil interactive conservative powersave; do
 			if grep -q "$gov" "$CPU/scaling_available_governors"; then
 				setprop persist.sys.azenith.default_cpu_gov "$gov"
 				default_gov="$gov"
@@ -1309,7 +1309,6 @@ initialize() {
 	chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 	chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
 	[ -z "$(getprop persist.sys.azenith.custom_powersave_cpu_gov)" ] && setprop persist.sys.azenith.custom_powersave_cpu_gov "$default_gov"
-	[ -z "$(getprop persist.sys.azenith.custom_game_cpu_gov)" ] && setprop persist.sys.azenith.custom_game_cpu_gov "$default_gov"
 
 	# Restore saved display boost
 	val=$(getprop persist.sys.azenithconf.schemeconfig)

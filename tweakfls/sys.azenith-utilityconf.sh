@@ -248,7 +248,6 @@ vsync_value="$(getprop persist.sys.azenithconf.vsync)"
 case "$vsync_value" in
 60hz | 90hz | 120hz)
 	disablevsync "$vsync_value"
-	dlog "VSync Restored: $vsync_value"
 	;;
 Disabled) ;;
 esac
