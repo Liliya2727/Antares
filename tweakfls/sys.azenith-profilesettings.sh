@@ -16,7 +16,6 @@
 # limitations under the License.
 #
 
-
 MODDIR=${0%/*}
 logpath="/data/adb/.config/AZenith/debug/AZenithVerbose.log"
 
@@ -907,9 +906,11 @@ performance_profile() {
 
 	# Apply Game Governor
 	default_cpu_gov=$(load_default_governor)
-	[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 0 ] &&
-		setgov "performance" && dlog "Applying governor to : performance" ||
+	if [ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 0 ]; then
+		setgov "performance" && dlog "Applying governor to : performance"
+	else
 		setgov "$default_cpu_gov" && dlog "Applying governor to : $default_cpu_gov"
+	fi
 
 	# Fix Target OPP Index
 	if [ -d /proc/ppm ]; then
