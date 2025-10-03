@@ -1334,6 +1334,20 @@ initialize() {
 	chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
 	[ -z "$(getprop persist.sys.azenith.custom_powersave_cpu_gov)" ] && setprop persist.sys.azenith.custom_powersave_cpu_gov "$default_gov"
 
+	# Parse IO Scheduler
+	IO="/sys/block/sda/queue"
+	chmod 644 "$IO/scheduler"
+	default_io=$(grep -o '\[.*\]' "$IO/scheduler" | tr -d '[]')
+	setprop persist.sys.azenith.default_balanced_IO "$default_io"
+
+	# Set Default IO Scheduler
+	[ -n "$(getprop persist.sys.azenith.custom_default_balanced_IO)" ] && default_io=$(getprop persist.sys.azenith.custom_default_balanced_IO)
+	chmod 644 /sys/block/sda/queue/scheduler
+	echo "$default_io" | tee /sys/block/sda/queue/scheduler >/dev/null
+	chmod 444 /sys/block/sda/queue/scheduler
+	[ -z "$(getprop persist.sys.azenith.custom_powersave_IO)" ] && setprop persist.sys.azenith.custom_powersave_IO "$default_io"
+	[ -z "$(getprop persist.sys.azenith.custom_performance_IO)" ] && setprop persist.sys.azenith.custom_performance_IO "$default_io"
+
 	if [ "$(getprop persist.sys.azenithconf.schemeconfig)" != "1000 1000 1000 1000" ]; then
 		# Restore saved display boost
 		val=$(getprop persist.sys.azenithconf.schemeconfig)
