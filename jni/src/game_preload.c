@@ -58,18 +58,6 @@ void GamePreload(const char *package) {
         return;
     }
 
-    FILE *ap = fopen(PRELOAD_ENABLED, "r");
-    if (!ap) {
-        log_preload(LOG_DEBUG, "GamePreload file not found");
-        return;
-    }
-    char val = fgetc(ap);
-    fclose(ap);
-    if (val != '1') {
-        log_preload(LOG_DEBUG, "Game Preload is disabled");
-        return;
-    }
-
     // Resolve APK path
     char apk_path[256] = {0};
     char cmd_apk[512];
