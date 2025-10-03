@@ -102,7 +102,6 @@ char* timern(void);
 void setspid(void);
 bool return_true(void);
 bool return_false(void);
-void apply_frequencies();
 
 // Shell and Command execution
 char* execute_command(const char* format, ...);

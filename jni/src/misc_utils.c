@@ -280,23 +280,3 @@ void stop_preloading(unsigned int* LOOP_INTERVAL) {
     }
 }
 
-/***********************************************************************************
- * Function Name      : apply_frequencies
- * Inputs             : None
- * Returns            : None
- * Description        : apply frequencies based on profile file
- ***********************************************************************************/
-void apply_frequencies() {
-    char* profile_val = get_current_profile_value();
-    if (get_screenstate()) {
-        if (strcmp(profile_val, "1") == 0) {
-            systemv("sys.azenith-profilesettings applyfreqgame");
-        } else if (strcmp(profile_val, "2") == 0) {
-            systemv("sys.azenith-profilesettings applyfreqbalance");
-        } else if (strcmp(profile_val, "3") == 0) { 
-            systemv("sys.azenith-profilesettings applyfreqbalance");
-        }
-    } else {
-        // Screen Off, Do Nothing
-    }
-}
