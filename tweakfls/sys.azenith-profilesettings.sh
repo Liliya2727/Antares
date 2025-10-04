@@ -196,6 +196,16 @@ setgov() {
 	chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
 }
 
+setsIO() {
+	for block in sda sdb sdc mmcblk0 mmcblk1; do
+		if [ -e "/sys/block/$block/queue/scheduler" ]; then
+			chmod 644 "/sys/block/$block/queue/scheduler"
+			echo "$1" | tee "/sys/block/$block/queue/scheduler"
+			chmod 444 "/sys/block/$block/queue/scheduler"
+		fi
+	done
+}
+
 setfreqppm() {
 	limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
 	curprofile=$(<"/data/adb/.config/AZenith/API/current_profile")
@@ -940,8 +950,21 @@ performance_profile() {
 	load_default_governor() {
 		if [ -n "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ]; then
 			getprop persist.sys.azenith.custom_default_cpu_gov
+		elif [ -n "$(getprop persist.sys.azenith.default_cpu_gov)" ]; then
+			getprop persist.sys.azenith.default_cpu_gov
 		else
 			echo "schedutil"
+		fi
+	}
+
+	# Load Default I/O Scheduler
+	load_default_iosched() {
+		if [ -n "$(getprop persist.sys.azenith.custom_default_balanced_IO)" ]; then
+			getprop persist.sys.azenith.custom_default_balanced_IO
+		elif [ -n "$(getprop persist.sys.azenith.default_balanced_IO)" ]; then
+			getprop persist.sys.azenith.default_balanced_IO
+		else
+			echo "none"
 		fi
 	}
 
@@ -951,6 +974,15 @@ performance_profile() {
 		setgov "performance" && dlog "Applying governor to : performance"
 	else
 		setgov "$default_cpu_gov" && dlog "Applying governor to : $default_cpu_gov"
+	fi
+
+	# Apply Game I/O Scheduler
+	default_iosched=$(load_default_iosched)
+	if [ -n "$(getprop persist.sys.azenith.custom_performance_IO)" ]; then
+		game_iosched=$(getprop persist.sys.azenith.custom_performance_IO)
+		setsIO "$game_iosched" && dlog "Applying I/O scheduler to : $game_iosched"
+	else
+		setsIO "$default_iosched" && dlog "Applying I/O scheduler to : $default_iosched"
 	fi
 
 	# Fix Target OPP Index
@@ -1044,16 +1076,33 @@ performance_profile() {
 # # # # # # #  BALANCED PROFILES! # # # # # # #
 ###############################################
 balanced_profile() {
+	# Load Default Governor
 	load_default_governor() {
 		if [ -n "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ]; then
 			getprop persist.sys.azenith.custom_default_cpu_gov
+		elif [ -n "$(getprop persist.sys.azenith.default_cpu_gov)" ]; then
+			getprop persist.sys.azenith.default_cpu_gov
 		else
 			echo "schedutil"
 		fi
 	}
 
+	# Load Default I/O Scheduler
+	load_default_iosched() {
+		if [ -n "$(getprop persist.sys.azenith.custom_default_balanced_IO)" ]; then
+			getprop persist.sys.azenith.custom_default_balanced_IO
+		elif [ -n "$(getprop persist.sys.azenith.default_balanced_IO)" ]; then
+			getprop persist.sys.azenith.default_balanced_IO
+		else
+			echo "none"
+		fi
+	}
+
 	# Load default cpu governor
 	default_cpu_gov=$(load_default_governor)
+
+	# Load default I/O scheduler
+	default_iosched=$(load_default_iosched)
 
 	# Power level settings
 	for pl in /sys/devices/system/cpu/perf; do
@@ -1076,6 +1125,10 @@ balanced_profile() {
 	# Restore CPU Scaling Governor
 	setgov "$default_cpu_gov"
 	dlog "Applying governor to : $default_cpu_gov"
+
+	# Restore I/O Scheduler
+	setsIO "$default_iosched"
+	dlog "Applying I/O scheduler to : $default_iosched"
 
 	# Limit cpu freq
 	[ -d /proc/ppm ] && setfreqppm || setfreq
@@ -1174,8 +1227,21 @@ eco_mode() {
 	}
 	powersave_cpu_gov=$(load_powersave_governor)
 
+    # Apply Powersave CPU Governor
 	setgov "$powersave_cpu_gov"
 	dlog "Applying governor to : $powersave_cpu_gov"
+
+	# Load Powersave I/O Scheduler
+	load_powersave_iosched() {
+		if [ -n "$(getprop persist.sys.azenith.custom_powersave_IO)" ]; then
+			getprop persist.sys.azenith.custom_powersave_IO
+		else
+			echo "none"
+		fi
+	}
+	powersave_iosched=$(load_powersave_iosched)
+	setsIO "$powersave_iosched"
+	dlog "Applying I/O scheduler to : $powersave_iosched"
 
 	# Power level settings
 	for pl in /sys/devices/system/cpu/perf; do
