@@ -1227,7 +1227,7 @@ eco_mode() {
 	}
 	powersave_cpu_gov=$(load_powersave_governor)
 
-    # Apply Powersave CPU Governor
+	# Apply Powersave CPU Governor
 	setgov "$powersave_cpu_gov"
 	dlog "Applying governor to : $powersave_cpu_gov"
 
@@ -1495,22 +1495,202 @@ is_GED_KPI_enabled 0"
 	}
 
 	SFL() {
-		resetprop -n debug.sf.disable_backpressure 1
-		resetprop -n debug.sf.latch_unsignaled 1
-		resetprop -n debug.sf.enable_hwc_vds 1
-		resetprop -n debug.sf.early_phase_offset_ns 300000
-		resetprop -n debug.sf.early_app_phase_offset_ns 300000
-		resetprop -n debug.sf.early_gl_phase_offset_ns 2000000
-		resetprop -n debug.sf.early_gl_app_phase_offset_ns 10000000
-		resetprop -n debug.sf.high_fps_early_phase_offset_ns 5000000
-		resetprop -n debug.sf.high_fps_early_gl_phase_offset_ns 500000
-		resetprop -n debug.sf.high_fps_late_app_phase_offset_ns 80000
-		resetprop -n debug.sf.phase_offset_threshold_for_next_vsync_ns 5000000
+		get_stable_refresh_rate() {
+			i=0
+			while [ $i -lt 5 ]; do
+				period=$(dumpsys SurfaceFlinger --latency 2>/dev/null | head -n1 | awk 'NR==1 {print $1}')
+				case $period in
+				'' | *[!0-9]*) ;;
+				*)
+					if [ "$period" -gt 0 ]; then
+						rate=$(((1000000000 + (period / 2)) / period))
+						if [ "$rate" -ge 30 ] && [ "$rate" -le 240 ]; then
+							samples="$samples $rate"
+						fi
+					fi
+					;;
+				esac
+				i=$((i + 1))
+				sleep 0.05
+			done
+
+			if [ -z "$samples" ]; then
+				echo 60
+				return
+			fi
+
+			sorted=$(echo "$samples" | tr ' ' '\n' | sort -n)
+			count=$(echo "$sorted" | wc -l)
+			mid=$((count / 2))
+
+			if [ $((count % 2)) -eq 1 ]; then
+				median=$(echo "$sorted" | sed -n "$((mid + 1))p")
+			else
+				val1=$(echo "$sorted" | sed -n "$mid p")
+				val2=$(echo "$sorted" | sed -n "$((mid + 1))p")
+				median=$(((val1 + val2) / 2))
+			fi
+
+			echo "$median"
+		}
+		refresh_rate=$(get_stable_refresh_rate)
+
+		frame_duration_ns=$(awk -v r="$refresh_rate" 'BEGIN { printf "%.0f", 1000000000 / r }')
+
+		calculate_dynamic_margin() {
+			base_margin=0.07
+			cpu_load=$(top -n 1 -b 2>/dev/null | grep "Cpu(s)" | awk '{print $2 + $4}')
+			margin=$base_margin
+			awk -v load="$cpu_load" -v base="$base_margin" 'BEGIN {
+			if (load > 70) {
+				print base + 0.01
+			} else {
+				print base
+			}
+		}'
+		}
+
+		margin_ratio=$(calculate_dynamic_margin)
+		min_margin=$(awk -v fd="$frame_duration_ns" -v m="$margin_ratio" 'BEGIN { printf "%.0f", fd * m }')
+
+		if [ "$refresh_rate" -ge 120 ]; then
+			app_phase_ratio=0.68
+			sf_phase_ratio=0.85
+			app_duration_ratio=0.58
+			sf_duration_ratio=0.32
+		elif [ "$refresh_rate" -ge 90 ]; then
+			app_phase_ratio=0.66
+			sf_phase_ratio=0.82
+			app_duration_ratio=0.60
+			sf_duration_ratio=0.30
+		elif [ "$refresh_rate" -ge 75 ]; then
+			app_phase_ratio=0.64
+			sf_phase_ratio=0.80
+			app_duration_ratio=0.62
+			sf_duration_ratio=0.28
+		else
+			app_phase_ratio=0.62
+			sf_phase_ratio=0.75
+			app_duration_ratio=0.65
+			sf_duration_ratio=0.25
+		fi
+
+		app_phase_offset_ns=$(awk -v fd="$frame_duration_ns" -v r="$app_phase_ratio" 'BEGIN { printf "%.0f", -fd * r }')
+		sf_phase_offset_ns=$(awk -v fd="$frame_duration_ns" -v r="$sf_phase_ratio" 'BEGIN { printf "%.0f", -fd * r }')
+
+		app_duration=$(awk -v fd="$frame_duration_ns" -v r="$app_duration_ratio" 'BEGIN { printf "%.0f", fd * r }')
+		sf_duration=$(awk -v fd="$frame_duration_ns" -v r="$sf_duration_ratio" 'BEGIN { printf "%.0f", fd * r }')
+
+		app_end_time=$(awk -v offset="$app_phase_offset_ns" -v dur="$app_duration" 'BEGIN { print offset + dur }')
+		dead_time=$(awk -v app_end="$app_end_time" -v sf_offset="$sf_phase_offset_ns" 'BEGIN { print -(app_end + sf_offset) }')
+
+		adjust_needed=$(awk -v dt="$dead_time" -v mm="$min_margin" 'BEGIN { print (dt < mm) ? 1 : 0 }')
+		if [ "$adjust_needed" -eq 1 ]; then
+			adjustment=$(awk -v mm="$min_margin" -v dt="$dead_time" 'BEGIN { print mm - dt }')
+			new_app_duration=$(awk -v app_dur="$app_duration" -v adj="$adjustment" 'BEGIN { res = app_dur - adj; print (res > 0) ? res : 0 }')
+			echo "Optimization: Adjusted app duration by -${adjustment}ns for dynamic margin"
+			app_duration=$new_app_duration
+		fi
+
+		min_phase_duration=$(awk -v fd="$frame_duration_ns" 'BEGIN { printf "%.0f", fd * 0.12 }')
+
+		app_too_short=$(awk -v dur="$app_duration" -v min="$min_phase_duration" 'BEGIN { print (dur < min) ? 1 : 0 }')
+		if [ "$app_too_short" -eq 1 ]; then
+			app_duration=$min_phase_duration
+		fi
+
+		sf_too_short=$(awk -v dur="$sf_duration" -v min="$min_phase_duration" 'BEGIN { print (dur < min) ? 1 : 0 }')
+		if [ "$sf_too_short" -eq 1 ]; then
+			sf_duration=$min_phase_duration
+		fi
+
+		resetprop -n debug.sf.early.app.duration "$app_duration"
+		resetprop -n debug.sf.earlyGl.app.duration "$app_duration"
+		resetprop -n debug.sf.late.app.duration "$app_duration"
+
+		resetprop -n debug.sf.early.sf.duration "$sf_duration"
+		resetprop -n debug.sf.earlyGl.sf.duration "$sf_duration"
+		resetprop -n debug.sf.late.sf.duration "$sf_duration"
+
+		resetprop -n debug.sf.early_app_phase_offset_ns "$app_phase_offset_ns"
+		resetprop -n debug.sf.high_fps_early_app_phase_offset_ns "$app_phase_offset_ns"
+		resetprop -n debug.sf.high_fps_late_app_phase_offset_ns "$app_phase_offset_ns"
+		resetprop -n debug.sf.early_phase_offset_ns "$sf_phase_offset_ns"
+		resetprop -n debug.sf.high_fps_early_phase_offset_ns "$sf_phase_offset_ns"
+		resetprop -n debug.sf.high_fps_late_sf_phase_offset_ns "$sf_phase_offset_ns"
+		if [ "$refresh_rate" -ge 120 ]; then
+			threshold_ratio=0.28
+		elif [ "$refresh_rate" -ge 90 ]; then
+			threshold_ratio=0.32
+		elif [ "$refresh_rate" -ge 75 ]; then
+			threshold_ratio=0.35
+		else
+			threshold_ratio=0.38
+		fi
+
+		phase_offset_threshold_ns=$(awk -v fd="$frame_duration_ns" -v tr="$threshold_ratio" 'BEGIN { printf "%.0f", fd * tr }')
+
+		max_threshold=$(awk -v fd="$frame_duration_ns" 'BEGIN { printf "%.0f", fd * 0.45 }')
+		min_threshold=$(awk -v fd="$frame_duration_ns" 'BEGIN { printf "%.0f", fd * 0.22 }')
+
+		phase_offset_threshold_ns=$(awk -v val="$phase_offset_threshold_ns" -v max="$max_threshold" -v min="$min_threshold" '
+		BEGIN {
+			if (val > max) {
+				print max
+			} else if (val < min) {
+				print min
+			} else {
+				print val
+			}
+		}')
+
+		resetprop -n debug.sf.phase_offset_threshold_for_next_vsync_ns "$phase_offset_threshold_ns"
+
+		resetprop -n debug.sf.enable_advanced_sf_phase_offset 1
+		resetprop -n debug.sf.predict_hwc_composition_strategy 1
+		resetprop -n debug.sf.use_phase_offsets_as_durations 1
+		resetprop -n debug.sf.disable_hwc_vds 1
+		resetprop -n debug.sf.show_refresh_rate_overlay_spinner 0
+		resetprop -n debug.sf.show_refresh_rate_overlay_render_rate 0
+		resetprop -n debug.sf.show_refresh_rate_overlay_in_middle 0
+		resetprop -n debug.sf.kernel_idle_timer_update_overlay 0
+		resetprop -n debug.sf.dump.enable 0
+		resetprop -n debug.sf.dump.external 0
+		resetprop -n debug.sf.dump.primary 0
+		resetprop -n debug.sf.treat_170m_as_sRGB 0
+		resetprop -n debug.sf.luma_sampling 0
 		resetprop -n debug.sf.showupdates 0
-		resetprop -n debug.sf.showcpu 0
-		resetprop -n debug.sf.showbackground 0
-		resetprop -n debug.sf.showfps 0
-		resetprop -n debug.sf.hw 1
+		resetprop -n debug.sf.disable_client_composition_cache 0
+		resetprop -n debug.sf.treble_testing_override false
+		resetprop -n debug.sf.enable_layer_caching false
+		resetprop -n debug.sf.enable_cached_set_render_scheduling true
+		resetprop -n debug.sf.layer_history_trace false
+		resetprop -n debug.sf.edge_extension_shader false
+		resetprop -n debug.sf.enable_egl_image_tracker false
+		resetprop -n debug.sf.use_phase_offsets_as_durations false
+		resetprop -n debug.sf.layer_caching_highlight false
+		resetprop -n debug.sf.enable_hwc_vds false
+		resetprop -n debug.sf.vsp_trace false
+		resetprop -n debug.sf.enable_transaction_tracing false
+		resetprop -n debug.hwui.filter_test_overhead false
+		resetprop -n debug.hwui.show_layers_updates false
+		resetprop -n debug.hwui.capture_skp_enabled false
+		resetprop -n debug.hwui.trace_gpu_resources false
+		resetprop -n debug.hwui.skia_tracing_enabled false
+		resetprop -n debug.hwui.nv_profiling false
+		resetprop -n debug.hwui.skia_use_perfetto_track_events false
+		resetprop -n debug.hwui.show_dirty_regions false
+		resetprop -n debug.hwui.profile false
+		resetprop -n debug.hwui.overdraw false
+		resetprop -n debug.hwui.show_non_rect_clip hide
+		resetprop -n debug.hwui.webview_overlays_enabled false
+		resetprop -n debug.hwui.skip_empty_damage true
+		resetprop -n debug.hwui.use_gpu_pixel_buffers true
+		resetprop -n debug.hwui.use_buffer_age true
+		resetprop -n debug.hwui.use_partial_updates true
+		resetprop -n debug.hwui.skip_eglmanager_telemetry true
+		resetprop -n debug.hwui.level 0
+
 	}
 
 	DThermal() {
