@@ -270,7 +270,7 @@ void preload(const char* pkg, unsigned int* LOOP_INTERVAL) {
 void stop_preloading(unsigned int* LOOP_INTERVAL) {
     if (preload_active) {
         cleanup_vmt();
-        *LOOP_INTERVAL = 5;
+        *LOOP_INTERVAL = 1;
         did_log_preload = true;
         preload_active = false;
         int status;
