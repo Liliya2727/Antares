@@ -280,7 +280,7 @@ setgamefreqppm() {
 setgamefreq() {
 	for path in /sys/devices/system/cpu/*/cpufreq; do
 		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
-		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
+		cpu_minfreq=$(<"$path/cpuinfo_max_freq")
 		[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
 			new_maxtarget=$((cpu_maxfreq * 90 / 100))
 			new_midtarget=$((cpu_maxfreq * 50 / 100))
@@ -292,7 +292,7 @@ setgamefreq() {
 		}
 		zeshia "$cpu_maxfreq" "$path/scaling_max_freq"
 		zeshia "$cpu_minfreq" "$path/scaling_min_freq"
-		chmod -f 644 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+		chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
 	done
 }
 
@@ -364,7 +364,7 @@ Dsetgamefreqppm() {
 Dsetgamefreq() {
 	for path in /sys/devices/system/cpu/*/cpufreq; do
 		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
-		cpu_minfreq=$(<"$path/cpuinfo_min_freq")
+		cpu_minfreq=$(<"$path/cpuinfo_max_freq")
 		[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
 			new_maxtarget=$((cpu_maxfreq * 90 / 100))
 			new_midtarget=$((cpu_maxfreq * 50 / 100))
@@ -376,24 +376,16 @@ Dsetgamefreq() {
 		}
 		applyppmnfreqsets "$cpu_maxfreq" "$path/scaling_max_freq"
 		applyppmnfreqsets "$cpu_minfreq" "$path/scaling_min_freq"
-		chmod -f 644 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
+		chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
 	done
 }
 
 applyfreqbalance() {
-	if [ -d /proc/ppm ];then
-		Dsetfreqppm
-	else
-		Dsetfreq
-	fi
+	[ -d /proc/ppm ] && Dsetfreqppm || Dsetfreq
 }
 
 applyfreqgame() {
-	if [ -d /proc/ppm ]; then
-		Dsetgamefreqppm
-	else
-		Dsetgamefreq
-	fi
+	[ -d /proc/ppm ] && Dsetgamefreqppm || Dsetgamefreq
 }
 
 ###############################################
@@ -1085,11 +1077,7 @@ performance_profile() {
 	fi
 
 	# Fix Target OPP Index
-	if [ -d /proc/ppm ]; then
-		setgamefreqppm && dlog "set CPU ppm freq to max available Frequencies"
-	else
-		setgamefreq && dlog "set CPU freq to max available Frequencies"
-	fi
+	[ -d /proc/ppm ]&& setgamefreqppm && dlog "set CPU ppm freq to max available Frequencies" || setgamefreq && dlog "set CPU freq to max available Frequencies"
 
 	# VM Cache Pressure
 	zeshia "40" "/proc/sys/vm/vfs_cache_pressure"
@@ -1234,11 +1222,7 @@ balanced_profile() {
 	dlog "Applying I/O scheduler to : $default_iosched"
 
 	# Limit cpu freq
-	if [ -d /proc/ppm ]; then
-		setfreqppm && dlog "Restored CPU ppm freq to normal Frequencies"
-	else
-		setfreq && dlog "Restored CPU freq to normal Frequencies"
-	fi
+	[ -d /proc/ppm ] && setfreqppm && dlog "Set CPU ppm freq to normal Frequencies" || setfreq && dlog "Set CPU freq to normal Frequencies"
 
 	# vm cache pressure
 	zeshia "120" "/proc/sys/vm/vfs_cache_pressure"
@@ -1369,11 +1353,7 @@ eco_mode() {
 	fi
 
 	# Limit cpu freq
-	if [ -d /proc/ppm ]; then
-		setfreqppm && dlog "Set CPU ppm freq to low Frequencies"
-	else
-		setfreq && dlog "Set CPU freq to low Frequencies"
-	fi
+	[ -d /proc/ppm ] && setfreqppm && dlog "Set CPU ppm freq to low Frequencies" || setfreq && dlog "Set CPU freq to low Frequencies"
 
 	# VM Cache Pressure
 	zeshia "120" "/proc/sys/vm/vfs_cache_pressure"
