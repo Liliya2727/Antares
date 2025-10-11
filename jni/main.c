@@ -16,7 +16,7 @@
 
 #include <AZenith.h>
 #include <libgen.h>
-unsigned int LOOP_INTERVAL = 5;
+unsigned int LOOP_INTERVAL = 1;
 char* gamestart = NULL;
 bool preload_active = false;
 bool did_log_preload = true;
