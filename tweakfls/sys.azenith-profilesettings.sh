@@ -101,6 +101,13 @@ zeshiax() {
 	fi
 }
 
+applyppmnfreqsets() {
+	[ ! -f "$2" ] && return 1
+	chmod 644 "$2" 2>/dev/null
+	echo "$1" >"$2" 2>/dev/null
+	chmod 444 "$2" 2>/dev/null
+}
+
 which_maxfreq() {
 	tr ' ' '\n' <"$1" | sort -nr | head -n 1
 }
@@ -218,13 +225,13 @@ setfreqppm() {
 		[ "$curprofile" = "3" ] && {
 			target_min_target=$((cpu_maxfreq * 40 / 100))
 			new_minfreq=$(setfreqs "$path/scaling_available_frequencies" "$target_min_target")
-			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-			zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+			applyppmnfreqsets "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+			applyppmnfreqsets "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
 			((cluster++))
 			continue
 		}
-		zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-		zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+		applyppmnfreqsets "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+		applyppmnfreqsets "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
 		((cluster++))
 	done
 }
@@ -240,12 +247,12 @@ setfreq() {
 		[ "$curprofile" = "3" ] && {
 			target_min_target=$((cpu_maxfreq * 40 / 100))
 			new_minfreq=$(setfreqs "$path/scaling_available_frequencies" "$target_min_target")
-			zeshia "$new_maxfreq" "$path/scaling_max_freq"
-			zeshia "$new_minfreq" "$path/scaling_min_freq"
+			applyppmnfreqsets "$new_maxfreq" "$path/scaling_max_freq"
+			applyppmnfreqsets "$new_minfreq" "$path/scaling_min_freq"
 			continue
 		}
-		zeshia "$new_maxfreq" "$path/scaling_max_freq"
-		zeshia "$cpu_minfreq" "$path/scaling_min_freq"
+		applyppmnfreqsets "$new_maxfreq" "$path/scaling_max_freq"
+		applyppmnfreqsets "$cpu_minfreq" "$path/scaling_min_freq"
 		chmod -f 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
 	done
 }
@@ -261,12 +268,12 @@ setgamefreqppm() {
 			new_midtarget=$((cpu_maxfreq * 50 / 100))
 			new_midfreq=$(setfreqs "$path/scaling_available_frequencies" "$new_midtarget")
 			new_maxfreq=$(setfreqs "$path/scaling_available_frequencies" "$new_maxtarget")
-			zeshiax "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-			zeshiax "$cluster $new_midfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+			applyppmnfreqsets "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+			applyppmnfreqsets "$cluster $new_midfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
 			continue
 		}
-		zeshiax "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
-		zeshiax "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+		applyppmnfreqsets "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
+		applyppmnfreqsets "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
 	done
 }
 
@@ -279,12 +286,12 @@ setgamefreq() {
 			new_midtarget=$((cpu_maxfreq * 50 / 100))
 			new_midfreq=$(setfreqs "$path/scaling_available_frequencies" "$new_midtarget")
 			new_maxfreq=$(setfreqs "$path/scaling_available_frequencies" "$new_maxtarget")
-			zeshiax "$new_maxfreq" "$path/scaling_max_freq"
-			zeshiax "$new_midfreq" "$path/scaling_min_freq"
+			applyppmnfreqsets "$new_maxfreq" "$path/scaling_max_freq"
+			applyppmnfreqsets "$new_midfreq" "$path/scaling_min_freq"
 			continue
 		}
-		zeshiax "$cpu_maxfreq" "$path/scaling_max_freq"
-		zeshiax "$cpu_minfreq" "$path/scaling_min_freq"
+		applyppmnfreqsets "$cpu_maxfreq" "$path/scaling_max_freq"
+		applyppmnfreqsets "$cpu_minfreq" "$path/scaling_min_freq"
 		chmod -f 644 /sys/devices/system/cpu/cpufreq/policy*/scaling_*_freq
 	done
 }
@@ -986,7 +993,7 @@ performance_profile() {
 	fi
 
 	# Fix Target OPP Index
-	[ -d /proc/ppm ] && setgamefreqppm || setgamefreq
+	[ -d /proc/ppm ] && setgamefreqppm && dlog "set CPU ppm freq to max available Frequencies" || setgamefreq && dlog "set CPU freq to max available Frequencies"
 
 	# VM Cache Pressure
 	zeshia "40" "/proc/sys/vm/vfs_cache_pressure"
@@ -1131,7 +1138,7 @@ balanced_profile() {
 	dlog "Applying I/O scheduler to : $default_iosched"
 
 	# Limit cpu freq
-	[ -d /proc/ppm ] && setfreqppm || setfreq
+	[ -d /proc/ppm ] && setfreqppm && dlog "Restored CPU ppm freq to normal Frequencies" || setfreq && dlog "Restored CPU freq to normal Frequencies"
 
 	# vm cache pressure
 	zeshia "120" "/proc/sys/vm/vfs_cache_pressure"
@@ -1262,7 +1269,7 @@ eco_mode() {
 	fi
 
 	# Limit cpu freq
-	[ -d /proc/ppm ] && setfreqppm || setfreq
+	[ -d /proc/ppm ] && setfreqppm && dlog "Set CPU ppm freq to low Frequencies" || setfreq && dlog "Restored CPU freq to low Frequencies"
 
 	# VM Cache Pressure
 	zeshia "120" "/proc/sys/vm/vfs_cache_pressure"
