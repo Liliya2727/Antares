@@ -251,7 +251,7 @@ void preload(const char* pkg, unsigned int* LOOP_INTERVAL) {
                 }
                 _exit(0);
             } else if (pid > 0) {
-                *LOOP_INTERVAL = 35;
+                *LOOP_INTERVAL = 25;
                 did_log_preload = false;
                 preload_active = true;
             } else {
@@ -270,7 +270,7 @@ void preload(const char* pkg, unsigned int* LOOP_INTERVAL) {
 void stop_preloading(unsigned int* LOOP_INTERVAL) {
     if (preload_active) {
         cleanup_vmt();
-        *LOOP_INTERVAL = 15;
+        *LOOP_INTERVAL = 5;
         did_log_preload = true;
         preload_active = false;
         int status;

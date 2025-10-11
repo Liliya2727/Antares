@@ -53,7 +53,7 @@ void run_profiler(const int profile) {
  * Note               : Caller is responsible for freeing the returned string.
  ***********************************************************************************/
 char* get_gamestart(void) {
-    return execute_command("dumpsys window visible-apps | grep 'package=.* ' | grep -Eo -f %s", GAMELIST);
+    return execute_command("cmd activity stack list | grep -m1 'visible=true' | cut -d: -f2 | cut -d/ -f1 | grep -Eo -f %s", GAMELIST);
 }
 /***********************************************************************************
  * Function Name      : get_screenstate_normal
