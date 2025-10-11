@@ -389,11 +389,11 @@ Dsetgamefreq() {
 }
 
 applyfreqbalance() {
-	[ -d /proc/ppm ] && Dsetfreqppm || Dsetfreq
+    Dsetfreqppm && Dsetfreq
 }
 
 applyfreqgame() {
-	[ -d /proc/ppm ] && Dsetgamefreqppm || Dsetgamefreq
+	Dsetgamefreqppm && Dsetgamefreq
 }
 
 ###############################################
