@@ -63,48 +63,48 @@ int main(int argc, char* argv[]) {
         external_log(level, argv[1], message);
         return EXIT_SUCCESS;
     }
+        
+    // Expose profiler interface
+    if (strcmp(base_name, "sys.azenith-profiler") == 0) {
+        if (argc < 2) {
+            fprintf(stderr, "Usage: sys.azenith-profiler <1|2|3>\n");
+            fprintf(stderr, "Usage: 1 = Performance, 2 = Balanced, 3 = Eco Mode\n");
+            return EXIT_FAILURE;
+        }
     
-// Expose profiler interface
-if (strcmp(base_name, "sys.azenith-profiler") == 0) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: sys.azenith-profiler <1|2|3>\n");
-        fprintf(stderr, "Profile: 1 = Performance, 2 = Balanced, 3 = Eco Mode\n");
-        return EXIT_FAILURE;
+        const char *profile = argv[1];
+    
+        // Check AIenabled state before applying manual profile
+        char ai_state[PROP_VALUE_MAX] = {0};
+        __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
+    
+        if (strcmp(ai_state, "1") == 0) {
+            log_zenith(LOG_WARN, "Manual profiler execution is blocked");
+            fprintf(stderr, "\033[31mERROR:\033[0m Cannot apply profile manually while auto mode is enabled.\n");
+            toast("Cannot apply manual profile");
+            return EXIT_FAILURE;
+        }
+    
+        if (strcmp(profile, "1") == 0) {
+            log_zenith(LOG_INFO, "Manually applying performance profile");
+            toast("Applying Performance Profile");
+            run_profiler(PERFORMANCE_PROFILE);
+            return EXIT_SUCCESS;
+        } else if (strcmp(profile, "2") == 0) {
+            log_zenith(LOG_INFO, "Manually applying balanced profile");
+            toast("Applying Balanced Profile");
+            run_profiler(BALANCED_PROFILE);
+            return EXIT_SUCCESS;
+        } else if (strcmp(profile, "3") == 0) {
+            log_zenith(LOG_INFO, "Manually applying eco mode");
+            toast("Applying Eco Mode");
+            run_profiler(ECO_MODE);
+            return EXIT_SUCCESS;
+        } else {
+            fprintf(stderr, "Invalid profile. Use: 1 | 2 | 3\n");
+            return EXIT_FAILURE;
+        }
     }
-
-    const char *profile = argv[1];
-
-    // Check AIenabled state before applying manual profile
-    char ai_state[PROP_VALUE_MAX] = {0};
-    __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
-
-    if (strcmp(ai_state, "1") == 0) {
-        log_zenith(LOG_WARN, "Manual profiler execution is blocked");
-        fprintf(stderr, "\033[31mERROR:\033[0m Cannot apply profile manually while auto mode is enabled.\n");
-        toast("Cannot apply manual profile");
-        return EXIT_FAILURE;
-    }
-
-    if (strcmp(profile, "performance") == 0) {
-        log_zenith(LOG_INFO, "Manually applying PERFORMANCE_PROFILE");
-        toast("Applying Performance Profile");
-        run_profiler(PERFORMANCE_PROFILE);
-        return EXIT_SUCCESS;
-    } else if (strcmp(profile, "balanced") == 0) {
-        log_zenith(LOG_INFO, "Manually applying BALANCED_PROFILE");
-        toast("Applying Balanced Profile");
-        run_profiler(BALANCED_PROFILE);
-        return EXIT_SUCCESS;
-    } else if (strcmp(profile, "eco") == 0) {
-        log_zenith(LOG_INFO, "Manually applying ECO_MODE");
-        toast("Applying Eco Mode");
-        run_profiler(ECO_MODE);
-        return EXIT_SUCCESS;
-    } else {
-        fprintf(stderr, "Invalid profile. Use: performance | balanced | eco\n");
-        return EXIT_FAILURE;
-    }
-}
 
     // Make sure only one instance is running
     if (check_running_state() == 1) {
@@ -146,6 +146,7 @@ if (strcmp(base_name, "sys.azenith-profiler") == 0) {
     notify("Initializing...");
     run_profiler(PERFCOMMON);
     char prev_ai_state[PROP_VALUE_MAX] = "0";
+    __system_property_get("persist.sys.azenithconf.AIenabled", prev_ai_state);
 
     while (1) {
         sleep(LOOP_INTERVAL);
@@ -161,6 +162,10 @@ if (strcmp(base_name, "sys.azenith-profiler") == 0) {
 
         // Check module state simultaneusly
         checkstate();
+        
+        // Update state
+        char ai_state[PROP_VALUE_MAX] = {0};
+        __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
 
         // Apply frequencies
         if (get_screenstate()) {
@@ -174,37 +179,28 @@ if (strcmp(base_name, "sys.azenith-profiler") == 0) {
         } else {
             // Screen Off, Do Nothing
         }
-
-
-// Check AIenabled state
-char ai_state[PROP_VALUE_MAX] = {0};
-__system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
-
-// Detect transition from AI OFF → ON
-if (strcmp(prev_ai_state, "0") == 0 && strcmp(ai_state, "1") == 0) {
-    log_zenith(LOG_INFO, "Idle mode is enabled, reapplying Balanced Profile");
-    toast("Reapplying Balanced Profile");
-    cur_mode = BALANCED_PROFILE;
-    need_profile_checkup = false;
-    run_profiler(BALANCED_PROFILE);
-}
-
-// Detect transition from AI ON → OFF
-if (strcmp(prev_ai_state, "1") == 0 && strcmp(ai_state, "0") == 0) {
-    log_zenith(LOG_INFO, "Idle mode is disabled, reapplying Balanced Profile");
-    toast("Reapplying Balanced Profile");
-    cur_mode = BALANCED_PROFILE;
-    need_profile_checkup = false;
-    run_profiler(BALANCED_PROFILE);
-}
-
-// Update previous state
-strcpy(prev_ai_state, ai_state);
-
-// If AI is disabled, skip AI-related game logic
-if (strcmp(ai_state, "0") == 0) {
-    continue;
-}
+        
+        if (did_notify_start) {                    
+            if (strcmp(prev_ai_state, "1") == 0 && strcmp(ai_state, "0") == 0) {
+                log_zenith(LOG_INFO, "Idle mode disabled, reapplying Balanced");
+                toast("Applying Balanced Profile");
+                cur_mode = BALANCED_PROFILE;
+                run_profiler(BALANCED_PROFILE);
+            }
+        
+            if (strcmp(prev_ai_state, "0") == 0 && strcmp(ai_state, "1") == 0) {
+                log_zenith(LOG_INFO, "Idle mode enabled, reapplying Balanced");
+                toast("Applying Balanced Profile");
+                cur_mode = BALANCED_PROFILE;
+                run_profiler(BALANCED_PROFILE);
+            }      
+            strcpy(prev_ai_state, ai_state);
+        }
+        
+        // Skip everything if enabled
+        if (strcmp(ai_state, "0") == 0) {
+           continue;
+        }
 
         // Only fetch gamestart when user not in-game
         // prevent overhead from dumpsys commands.
@@ -251,6 +247,7 @@ if (strcmp(ai_state, "0") == 0) {
                 did_log_preload = true;
             }
             run_profiler(PERFORMANCE_PROFILE);
+            fprintf(stderr, "Performance Profile Applied\n");
         } else if (get_low_power_state()) {
             // Bail out if we already on powersave profile
             if (cur_mode == ECO_MODE)
@@ -261,6 +258,7 @@ if (strcmp(ai_state, "0") == 0) {
             log_zenith(LOG_INFO, "Applying ECO Mode");
             toast("Applying Eco Mode");
             run_profiler(ECO_MODE);
+            fprintf(stderr, "Eco Mode Applied\n");
         } else {
             // Bail out if we already on normal profile
             if (cur_mode == BALANCED_PROFILE)
@@ -275,8 +273,8 @@ if (strcmp(ai_state, "0") == 0) {
                 did_notify_start = true;
             }
             run_profiler(BALANCED_PROFILE);
+            fprintf(stderr, "Balanced Profile Applied\n");
         }
-    }
-
+        
     return 0;
 }
