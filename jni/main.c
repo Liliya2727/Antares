@@ -89,16 +89,19 @@ int main(int argc, char* argv[]) {
             log_zenith(LOG_INFO, "Manually applying performance profile");
             toast("Applying Performance Profile");
             run_profiler(PERFORMANCE_PROFILE);
+            fprintf(stderr, "Applying Performance Profile\n");
             return EXIT_SUCCESS;
         } else if (strcmp(profile, "2") == 0) {
             log_zenith(LOG_INFO, "Manually applying balanced profile");
             toast("Applying Balanced Profile");
             run_profiler(BALANCED_PROFILE);
+            fprintf(stderr, "Applying Balanced Profile\n");
             return EXIT_SUCCESS;
         } else if (strcmp(profile, "3") == 0) {
             log_zenith(LOG_INFO, "Manually applying eco mode");
             toast("Applying Eco Mode");
             run_profiler(ECO_MODE);
+            fprintf(stderr, "Applying Eco Mode\n");
             return EXIT_SUCCESS;
         } else {
             fprintf(stderr, "Invalid profile. Use: 1 | 2 | 3\n");
@@ -182,14 +185,14 @@ int main(int argc, char* argv[]) {
         
         if (did_notify_start) {                    
             if (strcmp(prev_ai_state, "1") == 0 && strcmp(ai_state, "0") == 0) {
-                log_zenith(LOG_INFO, "Idle mode disabled, reapplying Balanced");
+                log_zenith(LOG_INFO, "Idle mode enabled, reapplying Balanced");
                 toast("Applying Balanced Profile");
                 cur_mode = BALANCED_PROFILE;
                 run_profiler(BALANCED_PROFILE);
             }
         
             if (strcmp(prev_ai_state, "0") == 0 && strcmp(ai_state, "1") == 0) {
-                log_zenith(LOG_INFO, "Idle mode enabled, reapplying Balanced");
+                log_zenith(LOG_INFO, "Idle mode disabled, reapplying Balanced");
                 toast("Applying Balanced Profile");
                 cur_mode = BALANCED_PROFILE;
                 run_profiler(BALANCED_PROFILE);
@@ -246,8 +249,7 @@ int main(int argc, char* argv[]) {
                 log_zenith(LOG_INFO, "Start Preloading game package %s", gamestart);
                 did_log_preload = true;
             }
-            run_profiler(PERFORMANCE_PROFILE);
-            fprintf(stderr, "Performance Profile Applied\n");
+            run_profiler(PERFORMANCE_PROFILE);            
         } else if (get_low_power_state()) {
             // Bail out if we already on powersave profile
             if (cur_mode == ECO_MODE)
@@ -257,8 +259,7 @@ int main(int argc, char* argv[]) {
             need_profile_checkup = false;
             log_zenith(LOG_INFO, "Applying ECO Mode");
             toast("Applying Eco Mode");
-            run_profiler(ECO_MODE);
-            fprintf(stderr, "Eco Mode Applied\n");
+            run_profiler(ECO_MODE);            
         } else {
             // Bail out if we already on normal profile
             if (cur_mode == BALANCED_PROFILE)
@@ -272,8 +273,7 @@ int main(int argc, char* argv[]) {
                 notify("AZenith is running successfully");
                 did_notify_start = true;
             }
-            run_profiler(BALANCED_PROFILE);
-            fprintf(stderr, "Balanced Profile Applied\n");
+            run_profiler(BALANCED_PROFILE);            
         }
         
     }
