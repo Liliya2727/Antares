@@ -276,5 +276,7 @@ int main(int argc, char* argv[]) {
             fprintf(stderr, "Balanced Profile Applied\n");
         }
         
+    }
+        
     return 0;
 }
