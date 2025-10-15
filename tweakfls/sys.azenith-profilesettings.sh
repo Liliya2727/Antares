@@ -43,62 +43,74 @@ dlog() {
 }
 
 zeshia() {
-	local value="$1"
-	local path="$2"
-	local pathname
-	pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
-	if [ ! -e "$path" ]; then
-		AZLog "File /$pathname not found, skipping..."
-		return
-	fi
-	if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
-		AZLog "Cannot write to /$pathname (permission denied)"
-		return
-	fi
-	echo "$value" >"$path" 2>/dev/null
-	local current
-	current="$(cat "$path" 2>/dev/null)"
-	if [ "$current" = "$value" ]; then
-		AZLog "Set /$pathname to $value"
-	else
-		echo "$value" >"$path" 2>/dev/null
-		current="$(cat "$path" 2>/dev/null)"
-		if [ "$current" = "$value" ]; then
-			AZLog "Set /$pathname to $value (after retry)"
-		else
-			AZLog "Set /$pathname to $value"
-		fi
-	fi
-	chmod 444 "$path" 2>/dev/null
+    local value="$1"
+    local path="$2"
+    local pathname
+    pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
+
+    if [ ! -e "$path" ]; then
+        AZLog "File /$pathname not found, skipping..."
+        return
+    fi
+
+    chmod 644 "$path" 2>/dev/null
+
+    if ! echo "$value" >"$path" 2>/dev/null; then
+        AZLog "Cannot write to /$pathname (permission denied)"
+        chmod 444 "$path" 2>/dev/null
+        return
+    fi
+
+    local current
+    current="$(cat "$path" 2>/dev/null)"
+    if [ "$current" = "$value" ]; then
+        AZLog "Set /$pathname to $value"
+    else
+        echo "$value" >"$path" 2>/dev/null || true
+        current="$(cat "$path" 2>/dev/null)"
+        if [ "$current" = "$value" ]; then
+            AZLog "Set /$pathname to $value (after retry)"
+        else
+            AZLog "Failed to set /$pathname to $value"
+        fi
+    fi
+
+    chmod 444 "$path" 2>/dev/null
 }
 
 zeshiax() {
-	local value="$1"
-	local path="$2"
-	local pathname
-	pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
-	if [ ! -e "$path" ]; then
-		AZLog "File /$pathname not found, skipping..."
-		return
-	fi
-	if [ ! -w "$path" ] && ! chmod 644 "$path" 2>/dev/null; then
-		AZLog "Cannot write to /$pathname (permission denied)"
-		return
-	fi
-	echo "$value" >"$path" 2>/dev/null
-	local current
-	current="$(cat "$path" 2>/dev/null)"
-	if [ "$current" = "$value" ]; then
-		AZLog "Set /$pathname to $value"
-	else
-		echo "$value" >"$path" 2>/dev/null
-		current="$(cat "$path" 2>/dev/null)"
-		if [ "$current" = "$value" ]; then
-			AZLog "Set $pathname to $value (after retry)"
-		else
-			AZLog "Set /$pathname to $value"
-		fi
-	fi
+    local value="$1"
+    local path="$2"
+    local pathname
+    pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
+
+    if [ ! -e "$path" ]; then
+        AZLog "File /$pathname not found, skipping..."
+        return
+    fi
+
+    chmod 644 "$path" 2>/dev/null
+
+    if ! echo "$value" >"$path" 2>/dev/null; then
+        AZLog "Cannot write to /$pathname (permission denied)"
+        chmod 444 "$path" 2>/dev/null
+        return
+    fi
+
+    local current
+    current="$(cat "$path" 2>/dev/null)"
+    if [ "$current" = "$value" ]; then
+        AZLog "Set /$pathname to $value"
+    else
+        echo "$value" >"$path" 2>/dev/null || true
+        current="$(cat "$path" 2>/dev/null)"
+        if [ "$current" = "$value" ]; then
+            AZLog "Set /$pathname to $value (after retry)"
+        else
+            AZLog "Failed to set /$pathname to $value"
+        fi
+    fi
+
 }
 
 applyppmnfreqsets() {

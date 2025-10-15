@@ -67,7 +67,8 @@ int main(int argc, char* argv[]) {
 // Expose profiler interface
 if (strcmp(base_name, "sys.azenith-profiler") == 0) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: sys.azenith-profiler <performance|balanced|eco>\n");
+        fprintf(stderr, "Usage: sys.azenith-profiler <1|2|3>\n");
+        fprintf(stderr, "Profile: 1 = Performance, 2 = Balanced, 3 = Eco Mode\n");
         return EXIT_FAILURE;
     }
 
@@ -78,9 +79,9 @@ if (strcmp(base_name, "sys.azenith-profiler") == 0) {
     __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
 
     if (strcmp(ai_state, "1") == 0) {
-        log_zenith(LOG_WARN, "AIenabled=1, manual profiler execution is blocked");
-        fprintf(stderr, "\033[31mERROR:\033[0m Cannot apply manual profile while AI mode is enabled.\n");
-        toast("Cannot apply manual profile: AI mode active");
+        log_zenith(LOG_WARN, "Manual profiler execution is blocked");
+        fprintf(stderr, "\033[31mERROR:\033[0m Cannot apply profile manually while auto mode is enabled.\n");
+        toast("Cannot apply manual profile");
         return EXIT_FAILURE;
     }
 
@@ -144,6 +145,7 @@ if (strcmp(base_name, "sys.azenith-profiler") == 0) {
     cleanup_vmt();
     notify("Initializing...");
     run_profiler(PERFCOMMON);
+    char prev_ai_state[PROP_VALUE_MAX] = "0";
 
     while (1) {
         sleep(LOOP_INTERVAL);
@@ -174,15 +176,35 @@ if (strcmp(base_name, "sys.azenith-profiler") == 0) {
         }
 
 
-        // Check AI-enabled configuration before fetching game start
-        char ai_state[PROP_VALUE_MAX];
-        __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
+// Check AIenabled state
+char ai_state[PROP_VALUE_MAX] = {0};
+__system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
 
-        if (strcmp(ai_state, "0") == 0) {
-        // Skip fetching profiles or gamestart this loop
-            log_zenith(LOG_DEBUG, "AIenabled is null, skipping profile check this loop");
-            continue;
-        }
+// Detect transition from AI OFF → ON
+if (strcmp(prev_ai_state, "0") == 0 && strcmp(ai_state, "1") == 0) {
+    log_zenith(LOG_INFO, "Idle mode is enabled, reapplying Balanced Profile");
+    toast("Reapplying Balanced Profile");
+    cur_mode = BALANCED_PROFILE;
+    need_profile_checkup = false;
+    run_profiler(BALANCED_PROFILE);
+}
+
+// Detect transition from AI ON → OFF
+if (strcmp(prev_ai_state, "1") == 0 && strcmp(ai_state, "0") == 0) {
+    log_zenith(LOG_INFO, "Idle mode is disabled, reapplying Balanced Profile");
+    toast("Reapplying Balanced Profile");
+    cur_mode = BALANCED_PROFILE;
+    need_profile_checkup = false;
+    run_profiler(BALANCED_PROFILE);
+}
+
+// Update previous state
+strcpy(prev_ai_state, ai_state);
+
+// If AI is disabled, skip AI-related game logic
+if (strcmp(ai_state, "0") == 0) {
+    continue;
+}
 
         // Only fetch gamestart when user not in-game
         // prevent overhead from dumpsys commands.
