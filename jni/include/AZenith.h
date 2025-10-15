@@ -9,6 +9,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <ftw.h>
+#include <sys/system_properties.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <time.h>

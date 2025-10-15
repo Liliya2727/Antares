@@ -63,6 +63,53 @@ int main(int argc, char* argv[]) {
         external_log(level, argv[1], message);
         return EXIT_SUCCESS;
     }
+    
+    // Expose profiler interface
+if (strcmp(base_name, "sys.azenith-profiler") == 0) {
+    if (argc < 3) {
+        fprintf(stderr, "Usage: sys.azenith-profiler apply <performance|balanced|eco>\n");
+        return EXIT_FAILURE;
+    }
+
+    const char *action = argv[1];
+    const char *profile = argv[2];
+
+    if (strcmp(action, "apply") != 0) {
+        fprintf(stderr, "Invalid action. Only 'apply' is supported.\n");
+        return EXIT_FAILURE;
+    }
+
+    // Check AIenabled state before applying manual profile
+    char ai_state[PROP_VALUE_MAX] = {0};
+    __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
+
+    if (strcmp(ai_state, "1") == 0) {
+        log_zenith(LOG_WARN, "AIenabled=1, manual profiler execution is blocked");
+        fprintf(stderr, "\033[31mERROR:\033[0m Cannot apply manual profile while AI mode is enabled.\n");
+        toast("Cannot apply manual profile: AI mode active");
+        return EXIT_FAILURE;
+    }
+
+    if (strcmp(profile, "performance") == 0) {
+        log_zenith(LOG_INFO, "Manually applying PERFORMANCE_PROFILE");
+        toast("Applying Performance Profile");
+        run_profiler(PERFORMANCE_PROFILE);
+        return EXIT_SUCCESS;
+    } else if (strcmp(profile, "balanced") == 0) {
+        log_zenith(LOG_INFO, "Manually applying BALANCED_PROFILE");
+        toast("Applying Balanced Profile");
+        run_profiler(BALANCED_PROFILE);
+        return EXIT_SUCCESS;
+    } else if (strcmp(profile, "eco") == 0) {
+        log_zenith(LOG_INFO, "Manually applying ECO_MODE");
+        toast("Applying Eco Mode");
+        run_profiler(ECO_MODE);
+        return EXIT_SUCCESS;
+    } else {
+        fprintf(stderr, "Invalid profile. Use: performance | balanced | eco\n");
+        return EXIT_FAILURE;
+    }
+}
 
     // Make sure only one instance is running
     if (check_running_state() == 1) {
@@ -130,6 +177,17 @@ int main(int argc, char* argv[]) {
             }
         } else {
             // Screen Off, Do Nothing
+        }
+
+
+        // Check AI-enabled configuration before fetching game start
+        char ai_state[PROP_VALUE_MAX];
+        __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
+
+        if (strcmp(ai_state, "0") == 0) {
+        // Skip fetching profiles or gamestart this loop
+            log_zenith(LOG_DEBUG, "AIenabled is null, skipping profile check this loop");
+            continue;
         }
 
         // Only fetch gamestart when user not in-game
