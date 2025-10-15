@@ -64,20 +64,14 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
     
-    // Expose profiler interface
+// Expose profiler interface
 if (strcmp(base_name, "sys.azenith-profiler") == 0) {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: sys.azenith-profiler apply <performance|balanced|eco>\n");
+    if (argc < 2) {
+        fprintf(stderr, "Usage: sys.azenith-profiler <performance|balanced|eco>\n");
         return EXIT_FAILURE;
     }
 
-    const char *action = argv[1];
-    const char *profile = argv[2];
-
-    if (strcmp(action, "apply") != 0) {
-        fprintf(stderr, "Invalid action. Only 'apply' is supported.\n");
-        return EXIT_FAILURE;
-    }
+    const char *profile = argv[1];
 
     // Check AIenabled state before applying manual profile
     char ai_state[PROP_VALUE_MAX] = {0};
