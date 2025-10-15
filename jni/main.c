@@ -198,12 +198,12 @@ int main(int argc, char* argv[]) {
                 run_profiler(BALANCED_PROFILE);
             }      
             strcpy(prev_ai_state, ai_state);
+            // Skip everything if enabled
+            if (strcmp(ai_state, "0") == 0) {
+               continue;
+            }
         }
         
-        // Skip everything if enabled
-        if (strcmp(ai_state, "0") == 0) {
-           continue;
-        }
 
         // Only fetch gamestart when user not in-game
         // prevent overhead from dumpsys commands.
