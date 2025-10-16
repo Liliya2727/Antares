@@ -171,16 +171,21 @@ int main(int argc, char* argv[]) {
         __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
 
         // Apply frequencies
-        if (get_screenstate()) {
-            if (cur_mode == PERFORMANCE_PROFILE) {
-                systemv("sys.azenith-profilesettings applyfreqgame");
-            } else if (cur_mode == BALANCED_PROFILE) {
-                systemv("sys.azenith-profilesettings applyfreqbalance");
-            } else if (cur_mode == ECO_MODE) {
-                systemv("sys.azenith-profilesettings applyfreqbalance");
+        char freqoffset[PROP_VALUE_MAX] = {0};
+        __system_property_get("persist.sys.azenithconf.freqoffset", freqoffset);
+        
+        if (strstr(freqoffset, "Disabled") == NULL) {
+            if (get_screenstate()) {
+                if (cur_mode == PERFORMANCE_PROFILE) {
+                    // No exec
+                } else if (cur_mode == BALANCED_PROFILE) {
+                    systemv("sys.azenith-profilesettings applyfreqbalance");
+                } else if (cur_mode == ECO_MODE) {
+                    systemv("sys.azenith-profilesettings applyfreqbalance");
+                }
+            } else {
+                // Screen Off, Do Nothing
             }
-        } else {
-            // Screen Off, Do Nothing
         }
         
         if (did_notify_start) {                    
