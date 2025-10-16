@@ -1106,7 +1106,7 @@ performance_profile() {
 
 	# Fix Target OPP Index
 	setgamefreqppm && setgamefreq
-	dlog "set CPU freq to max available Frequencies"
+	dlog "Set CPU freq to max available Frequencies"
 
 	# VM Cache Pressure
 	zeshia "40" "/proc/sys/vm/vfs_cache_pressure"
@@ -1442,44 +1442,50 @@ initialize() {
 	zeshia 0 /proc/sys/vm/compaction_proactiveness
 	zeshia 255 /proc/sys/kernel/sched_lib_mask_force
 
-	# Parse CPU Governor
-	CPU="/sys/devices/system/cpu/cpu0/cpufreq"
-	chmod 644 "$CPU/scaling_governor"
-	default_gov=$(cat "$CPU/scaling_governor")
-	setprop persist.sys.azenith.default_cpu_gov "$default_gov"
+    CPU="/sys/devices/system/cpu/cpu0/cpufreq"
+    chmod 644 "$CPU/scaling_governor"
+    default_gov=$(cat "$CPU/scaling_governor")
+    setprop persist.sys.azenith.default_cpu_gov "$default_gov"
+    dlog "Default CPU governor detected: $default_gov"
+    
+    # Fallback if default is performance
+    if [ "$default_gov" == "performance" ] && [ -z "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ]; then
+        dlog "Default governor is 'performance'"
+        for gov in scx schedhorizon walt sched_pixel sugov_ext uag schedplus energy_step ondemand schedutil interactive conservative powersave; do
+            if grep -q "$gov" "$CPU/scaling_available_governors"; then
+                setprop persist.sys.azenith.default_cpu_gov "$gov"
+                default_gov="$gov"
+                dlog "Fallback governor to: $gov"
+                break
+            fi
+        done
+    fi
+    
+    # Revert to custom default if exists
+    [ -n "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ] && default_gov=$(getprop persist.sys.azenith.custom_default_cpu_gov)
+    dlog "Using CPU governor: $default_gov"
+    
+    chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+    echo "$default_gov" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null
+    chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+    chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
+    [ -z "$(getprop persist.sys.azenith.custom_powersave_cpu_gov)" ] && setprop persist.sys.azenith.custom_powersave_cpu_gov "$default_gov"
+    dlog "Parsing CPU Governor complete"
 
-	# Fallback if default is performance
-	if [ "$default_gov" == "performance" ] && [ -z "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ]; then
-		for gov in scx schedhorizon walt sched_pixel sugov_ext uag schedplus energy_step ondemand schedutil interactive conservative powersave; do
-			if grep -q "$gov" "$CPU/scaling_available_governors"; then
-				setprop persist.sys.azenith.default_cpu_gov "$gov"
-				default_gov="$gov"
-				break
-			fi
-		done
-	fi
-
-	# Revert to normal CPU Governor
-	[ -n "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ] && default_gov=$(getprop persist.sys.azenith.custom_default_cpu_gov)
-	chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-	echo "$default_gov" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null
-	chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-	chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
-	[ -z "$(getprop persist.sys.azenith.custom_powersave_cpu_gov)" ] && setprop persist.sys.azenith.custom_powersave_cpu_gov "$default_gov"
-
-	# Parse IO Scheduler
-	IO="/sys/block/sda/queue"
-	chmod 644 "$IO/scheduler"
-	default_io=$(grep -o '\[.*\]' "$IO/scheduler" | tr -d '[]')
-	setprop persist.sys.azenith.default_balanced_IO "$default_io"
-
-	# Set Default IO Scheduler
-	[ -n "$(getprop persist.sys.azenith.custom_default_balanced_IO)" ] && default_io=$(getprop persist.sys.azenith.custom_default_balanced_IO)
-	chmod 644 /sys/block/sda/queue/scheduler
-	echo "$default_io" | tee /sys/block/sda/queue/scheduler >/dev/null
-	chmod 444 /sys/block/sda/queue/scheduler
-	[ -z "$(getprop persist.sys.azenith.custom_powersave_IO)" ] && setprop persist.sys.azenith.custom_powersave_IO "$default_io"
-	[ -z "$(getprop persist.sys.azenith.custom_performance_IO)" ] && setprop persist.sys.azenith.custom_performance_IO "$default_io"
+    IO="/sys/block/sda/queue"
+    chmod 644 "$IO/scheduler"
+    default_io=$(grep -o '\[.*\]' "$IO/scheduler" | tr -d '[]')
+    setprop persist.sys.azenith.default_balanced_IO "$default_io"
+    dlog "Default IO Scheduler detected: $default_io"
+    
+    # Set Default IO Scheduler
+    [ -n "$(getprop persist.sys.azenith.custom_default_balanced_IO)" ] && default_io=$(getprop persist.sys.azenith.custom_default_balanced_IO)
+    chmod 644 /sys/block/sda/queue/scheduler
+    echo "$default_io" | tee /sys/block/sda/queue/scheduler >/dev/null
+    chmod 444 /sys/block/sda/queue/scheduler
+    [ -z "$(getprop persist.sys.azenith.custom_powersave_IO)" ] && setprop persist.sys.azenith.custom_powersave_IO "$default_io"
+    [ -z "$(getprop persist.sys.azenith.custom_performance_IO)" ] && setprop persist.sys.azenith.custom_performance_IO "$default_io"
+    dlog "Parsing IO Scheduler complete"
 
 	if [ "$(getprop persist.sys.azenithconf.schemeconfig)" != "1000 1000 1000 1000" ]; then
 		# Restore saved display boost
@@ -1969,27 +1975,35 @@ EOF
 	fi
 
 	if [ "$(getprop persist.sys.azenithconf.logd)" -eq 1 ]; then
+	    dlog "Applying KillLogd"
 		kill_logd
 	fi
 	if [ "$(getprop persist.sys.azenithconf.DThermal)" -eq 1 ]; then
+   	    dlog "Applying Disable Thermal"
 		DThermal
 	fi
 	if [ "$(getprop persist.sys.azenithconf.SFL)" -eq 1 ]; then
+	    dlog "Applying SurfaceFlinger Latency"
 		SFL
 	fi
 	if [ "$(getprop persist.sys.azenithconf.malisched)" -eq 1 ]; then
+	    dlog "Applying GPU Mali Sched"
 		malisched
 	fi
 	if [ "$(getprop persist.sys.azenithconf.fpsged)" -eq 1 ]; then
+	    dlog "Applying FPSGO Parameters"
 		fpsgoandgedparams
 	fi
 	if [ "$(getprop persist.sys.azenithconf.schedtunes)" -eq 1 ]; then
+	    dlog "Applying Schedtunes for Schedutil and Schedhorizon"
 		schedtunes
 	fi
 	if [ "$(getprop persist.sys.azenithconf.justintime)" -eq 1 ]; then
+	    dlog "Applying JIT Compiler"
 		jit
 	fi
 	if [ "$(getprop persist.sys.azenithconf.disabletrace)" -eq 1 ]; then
+	    dlog "Applying Disable Trace"
 		disabletrace
 	fi
 	if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
@@ -1998,7 +2012,8 @@ EOF
 	# Set up disable vsync
 	sys.azenith-utilityconf
 	sync
-	AZLog "Initializing Complete!!"
+	AZLog "Initializing Complete"
+	dlog "Initializing Complete"
 }
 
 ###############################################

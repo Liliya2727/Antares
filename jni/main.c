@@ -74,31 +74,31 @@ int main(int argc, char* argv[]) {
     
         const char *profile = argv[1];
     
-        // Check AIenabled state before applying manual profile
+        // Check properties to prevent execution in auto mode
         char ai_state[PROP_VALUE_MAX] = {0};
         __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
     
         if (strcmp(ai_state, "1") == 0) {
-            log_zenith(LOG_WARN, "Manual profiler execution is blocked");
+            log_zenith(LOG_WARN, "Can't apply profile in current mode");
             fprintf(stderr, "\033[31mERROR:\033[0m Cannot apply profile manually while auto mode is enabled.\n");
-            toast("Cannot apply manual profile");
+            toast("Can't apply profiles");
             return EXIT_FAILURE;
         }
     
         if (strcmp(profile, "1") == 0) {
-            log_zenith(LOG_INFO, "Manually applying performance profile");
+            log_zenith(LOG_INFO, "Applying Performance Profile via execute");
             toast("Applying Performance Profile");
             run_profiler(PERFORMANCE_PROFILE);
             fprintf(stderr, "Applying Performance Profile\n");
             return EXIT_SUCCESS;
         } else if (strcmp(profile, "2") == 0) {
-            log_zenith(LOG_INFO, "Manually applying balanced profile");
+            log_zenith(LOG_INFO, "Applying Balanced Profile via execute");
             toast("Applying Balanced Profile");
             run_profiler(BALANCED_PROFILE);
             fprintf(stderr, "Applying Balanced Profile\n");
             return EXIT_SUCCESS;
         } else if (strcmp(profile, "3") == 0) {
-            log_zenith(LOG_INFO, "Manually applying eco mode");
+            log_zenith(LOG_INFO, "Applying Eco Mode via execute");
             toast("Applying Eco Mode");
             run_profiler(ECO_MODE);
             fprintf(stderr, "Applying Eco Mode\n");
@@ -185,14 +185,14 @@ int main(int argc, char* argv[]) {
         
         if (did_notify_start) {                    
             if (strcmp(prev_ai_state, "1") == 0 && strcmp(ai_state, "0") == 0) {
-                log_zenith(LOG_INFO, "Idle mode enabled, reapplying Balanced");
+                log_zenith(LOG_INFO, "Dynamic profile is enabled, Reapplying Balanced Profiles");
                 toast("Applying Balanced Profile");
                 cur_mode = BALANCED_PROFILE;
                 run_profiler(BALANCED_PROFILE);
             }
         
             if (strcmp(prev_ai_state, "0") == 0 && strcmp(ai_state, "1") == 0) {
-                log_zenith(LOG_INFO, "Idle mode disabled, reapplying Balanced");
+                log_zenith(LOG_INFO, "Dynamic profile is disabled, Reapplying Balanced Profiles");
                 toast("Applying Balanced Profile");
                 cur_mode = BALANCED_PROFILE;
                 run_profiler(BALANCED_PROFILE);
