@@ -1487,6 +1487,19 @@ initialize() {
     [ -z "$(getprop persist.sys.azenith.custom_performance_IO)" ] && setprop persist.sys.azenith.custom_performance_IO "$default_io"
     dlog "Parsing IO Scheduler complete"
 
+    RESO_PROP="persist.sys.azenithconf.resosettings"
+    RESO=$(wm size | grep -oE "[0-9]+x[0-9]+" | head -n 1)
+    
+    if [ -z "$(getprop $RESO_PROP)" ]; then
+        if [ -n "$RESO" ]; then
+            setprop "$RESO_PROP" "$RESO"
+            dlog "Detected resolution: $RESO"
+            dlog "Property $RESO_PROP set successfully"
+        else
+            dlog "Failed to detect physical resolution"
+        fi
+    fi
+
 	if [ "$(getprop persist.sys.azenithconf.schemeconfig)" != "1000 1000 1000 1000" ]; then
 		# Restore saved display boost
 		val=$(getprop persist.sys.azenithconf.schemeconfig)
