@@ -165,7 +165,9 @@ int main(int argc, char* argv[]) {
 
         // Check module state simultaneusly
         checkstate();
-        
+
+        char freqoffset[PROP_VALUE_MAX] = {0};
+        __system_property_get("persist.sys.azenithconf.freqoffset", freqoffset);
         if (strstr(freqoffset, "Disabled") == NULL) {
             if (get_screenstate()) {
                 if (cur_mode == PERFORMANCE_PROFILE) {
