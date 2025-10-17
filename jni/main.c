@@ -170,11 +170,7 @@ int main(int argc, char* argv[]) {
         char ai_state[PROP_VALUE_MAX] = {0};
         __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
 
-        // Apply frequencies
-        char freqoffset[PROP_VALUE_MAX] = {0};
-        __system_property_get("persist.sys.azenithconf.freqoffset", freqoffset);
         
-        if (strstr(freqoffset, "Disabled") == NULL) {
             if (get_screenstate()) {
                 if (cur_mode == PERFORMANCE_PROFILE) {
                     // No exec
@@ -186,7 +182,7 @@ int main(int argc, char* argv[]) {
             } else {
                 // Screen Off, Do Nothing
             }
-        }
+        
         
         if (did_notify_start) {                    
             if (strcmp(prev_ai_state, "1") == 0 && strcmp(ai_state, "0") == 0) {

@@ -409,11 +409,11 @@ Dsetgamefreq() {
 }
 
 applyfreqbalance() {
-    Dsetfreqppm && Dsetfreq
+    [ -d /proc/ppm ] && Dsetfreqppm || Dsetfreq
 }
 
 applyfreqgame() {
-	Dsetgamefreqppm && Dsetgamefreq
+	[ -d /proc/ppm ] && Dsetgamefreqppm || Dsetgamefreq
 }
 
 ###############################################
@@ -1105,7 +1105,7 @@ performance_profile() {
 	fi
 
 	# Fix Target OPP Index
-	setgamefreqppm && setgamefreq
+	[ -d /proc/ppm ] && setgamefreqppm || setgamefreq
 	dlog "Set CPU freq to max available Frequencies"
 
 	# VM Cache Pressure
@@ -1251,7 +1251,7 @@ balanced_profile() {
 	dlog "Applying I/O scheduler to : $default_iosched"
 
 	# Limit cpu freq
-	setfreqppm && setfreq
+	[ -d /proc/ppm ] && setfreqppm || setfreq
 	dlog "Set CPU freq to normal Frequencies"
 
 	# vm cache pressure
@@ -1383,7 +1383,7 @@ eco_mode() {
 	fi
 
 	# Limit cpu freq
-	setfreqppm && setfreq
+	[ -d /proc/ppm ] && setfreqppm || setfreq
 	dlog "Set CPU freq to low Frequencies"
 
 	# VM Cache Pressure
