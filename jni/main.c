@@ -166,14 +166,10 @@ int main(int argc, char* argv[]) {
         // Check module state simultaneusly
         checkstate();
         
-        // Update state
-        char ai_state[PROP_VALUE_MAX] = {0};
-        __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
-
-        
+        if (strstr(freqoffset, "Disabled") == NULL) {
             if (get_screenstate()) {
                 if (cur_mode == PERFORMANCE_PROFILE) {
-                    // No exec
+                // No exec
                 } else if (cur_mode == BALANCED_PROFILE) {
                     systemv("sys.azenith-profilesettings applyfreqbalance");
                 } else if (cur_mode == ECO_MODE) {
@@ -182,7 +178,12 @@ int main(int argc, char* argv[]) {
             } else {
                 // Screen Off, Do Nothing
             }
+        }
         
+        // Update state
+        char ai_state[PROP_VALUE_MAX] = {0};
+        __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
+              
         
         if (did_notify_start) {                    
             if (strcmp(prev_ai_state, "1") == 0 && strcmp(ai_state, "0") == 0) {
