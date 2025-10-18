@@ -43,73 +43,73 @@ dlog() {
 }
 
 zeshia() {
-    local value="$1"
-    local path="$2"
-    local pathname
-    pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
+	local value="$1"
+	local path="$2"
+	local pathname
+	pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
 
-    if [ ! -e "$path" ]; then
-        AZLog "File /$pathname not found, skipping..."
-        return
-    fi
+	if [ ! -e "$path" ]; then
+		AZLog "File /$pathname not found, skipping..."
+		return
+	fi
 
-    chmod 644 "$path" 2>/dev/null
+	chmod 644 "$path" 2>/dev/null
 
-    if ! echo "$value" >"$path" 2>/dev/null; then
-        AZLog "Cannot write to /$pathname (permission denied)"
-        chmod 444 "$path" 2>/dev/null
-        return
-    fi
+	if ! echo "$value" >"$path" 2>/dev/null; then
+		AZLog "Cannot write to /$pathname (permission denied)"
+		chmod 444 "$path" 2>/dev/null
+		return
+	fi
 
-    local current
-    current="$(cat "$path" 2>/dev/null)"
-    if [ "$current" = "$value" ]; then
-        AZLog "Set /$pathname to $value"
-    else
-        echo "$value" >"$path" 2>/dev/null || true
-        current="$(cat "$path" 2>/dev/null)"
-        if [ "$current" = "$value" ]; then
-            AZLog "Set /$pathname to $value (after retry)"
-        else
-            AZLog "Failed to set /$pathname to $value"
-        fi
-    fi
+	local current
+	current="$(cat "$path" 2>/dev/null)"
+	if [ "$current" = "$value" ]; then
+		AZLog "Set /$pathname to $value"
+	else
+		echo "$value" >"$path" 2>/dev/null || true
+		current="$(cat "$path" 2>/dev/null)"
+		if [ "$current" = "$value" ]; then
+			AZLog "Set /$pathname to $value (after retry)"
+		else
+			AZLog "Failed to set /$pathname to $value"
+		fi
+	fi
 
-    chmod 444 "$path" 2>/dev/null
+	chmod 444 "$path" 2>/dev/null
 }
 
 zeshiax() {
-    local value="$1"
-    local path="$2"
-    local pathname
-    pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
+	local value="$1"
+	local path="$2"
+	local pathname
+	pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
 
-    if [ ! -e "$path" ]; then
-        AZLog "File /$pathname not found, skipping..."
-        return
-    fi
+	if [ ! -e "$path" ]; then
+		AZLog "File /$pathname not found, skipping..."
+		return
+	fi
 
-    chmod 644 "$path" 2>/dev/null
+	chmod 644 "$path" 2>/dev/null
 
-    if ! echo "$value" >"$path" 2>/dev/null; then
-        AZLog "Cannot write to /$pathname (permission denied)"
-        chmod 444 "$path" 2>/dev/null
-        return
-    fi
+	if ! echo "$value" >"$path" 2>/dev/null; then
+		AZLog "Cannot write to /$pathname (permission denied)"
+		chmod 444 "$path" 2>/dev/null
+		return
+	fi
 
-    local current
-    current="$(cat "$path" 2>/dev/null)"
-    if [ "$current" = "$value" ]; then
-        AZLog "Set /$pathname to $value"
-    else
-        echo "$value" >"$path" 2>/dev/null || true
-        current="$(cat "$path" 2>/dev/null)"
-        if [ "$current" = "$value" ]; then
-            AZLog "Set /$pathname to $value (after retry)"
-        else
-            AZLog "Failed to set /$pathname to $value"
-        fi
-    fi
+	local current
+	current="$(cat "$path" 2>/dev/null)"
+	if [ "$current" = "$value" ]; then
+		AZLog "Set /$pathname to $value"
+	else
+		echo "$value" >"$path" 2>/dev/null || true
+		current="$(cat "$path" 2>/dev/null)"
+		if [ "$current" = "$value" ]; then
+			AZLog "Set /$pathname to $value (after retry)"
+		else
+			AZLog "Failed to set /$pathname to $value"
+		fi
+	fi
 
 }
 
@@ -300,7 +300,7 @@ setgamefreq() {
 		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
 		cpu_minfreq=$(<"$path/cpuinfo_max_freq")
 		new_midtarget=$((cpu_maxfreq * 90 / 100))
-	    new_midfreq=$(setfreqs "$path/scaling_available_frequencies" "$new_midtarget")
+		new_midfreq=$(setfreqs "$path/scaling_available_frequencies" "$new_midtarget")
 		[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
 			new_maxtarget=$((cpu_maxfreq * 90 / 100))
 			new_midtarget=$((cpu_maxfreq * 50 / 100))
@@ -371,7 +371,7 @@ Dsetgamefreqppm() {
 			cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
 			cpu_minfreq=$(<"$path/cpuinfo_max_freq")
 			new_midtarget=$((cpu_maxfreq * 90 / 100))
-	        new_midfreq=$(setfreqs "$path/scaling_available_frequencies" "$new_midtarget")
+			new_midfreq=$(setfreqs "$path/scaling_available_frequencies" "$new_midtarget")
 			[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
 				new_maxtarget=$((cpu_maxfreq * 90 / 100))
 				new_midtarget=$((cpu_maxfreq * 50 / 100))
@@ -392,7 +392,7 @@ Dsetgamefreq() {
 		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
 		cpu_minfreq=$(<"$path/cpuinfo_max_freq")
 		new_midtarget=$((cpu_maxfreq * 90 / 100))
-	    new_midfreq=$(setfreqs "$path/scaling_available_frequencies" "$new_midtarget")
+		new_midfreq=$(setfreqs "$path/scaling_available_frequencies" "$new_midtarget")
 		[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
 			new_maxtarget=$((cpu_maxfreq * 90 / 100))
 			new_midtarget=$((cpu_maxfreq * 50 / 100))
@@ -409,7 +409,7 @@ Dsetgamefreq() {
 }
 
 applyfreqbalance() {
-    [ -d /proc/ppm ] && Dsetfreqppm || Dsetfreq
+	[ -d /proc/ppm ] && Dsetfreqppm || Dsetfreq
 }
 
 applyfreqgame() {
@@ -1442,63 +1442,63 @@ initialize() {
 	zeshia 0 /proc/sys/vm/compaction_proactiveness
 	zeshia 255 /proc/sys/kernel/sched_lib_mask_force
 
-    CPU="/sys/devices/system/cpu/cpu0/cpufreq"
-    chmod 644 "$CPU/scaling_governor"
-    default_gov=$(cat "$CPU/scaling_governor")
-    setprop persist.sys.azenith.default_cpu_gov "$default_gov"
-    dlog "Default CPU governor detected: $default_gov"
-    
-    # Fallback if default is performance
-    if [ "$default_gov" == "performance" ] && [ -z "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ]; then
-        dlog "Default governor is 'performance'"
-        for gov in scx schedhorizon walt sched_pixel sugov_ext uag schedplus energy_step ondemand schedutil interactive conservative powersave; do
-            if grep -q "$gov" "$CPU/scaling_available_governors"; then
-                setprop persist.sys.azenith.default_cpu_gov "$gov"
-                default_gov="$gov"
-                dlog "Fallback governor to: $gov"
-                break
-            fi
-        done
-    fi
-    
-    # Revert to custom default if exists
-    [ -n "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ] && default_gov=$(getprop persist.sys.azenith.custom_default_cpu_gov)
-    dlog "Using CPU governor: $default_gov"
-    
-    chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-    echo "$default_gov" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null
-    chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-    chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
-    [ -z "$(getprop persist.sys.azenith.custom_powersave_cpu_gov)" ] && setprop persist.sys.azenith.custom_powersave_cpu_gov "$default_gov"
-    dlog "Parsing CPU Governor complete"
+	CPU="/sys/devices/system/cpu/cpu0/cpufreq"
+	chmod 644 "$CPU/scaling_governor"
+	default_gov=$(cat "$CPU/scaling_governor")
+	setprop persist.sys.azenith.default_cpu_gov "$default_gov"
+	dlog "Default CPU governor detected: $default_gov"
 
-    IO="/sys/block/sda/queue"
-    chmod 644 "$IO/scheduler"
-    default_io=$(grep -o '\[.*\]' "$IO/scheduler" | tr -d '[]')
-    setprop persist.sys.azenith.default_balanced_IO "$default_io"
-    dlog "Default IO Scheduler detected: $default_io"
-    
-    # Set Default IO Scheduler
-    [ -n "$(getprop persist.sys.azenith.custom_default_balanced_IO)" ] && default_io=$(getprop persist.sys.azenith.custom_default_balanced_IO)
-    chmod 644 /sys/block/sda/queue/scheduler
-    echo "$default_io" | tee /sys/block/sda/queue/scheduler >/dev/null
-    chmod 444 /sys/block/sda/queue/scheduler
-    [ -z "$(getprop persist.sys.azenith.custom_powersave_IO)" ] && setprop persist.sys.azenith.custom_powersave_IO "$default_io"
-    [ -z "$(getprop persist.sys.azenith.custom_performance_IO)" ] && setprop persist.sys.azenith.custom_performance_IO "$default_io"
-    dlog "Parsing IO Scheduler complete"
+	# Fallback if default is performance
+	if [ "$default_gov" == "performance" ] && [ -z "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ]; then
+		dlog "Default governor is 'performance'"
+		for gov in scx schedhorizon walt sched_pixel sugov_ext uag schedplus energy_step ondemand schedutil interactive conservative powersave; do
+			if grep -q "$gov" "$CPU/scaling_available_governors"; then
+				setprop persist.sys.azenith.default_cpu_gov "$gov"
+				default_gov="$gov"
+				dlog "Fallback governor to: $gov"
+				break
+			fi
+		done
+	fi
 
-    RESO_PROP="persist.sys.azenithconf.resosettings"
-    RESO=$(wm size | grep -oE "[0-9]+x[0-9]+" | head -n 1)
-    
-    if [ -z "$(getprop $RESO_PROP)" ]; then
-        if [ -n "$RESO" ]; then
-            setprop "$RESO_PROP" "$RESO"
-            dlog "Detected resolution: $RESO"
-            dlog "Property $RESO_PROP set successfully"
-        else
-            dlog "Failed to detect physical resolution"
-        fi
-    fi
+	# Revert to custom default if exists
+	[ -n "$(getprop persist.sys.azenith.custom_default_cpu_gov)" ] && default_gov=$(getprop persist.sys.azenith.custom_default_cpu_gov)
+	dlog "Using CPU governor: $default_gov"
+
+	chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+	echo "$default_gov" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null
+	chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+	chmod 444 /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
+	[ -z "$(getprop persist.sys.azenith.custom_powersave_cpu_gov)" ] && setprop persist.sys.azenith.custom_powersave_cpu_gov "$default_gov"
+	dlog "Parsing CPU Governor complete"
+
+	IO="/sys/block/sda/queue"
+	chmod 644 "$IO/scheduler"
+	default_io=$(grep -o '\[.*\]' "$IO/scheduler" | tr -d '[]')
+	setprop persist.sys.azenith.default_balanced_IO "$default_io"
+	dlog "Default IO Scheduler detected: $default_io"
+
+	# Set Default IO Scheduler
+	[ -n "$(getprop persist.sys.azenith.custom_default_balanced_IO)" ] && default_io=$(getprop persist.sys.azenith.custom_default_balanced_IO)
+	chmod 644 /sys/block/sda/queue/scheduler
+	echo "$default_io" | tee /sys/block/sda/queue/scheduler >/dev/null
+	chmod 444 /sys/block/sda/queue/scheduler
+	[ -z "$(getprop persist.sys.azenith.custom_powersave_IO)" ] && setprop persist.sys.azenith.custom_powersave_IO "$default_io"
+	[ -z "$(getprop persist.sys.azenith.custom_performance_IO)" ] && setprop persist.sys.azenith.custom_performance_IO "$default_io"
+	dlog "Parsing IO Scheduler complete"
+
+	RESO_PROP="persist.sys.azenithconf.resosettings"
+	RESO=$(wm size | grep -oE "[0-9]+x[0-9]+" | head -n 1)
+
+	if [ -z "$(getprop $RESO_PROP)" ]; then
+		if [ -n "$RESO" ]; then
+			setprop "$RESO_PROP" "$RESO"
+			dlog "Detected resolution: $RESO"
+			dlog "Property $RESO_PROP set successfully"
+		else
+			dlog "Failed to detect physical resolution"
+		fi
+	fi
 
 	if [ "$(getprop persist.sys.azenithconf.schemeconfig)" != "1000 1000 1000 1000" ]; then
 		# Restore saved display boost
@@ -1934,49 +1934,48 @@ EOF
 		AZLog "Thermal service Disabled"
 	}
 
-	if [ "$(getprop persist.sys.azenithconf.disabletrace)" -eq 1 ]; then  
-        dlog "Applying disable trace"  
-        for trace_file in \
-            /sys/kernel/tracing/instances/mmstat/trace \
-            /sys/kernel/tracing/trace \
-            $(find /sys/kernel/tracing/per_cpu/ -name trace 2>/dev/null); do  
-            zeshia "" "$trace_file"  
-        done      
-        zeshia "0" /sys/kernel/tracing/options/overwrite  
-        zeshia "0" /sys/kernel/tracing/options/record-tgids     
-        for f in /sys/kernel/tracing/*; do  
-            [ -w "$f" ] && echo "0" >"$f" 2>/dev/null  
-        done      
-        cmd accessibility stop-trace 2>/dev/null  
-        cmd input_method tracing stop 2>/dev/null  
-        cmd window tracing stop 2>/dev/null  
-        cmd window tracing size 0 2>/dev/null  
-        cmd migard dump-trace false 2>/dev/null  
-        cmd migard start-trace false 2>/dev/null  
-        cmd migard stop-trace true 2>/dev/null  
-        cmd migard trace-buffer-size 0 2>/dev/null      
-    else  
-        for trace_file in \
-            /sys/kernel/tracing/instances/mmstat/trace \
-            /sys/kernel/tracing/trace \
-            $(find /sys/kernel/tracing/per_cpu/ -name trace 2>/dev/null); do  
-            [ -w "$trace_file" ] && : >"$trace_file" 2>/dev/null  
-        done      
-        #zeshia "1" /sys/kernel/tracing/options/overwrite  
-        #zeshia "1" /sys/kernel/tracing/options/record-tgids      
-        for f in /sys/kernel/tracing/*; do  
-            [ -w "$f" ] && echo "1" >"$f" 2>/dev/null  
-        done      
-        cmd accessibility start-trace 2>/dev/null  
-        cmd input_method tracing start 2>/dev/null  
-        cmd window tracing start 2>/dev/null  
-        cmd window tracing size 8192 2>/dev/null  
-        cmd migard dump-trace true 2>/dev/null  
-        cmd migard start-trace true 2>/dev/null  
-        cmd migard stop-trace false 2>/dev/null  
-        cmd migard trace-buffer-size 8192 2>/dev/null  
-    fi
-	
+	if [ "$(getprop persist.sys.azenithconf.disabletrace)" -eq 1 ]; then
+		dlog "Applying disable trace"
+		for trace_file in \
+			/sys/kernel/tracing/instances/mmstat/trace \
+			/sys/kernel/tracing/trace \
+			$(find /sys/kernel/tracing/per_cpu/ -name trace 2>/dev/null); do
+			zeshia "" "$trace_file"
+		done
+		zeshia "0" /sys/kernel/tracing/options/overwrite
+		zeshia "0" /sys/kernel/tracing/options/record-tgids
+		for f in /sys/kernel/tracing/*; do
+			[ -w "$f" ] && echo "0" >"$f" 2>/dev/null
+		done
+		cmd accessibility stop-trace 2>/dev/null
+		cmd input_method tracing stop 2>/dev/null
+		cmd window tracing stop 2>/dev/null
+		cmd window tracing size 0 2>/dev/null
+		cmd migard dump-trace false 2>/dev/null
+		cmd migard start-trace false 2>/dev/null
+		cmd migard stop-trace true 2>/dev/null
+		cmd migard trace-buffer-size 0 2>/dev/null
+	else
+		for trace_file in \
+			/sys/kernel/tracing/instances/mmstat/trace \
+			/sys/kernel/tracing/trace \
+			$(find /sys/kernel/tracing/per_cpu/ -name trace 2>/dev/null); do
+			[ -w "$trace_file" ] && : >"$trace_file" 2>/dev/null
+		done
+		#zeshia "1" /sys/kernel/tracing/options/overwrite
+		#zeshia "1" /sys/kernel/tracing/options/record-tgids
+		for f in /sys/kernel/tracing/*; do
+			[ -w "$f" ] && echo "1" >"$f" 2>/dev/null
+		done
+		cmd accessibility start-trace 2>/dev/null
+		cmd input_method tracing start 2>/dev/null
+		cmd window tracing start 2>/dev/null
+		cmd window tracing size 8192 2>/dev/null
+		cmd migard dump-trace true 2>/dev/null
+		cmd migard start-trace true 2>/dev/null
+		cmd migard stop-trace false 2>/dev/null
+		cmd migard trace-buffer-size 8192 2>/dev/null
+	fi
 
 	kill_logd() {
 		zeshia 0 /sys/kernel/ccci/debug
@@ -2000,7 +1999,7 @@ EOF
 
 	if [ "$(getprop persist.sys.azenithconf.logd)" -eq 1 ]; then
 		for logger in $list_logger; do
-			stop "$logger" 2>/dev/null			
+			stop "$logger" 2>/dev/null
 		done
 		dlog "Applying Kill Logd"
 	else
@@ -2010,27 +2009,27 @@ EOF
 	fi
 
 	if [ "$(getprop persist.sys.azenithconf.DThermal)" -eq 1 ]; then
-   	    dlog "Applying Disable Thermal"
+		dlog "Applying Disable Thermal"
 		DThermal
 	fi
 	if [ "$(getprop persist.sys.azenithconf.SFL)" -eq 1 ]; then
-	    dlog "Applying SurfaceFlinger Latency"
+		dlog "Applying SurfaceFlinger Latency"
 		SFL
 	fi
 	if [ "$(getprop persist.sys.azenithconf.malisched)" -eq 1 ]; then
-	    dlog "Applying GPU Mali Sched"
+		dlog "Applying GPU Mali Sched"
 		malisched
 	fi
 	if [ "$(getprop persist.sys.azenithconf.fpsged)" -eq 1 ]; then
-	    dlog "Applying FPSGO Parameters"
+		dlog "Applying FPSGO Parameters"
 		fpsgoandgedparams
 	fi
 	if [ "$(getprop persist.sys.azenithconf.schedtunes)" -eq 1 ]; then
-	    dlog "Applying Schedtunes for Schedutil and Schedhorizon"
+		dlog "Applying Schedtunes for Schedutil and Schedhorizon"
 		schedtunes
 	fi
 	if [ "$(getprop persist.sys.azenithconf.justintime)" -eq 1 ]; then
-	    dlog "Applying JIT Compiler"
+		dlog "Applying JIT Compiler"
 		jit
 	fi
 	if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then

@@ -40,73 +40,73 @@ dlog() {
 }
 
 zeshia() {
-    local value="$1"
-    local path="$2"
-    local pathname
-    pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
+	local value="$1"
+	local path="$2"
+	local pathname
+	pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
 
-    if [ ! -e "$path" ]; then
-        AZLog "File /$pathname not found, skipping..."
-        return
-    fi
+	if [ ! -e "$path" ]; then
+		AZLog "File /$pathname not found, skipping..."
+		return
+	fi
 
-    chmod 644 "$path" 2>/dev/null
+	chmod 644 "$path" 2>/dev/null
 
-    if ! echo "$value" >"$path" 2>/dev/null; then
-        AZLog "Cannot write to /$pathname (permission denied)"
-        chmod 444 "$path" 2>/dev/null
-        return
-    fi
+	if ! echo "$value" >"$path" 2>/dev/null; then
+		AZLog "Cannot write to /$pathname (permission denied)"
+		chmod 444 "$path" 2>/dev/null
+		return
+	fi
 
-    local current
-    current="$(cat "$path" 2>/dev/null)"
-    if [ "$current" = "$value" ]; then
-        AZLog "Set /$pathname to $value"
-    else
-        echo "$value" >"$path" 2>/dev/null || true
-        current="$(cat "$path" 2>/dev/null)"
-        if [ "$current" = "$value" ]; then
-            AZLog "Set /$pathname to $value (after retry)"
-        else
-            AZLog "Failed to set /$pathname to $value"
-        fi
-    fi
+	local current
+	current="$(cat "$path" 2>/dev/null)"
+	if [ "$current" = "$value" ]; then
+		AZLog "Set /$pathname to $value"
+	else
+		echo "$value" >"$path" 2>/dev/null || true
+		current="$(cat "$path" 2>/dev/null)"
+		if [ "$current" = "$value" ]; then
+			AZLog "Set /$pathname to $value (after retry)"
+		else
+			AZLog "Failed to set /$pathname to $value"
+		fi
+	fi
 
-    chmod 444 "$path" 2>/dev/null
+	chmod 444 "$path" 2>/dev/null
 }
 
 zeshiax() {
-    local value="$1"
-    local path="$2"
-    local pathname
-    pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
+	local value="$1"
+	local path="$2"
+	local pathname
+	pathname="$(echo "$path" | awk -F'/' '{print $(NF-1)"/"$NF}')"
 
-    if [ ! -e "$path" ]; then
-        AZLog "File /$pathname not found, skipping..."
-        return
-    fi
+	if [ ! -e "$path" ]; then
+		AZLog "File /$pathname not found, skipping..."
+		return
+	fi
 
-    chmod 644 "$path" 2>/dev/null
+	chmod 644 "$path" 2>/dev/null
 
-    if ! echo "$value" >"$path" 2>/dev/null; then
-        AZLog "Cannot write to /$pathname (permission denied)"
-        chmod 444 "$path" 2>/dev/null
-        return
-    fi
+	if ! echo "$value" >"$path" 2>/dev/null; then
+		AZLog "Cannot write to /$pathname (permission denied)"
+		chmod 444 "$path" 2>/dev/null
+		return
+	fi
 
-    local current
-    current="$(cat "$path" 2>/dev/null)"
-    if [ "$current" = "$value" ]; then
-        AZLog "Set /$pathname to $value"
-    else
-        echo "$value" >"$path" 2>/dev/null || true
-        current="$(cat "$path" 2>/dev/null)"
-        if [ "$current" = "$value" ]; then
-            AZLog "Set /$pathname to $value (after retry)"
-        else
-            AZLog "Failed to set /$pathname to $value"
-        fi
-    fi
+	local current
+	current="$(cat "$path" 2>/dev/null)"
+	if [ "$current" = "$value" ]; then
+		AZLog "Set /$pathname to $value"
+	else
+		echo "$value" >"$path" 2>/dev/null || true
+		current="$(cat "$path" 2>/dev/null)"
+		if [ "$current" = "$value" ]; then
+			AZLog "Set /$pathname to $value (after retry)"
+		else
+			AZLog "Failed to set /$pathname to $value"
+		fi
+	fi
 
 }
 
@@ -117,14 +117,14 @@ setsgov() {
 }
 
 setsIO() {
-for block in sda sdb sdc mmcblk0 mmcblk1; do
-	if [ -e "/sys/block/$block/queue/scheduler" ]; then
-		chmod 644 "/sys/block/$block/queue/scheduler"
-		echo "$1" | tee "/sys/block/$block/queue/scheduler"
-		chmod 444 "/sys/block/$block/queue/scheduler"
-		dlog "Set /sys/block/$block/queue/scheduler to $1"
-	fi
-done
+	for block in sda sdb sdc mmcblk0 mmcblk1; do
+		if [ -e "/sys/block/$block/queue/scheduler" ]; then
+			chmod 644 "/sys/block/$block/queue/scheduler"
+			echo "$1" | tee "/sys/block/$block/queue/scheduler"
+			chmod 444 "/sys/block/$block/queue/scheduler"
+			dlog "Set /sys/block/$block/queue/scheduler to $1"
+		fi
+	done
 }
 
 FSTrim() {

@@ -251,7 +251,7 @@ void preload(const char* pkg, unsigned int* LOOP_INTERVAL) {
                 }
                 _exit(0);
             } else if (pid > 0) {
-                *LOOP_INTERVAL = 25;
+                *LOOP_INTERVAL = 40;
                 did_log_preload = false;
                 preload_active = true;
             } else {
@@ -279,4 +279,3 @@ void stop_preloading(unsigned int* LOOP_INTERVAL) {
         }
     }
 }
-
