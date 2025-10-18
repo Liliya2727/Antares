@@ -1934,27 +1934,49 @@ EOF
 		AZLog "Thermal service Disabled"
 	}
 
-	disabletrace() {
-		for trace_file in \
-			/sys/kernel/tracing/instances/mmstat/trace \
-			/sys/kernel/tracing/trace \
-			$(find /sys/kernel/tracing/per_cpu/ -name trace 2>/dev/null); do
-			zeshia "" "$trace_file"
-		done
-		zeshia "0" /sys/kernel/tracing/options/overwrite
-		zeshia "0" /sys/kernel/tracing/options/record-tgids
-		for f in /sys/kernel/tracing/*; do
-			[ -w "$f" ] && echo "0" >"$f" 2>/dev/null
-		done
-		cmd accessibility stop-trace 2>/dev/null
-		cmd input_method tracing stop 2>/dev/null
-		cmd window tracing stop 2>/dev/null
-		cmd window tracing size 0 2>/dev/null
-		cmd migard dump-trace false 2>/dev/null
-		cmd migard start-trace false 2>/dev/null
-		cmd migard stop-trace true 2>/dev/null
-		cmd migard trace-buffer-size 0 2>/dev/null
-	}
+	if [ "$(getprop persist.sys.azenithconf.disabletrace)" -eq 1 ]; then  
+        dlog "Applying disable trace"  
+        for trace_file in \
+            /sys/kernel/tracing/instances/mmstat/trace \
+            /sys/kernel/tracing/trace \
+            $(find /sys/kernel/tracing/per_cpu/ -name trace 2>/dev/null); do  
+            zeshia "" "$trace_file"  
+        done      
+        zeshia "0" /sys/kernel/tracing/options/overwrite  
+        zeshia "0" /sys/kernel/tracing/options/record-tgids     
+        for f in /sys/kernel/tracing/*; do  
+            [ -w "$f" ] && echo "0" >"$f" 2>/dev/null  
+        done      
+        cmd accessibility stop-trace 2>/dev/null  
+        cmd input_method tracing stop 2>/dev/null  
+        cmd window tracing stop 2>/dev/null  
+        cmd window tracing size 0 2>/dev/null  
+        cmd migard dump-trace false 2>/dev/null  
+        cmd migard start-trace false 2>/dev/null  
+        cmd migard stop-trace true 2>/dev/null  
+        cmd migard trace-buffer-size 0 2>/dev/null      
+    else  
+        for trace_file in \
+            /sys/kernel/tracing/instances/mmstat/trace \
+            /sys/kernel/tracing/trace \
+            $(find /sys/kernel/tracing/per_cpu/ -name trace 2>/dev/null); do  
+            [ -w "$trace_file" ] && : >"$trace_file" 2>/dev/null  
+        done      
+        #zeshia "1" /sys/kernel/tracing/options/overwrite  
+        #zeshia "1" /sys/kernel/tracing/options/record-tgids      
+        for f in /sys/kernel/tracing/*; do  
+            [ -w "$f" ] && echo "1" >"$f" 2>/dev/null  
+        done      
+        cmd accessibility start-trace 2>/dev/null  
+        cmd input_method tracing start 2>/dev/null  
+        cmd window tracing start 2>/dev/null  
+        cmd window tracing size 8192 2>/dev/null  
+        cmd migard dump-trace true 2>/dev/null  
+        cmd migard start-trace true 2>/dev/null  
+        cmd migard stop-trace false 2>/dev/null  
+        cmd migard trace-buffer-size 8192 2>/dev/null  
+    fi
+	
 
 	kill_logd() {
 		zeshia 0 /sys/kernel/ccci/debug
@@ -1976,21 +1998,17 @@ EOF
     wlan_logging
     "
 
-	# Logd
 	if [ "$(getprop persist.sys.azenithconf.logd)" -eq 1 ]; then
 		for logger in $list_logger; do
-			stop "$logger" 2>/dev/null
+			stop "$logger" 2>/dev/null			
 		done
+		dlog "Applying Kill Logd"
 	else
 		for logger in $list_logger; do
 			start "$logger" 2>/dev/null
 		done
 	fi
 
-	if [ "$(getprop persist.sys.azenithconf.logd)" -eq 1 ]; then
-	    dlog "Applying KillLogd"
-		kill_logd
-	fi
 	if [ "$(getprop persist.sys.azenithconf.DThermal)" -eq 1 ]; then
    	    dlog "Applying Disable Thermal"
 		DThermal
@@ -2014,10 +2032,6 @@ EOF
 	if [ "$(getprop persist.sys.azenithconf.justintime)" -eq 1 ]; then
 	    dlog "Applying JIT Compiler"
 		jit
-	fi
-	if [ "$(getprop persist.sys.azenithconf.disabletrace)" -eq 1 ]; then
-	    dlog "Applying Disable Trace"
-		disabletrace
 	fi
 	if [ "$(getprop persist.sys.azenithconf.bypasschg)" -eq 1 ]; then
 		sys.azenith-utilityconf disableBypass
