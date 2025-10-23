@@ -31,26 +31,7 @@
  * Returns            : void
  * Description        : Preloads running games native libraries (.so) into memory to
  *                      optimize performance and reduce runtime loading overhead.
- *
- *                      Workflow:
- *                      1. Resolves the APK installation path for the given package.
- *                      2. Searches for native libraries in the app's `lib/arm64`
- *                         directory, filters them using regex (GAME_LIB), and preloads
- *                         via `sys.azenith-preloadbin`.
- *                      3. Maintains a processed file list to avoid redundant preloading.
- *                      4. Handles split APKs:
- *                          - Scans embedded `.so` files inside split APKs using unzip.
- *                          - Matches libraries via regex or string scan.
- *                          - Streams matching libs directly into
- *                            `sys.azenith-preloadbin2` for preloading.
- *
- *                      This ensures that critical GPU/engine-related libraries are
- *                      loaded into memory before gameplay begins, minimizing stutter
- *                      and improving frame consistency.
- *
- * Note               : - Uses systemv() for executing preload commands.
  *                      - Maintains `PROCESSED_FILE_LIST` to prevent duplicate loads.
- *                      - Regex expression GAME_LIB defines which libs are considered for preloading.
  ***********************************************************************************/
 void GamePreload(const char *package) {
     if (!package || strlen(package) == 0) {
