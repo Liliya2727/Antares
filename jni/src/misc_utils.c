@@ -224,11 +224,9 @@ void setspid(void) {
  ***********************************************************************************/
 void cleanup_vmt(void) {
     int pr1 = systemv("/system/bin/toybox pidof sys.azenith-preloadbin > /dev/null 2>&1");
-    int pr2 = systemv("/system/bin/toybox pidof sys.azenith-preloadbin2 > /dev/null 2>&1");
-    if (pr1 == 0 || pr2 == 0) {
+    if (pr1 == 0) {
         log_zenith(LOG_INFO, "Killing restover preload processes");
-        systemv("pkill -9 -f sys.azenith-preloadbin");
-        systemv("pkill -9 -f sys.azenith-preloadbin2");
+        systemv("pkill -9 -f sys.azenith-preloadbin");    
     }
 }
 
@@ -239,25 +237,29 @@ void cleanup_vmt(void) {
  * Description        : Run preloads on loop
  ***********************************************************************************/
 void preload(const char* pkg, unsigned int* LOOP_INTERVAL) {
+    if (!pkg || !*pkg) return;
+
     char val[PROP_VALUE_MAX] = {0};
-    if (__system_property_get("persist.sys.azenithconf.APreload", val) > 0) {
-        if (val[0] == '1') {
-            pid_t pid = fork();
-            if (pid == 0) {
-                pid_t pid2 = fork();
-                if (pid2 == 0) {
-                    GamePreload(pkg);
-                    _exit(0);
-                }
+    if (__system_property_get("persist.sys.azenithconf.APreload", val) > 0 && val[0] == '1') {
+        pid_t pid = fork();
+        if (pid < 0) {
+            log_zenith(LOG_ERROR, "Failed to fork process for GamePreload");
+            return;
+        } else if (pid == 0) {
+            pid_t pid2 = fork();
+            if (pid2 < 0) {
+                log_zenith(LOG_ERROR, "Failed to fork second process for GamePreload");
+                _exit(1);
+            } else if (pid2 == 0) {
+                GamePreload(pkg);
                 _exit(0);
-            } else if (pid > 0) {
-                *LOOP_INTERVAL = 40;
-                did_log_preload = false;
-                preload_active = true;
-            } else {
-                log_zenith(LOG_ERROR, "Failed to fork process for GamePreload");
             }
+            _exit(0);
         }
+
+        *LOOP_INTERVAL = 40;
+        did_log_preload = false;
+        preload_active = true;
     }
 }
 
@@ -273,6 +275,7 @@ void stop_preloading(unsigned int* LOOP_INTERVAL) {
         *LOOP_INTERVAL = 5;
         did_log_preload = true;
         preload_active = false;
+        systemv("rm -f /data/adb/.config/AZenith/preload/processed_files.txt");
         int status;
         pid_t wpid;
         while ((wpid = waitpid(-1, &status, WNOHANG)) > 0) {
