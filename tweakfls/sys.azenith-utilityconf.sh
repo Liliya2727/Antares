@@ -120,9 +120,8 @@ setsIO() {
 	for block in sda sdb sdc mmcblk0 mmcblk1; do
 		if [ -e "/sys/block/$block/queue/scheduler" ]; then
 			chmod 644 "/sys/block/$block/queue/scheduler"
-			echo "$1" | tee "/sys/block/$block/queue/scheduler"
+			echo "$1" | tee "/sys/block/$block/queue/scheduler" >/dev/null
 			chmod 444 "/sys/block/$block/queue/scheduler"
-			dlog "Set /sys/block/$block/queue/scheduler to $1"
 		fi
 	done
 }

@@ -471,6 +471,9 @@ mediatek_balance() {
 	zeshia "-1" "/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp"
 	zeshia "userspace" "/sys/class/devfreq/mtk-dvfsrc-devfreq/governor"
 	zeshia "userspace" "/sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor"
+	
+	mali_sysfs=$(find /sys/devices/platform/ -iname "*.mali" -print -quit 2>/dev/null)
+	zeshia coarse_demand "$mali_sysfs/power_policy"
 }
 
 ###############################################
@@ -665,6 +668,9 @@ mediatek_performance() {
 	zeshia "0" "/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp"
 	zeshia "performance" "/sys/class/devfreq/mtk-dvfsrc-devfreq/governor"
 	zeshia "performance" "/sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor"
+	
+	mali_sysfs=$(find /sys/devices/platform/ -iname "*.mali" -print -quit 2>/dev/null)
+	zeshia always_on "$mali_sysfs/power_policy"
 
 }
 
@@ -863,6 +869,9 @@ mediatek_powersave() {
 
 	# Eara Thermal
 	zeshia "1" /sys/kernel/eara_thermal/enable
+	
+	mali_sysfs=$(find /sys/devices/platform/ -iname "*.mali" -print -quit 2>/dev/null)
+	zeshia coarse_demand "$mali_sysfs/power_policy"
 
 }
 
