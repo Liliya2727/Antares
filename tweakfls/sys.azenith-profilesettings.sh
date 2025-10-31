@@ -1481,20 +1481,31 @@ initialize() {
 	[ -z "$(getprop persist.sys.azenith.custom_powersave_cpu_gov)" ] && setprop persist.sys.azenith.custom_powersave_cpu_gov "$default_gov"
 	dlog "Parsing CPU Governor complete"
 
-	IO="/sys/block/sda/queue"
-	chmod 644 "$IO/scheduler"
-	default_io=$(grep -o '\[.*\]' "$IO/scheduler" | tr -d '[]')
-	setprop persist.sys.azenith.default_balanced_IO "$default_io"
-	dlog "Default IO Scheduler detected: $default_io"
-
-	# Set Default IO Scheduler
-	[ -n "$(getprop persist.sys.azenith.custom_default_balanced_IO)" ] && default_io=$(getprop persist.sys.azenith.custom_default_balanced_IO)
-	chmod 644 /sys/block/sda/queue/scheduler
-	echo "$default_io" | tee /sys/block/sda/queue/scheduler >/dev/null
-	chmod 444 /sys/block/sda/queue/scheduler
-	[ -z "$(getprop persist.sys.azenith.custom_powersave_IO)" ] && setprop persist.sys.azenith.custom_powersave_IO "$default_io"
-	[ -z "$(getprop persist.sys.azenith.custom_performance_IO)" ] && setprop persist.sys.azenith.custom_performance_IO "$default_io"
-	dlog "Parsing IO Scheduler complete"
+	# Detect valid block device
+    for dev in /sys/block/*; do
+        [ -f "$dev/queue/scheduler" ] && IO="$dev/queue" && break
+    done
+    [ -z "$IO" ] && {
+        dlog "No valid block device with scheduler found"
+        exit 1
+    }    
+    chmod 644 "$IO/scheduler"    
+    # Detect default IO scheduler (marked with [ ])
+    default_io=$(grep -o '\[.*\]' "$IO/scheduler" | tr -d '[]')
+    setprop persist.sys.azenith.default_balanced_IO "$default_io"
+    dlog "Default IO Scheduler detected: $default_io"
+    
+    # Use custom property if defined
+    if [ -n "$(getprop persist.sys.azenith.custom_default_balanced_IO)" ]; then
+        default_io=$(getprop persist.sys.azenith.custom_default_balanced_IO)
+    fi    
+    chmod 644 "$IO/scheduler"
+    echo "$default_io" | tee "$IO/scheduler" >/dev/null
+    chmod 444 "$IO/scheduler"
+    # Set default for other profiles if not set
+    [ -z "$(getprop persist.sys.azenith.custom_powersave_IO)" ] && setprop persist.sys.azenith.custom_powersave_IO "$default_io"
+    [ -z "$(getprop persist.sys.azenith.custom_performance_IO)" ] && setprop persist.sys.azenith.custom_performance_IO "$default_io"    
+    dlog "Parsing IO Scheduler complete"
 
 	RESO_PROP="persist.sys.azenithconf.resosettings"
 	RESO=$(wm size | grep -oE "[0-9]+x[0-9]+" | head -n 1)
