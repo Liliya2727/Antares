@@ -1482,7 +1482,7 @@ initialize() {
 	dlog "Parsing CPU Governor complete"
 
 	# Detect valid block device
-    for dev in /sys/block/*; do
+    for dev in /sys/block/mmcblk0; do
         [ -f "$dev/queue/scheduler" ] && IO="$dev/queue" && break
     done
     [ -z "$IO" ] && {
