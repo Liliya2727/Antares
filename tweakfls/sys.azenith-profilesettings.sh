@@ -1499,9 +1499,15 @@ initialize() {
     if [ -n "$(getprop persist.sys.azenith.custom_default_balanced_IO)" ]; then
         default_io=$(getprop persist.sys.azenith.custom_default_balanced_IO)
     fi    
-    chmod 644 "$IO/scheduler"
-    echo "$default_io" | tee "$IO/scheduler" >/dev/null
-    chmod 444 "$IO/scheduler"
+    
+    for block in sda sdb sdc mmcblk0 mmcblk1; do
+		if [ -e "/sys/block/$block/queue/scheduler" ]; then
+			chmod 644 "/sys/block/$block/queue/scheduler"
+			echo "$default_io" | tee "/sys/block/$block/queue/scheduler" >/dev/null
+			chmod 444 "/sys/block/$block/queue/scheduler"
+		fi
+	done
+
     # Set default for other profiles if not set
     [ -z "$(getprop persist.sys.azenith.custom_powersave_IO)" ] && setprop persist.sys.azenith.custom_powersave_IO "$default_io"
     [ -z "$(getprop persist.sys.azenith.custom_performance_IO)" ] && setprop persist.sys.azenith.custom_performance_IO "$default_io"    
