@@ -35,7 +35,7 @@ AZLog() {
 dlog() {
 	local message log_tag
 	message="$1"
-	log_tag="AZenith"
+	log_tag="AZenithUtility"
 	sys.azenith-service_log "$log_tag" 1 "$message"
 }
 
