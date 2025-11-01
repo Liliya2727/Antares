@@ -144,6 +144,7 @@ int main(int argc, char* argv[]) {
     // Initiate Daemon
     log_zenith(LOG_INFO, "Daemon started as PID %d", getpid());
     setspid();
+    system("setprop persist.sys.rianixia.learning_enabled true");
     systemv("setprop persist.sys.azenith.state running");
     cleanup_vmt();
     notify("Initializing...");
