@@ -103,6 +103,7 @@ char* timern(void);
 void setspid(void);
 bool return_true(void);
 bool return_false(void);
+void runthermalcore(void);
 
 // Shell and Command execution
 char* execute_command(const char* format, ...);

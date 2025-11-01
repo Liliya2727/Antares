@@ -282,3 +282,32 @@ void stop_preloading(unsigned int* LOOP_INTERVAL) {
         }
     }
 }
+
+/***********************************************************************************
+ * Function Name      : runthermalcore
+ * Inputs             : none
+ * Returns            : None
+ * Description        : run thermalcore service if enabled
+ ***********************************************************************************/
+void runthermalcore(void) {
+    char thermalcore[PROP_VALUE_MAX] = {0};
+    __system_property_get("persist.sys.azenithconf.thermalcore", thermalcore);
+    if (strcmp(thermalcore, "1") == 0) {
+        systemv("sys.azenith-rianixiathermalcorev4 &");
+        FILE *fp = popen("pidof sys.azenith-rianixiathermalcorev4", "r");
+        if (fp == NULL) {
+            perror("pidof failed");
+            log_zenith(LOG_INFO, "Failed to run Thermalcore service");
+            return;
+        }
+        char pid_str[32] = {0};
+        if (fgets(pid_str, sizeof(pid_str), fp) != NULL) {
+            int pid = atoi(pid_str);
+            log_zenith(LOG_INFO, "Starting Thermalcore Service with pid %d", pid);
+        } else {
+            log_zenith(LOG_INFO, "Thermalcore Service started but PID not found");
+        }
+
+        pclose(fp);
+    }
+}

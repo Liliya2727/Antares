@@ -147,6 +147,7 @@ int main(int argc, char* argv[]) {
     systemv("setprop persist.sys.azenith.state running");
     cleanup_vmt();
     notify("Initializing...");
+    runthermalcore();
     run_profiler(PERFCOMMON);
     char prev_ai_state[PROP_VALUE_MAX] = "0";
     __system_property_get("persist.sys.azenithconf.AIenabled", prev_ai_state);

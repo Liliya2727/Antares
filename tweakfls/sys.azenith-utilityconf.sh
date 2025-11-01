@@ -126,6 +126,24 @@ setsIO() {
 	done
 }
 
+setthermalcore() {
+    local state="$1"
+    if [ "$state" -eq 1 ]; then
+        sys.azenith-rianixiathermalcorev4 &
+        sleep 1
+        local pid
+        pid="$(pgrep -f rianixiathermalcore)"
+        if [ -n "$pid" ]; then
+            dlog "Started Thermalcore service with pid $pid"
+        else
+            dlog "Thermalcore service started but PID not found"
+        fi
+    else
+        pkill -f sys.azenith-rianixiathermalcorev4 >/dev/null 2>&1
+        dlog "Stopped Thermalcore service"
+    fi
+}
+    
 FSTrim() {
 	for mount in /system /vendor /data /cache /metadata /odm /system_ext /product; do
 		if mountpoint -q "$mount"; then
