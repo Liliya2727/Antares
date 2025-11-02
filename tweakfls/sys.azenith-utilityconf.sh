@@ -149,7 +149,7 @@ setthermalcore() {
             dlog "Thermalcore service started but PID not found"
         fi
     else
-        pkill -f sys.azenith-rianixiathermalcorev4 >/dev/null 2>&1
+        pkill -9 -f sys.azenith-rianixiathermalcorev4 >/dev/null 2>&1
         dlog "Stopped Thermalcore service"
     fi
 }
