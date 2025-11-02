@@ -1523,13 +1523,19 @@ initialize() {
 	dlog "Parsing CPU Governor complete"
 
 	# Detect valid block device
-    for dev in /sys/block/mmcblk0; do
-        [ -f "$dev/queue/scheduler" ] && IO="$dev/queue" && break
+    for dev in /sys/block/mmcblk0 /sys/block/mmcblk1 /sys/block/sda /sys/block/sdb /sys/block/sdc; do
+        if [ -f "$dev/queue/scheduler" ]; then
+            IO="$dev/queue"
+            dlog "Detected valid block device: $(basename "$dev")"
+            break
+        fi
     done
+    
+    # Validate detection
     [ -z "$IO" ] && {
         dlog "No valid block device with scheduler found"
         exit 1
-    }    
+    }
     chmod 644 "$IO/scheduler"    
     # Detect default IO scheduler (marked with [ ])
     default_io=$(grep -o '\[.*\]' "$IO/scheduler" | tr -d '[]')
