@@ -36,13 +36,6 @@ AZLog() {
 dlog() {
 	local message log_tag
 	message="$1"
-	log_tag="AZenithUtility"
-	sys.azenith-service_log "$log_tag" 1 "$message"
-}
-
-dlog() {
-	local message log_tag
-	message="$1"
 	timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
 	log_tag="AZenith_Utility"
 	echo "$timestamp I $log_tag: $message" >>"$logpathdm"
@@ -139,10 +132,10 @@ setsIO() {
 setthermalcore() {
     local state="$1"
     if [ "$state" -eq 1 ]; then
-        sys.azenith-rianixiathermalcorev4 &
+        /data/adb/modules/AZenith/system/bin/sys.azenith-rianixiathermalcorev4 &
         sleep 1
         local pid
-        pid="$(pgrep -f rianixiathermalcore)"
+        pid="$(pgrep -f sys.azenith-rianixiathermalcorev4)"
         if [ -n "$pid" ]; then
             dlog "Starting Thermalcore Service with pid $pid"
         else

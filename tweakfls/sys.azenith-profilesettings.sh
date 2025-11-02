@@ -46,8 +46,8 @@ dlogc() {
 	local message log_tag
 	message="$1"
 	timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
-	log_tag="AZenith_CPUManager"
-	echo "$timestamp I $log_tag: $message" >>"$logpathdm"
+	log_tag="AZenith"
+	echo "$timestamp I $log_tag: $message" >>"$logpath2"
     log -t "$log_tag" "$message"
 }
 
@@ -249,11 +249,15 @@ setfreqppm() {
 				new_minfreq=$(setfreqs "$path/scaling_available_frequencies" "$target_min_target")
 				zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
 				zeshia "$cluster $new_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+				policy_name=$(basename "$path")
+			    dlogc "Set $policy_name maxfreq=$new_maxfreq minfreq=$new_minfreq"
 				((cluster++))
 				continue
 			}
 			zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
 			zeshia "$cluster $cpu_minfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+			policy_name=$(basename "$path")
+		    dlogc "Set $policy_name maxfreq=$new_maxfreq minfreq=$cpu_minfreq"
 			((cluster++))
 		done
 	fi
@@ -291,7 +295,7 @@ setgamefreqppm() {
 			((cluster++))
 			cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
 			cpu_minfreq=$(<"$path/cpuinfo_max_freq")
-			new_midtarget=$((cpu_maxfreq * 90 / 100))
+			new_midtarget=$((cpu_maxfreq * 100 / 100))
 			new_midfreq=$(setfreqs "$path/scaling_available_frequencies" "$new_midtarget")
 			[ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 1 ] && {
 				new_maxtarget=$((cpu_maxfreq * 90 / 100))
@@ -300,10 +304,14 @@ setgamefreqppm() {
 				new_maxfreq=$(setfreqs "$path/scaling_available_frequencies" "$new_maxtarget")
 				zeshia "$cluster $new_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
 				zeshia "$cluster $new_midfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+				policy_name=$(basename "$path")
+			    dlogc "Set $policy_name maxfreq=$new_maxfreq minfreq=$new_midfreq"
 				continue
 			}
 			zeshia "$cluster $cpu_maxfreq" "/proc/ppm/policy/hard_userlimit_max_cpu_freq"
 			zeshia "$cluster $new_midfreq" "/proc/ppm/policy/hard_userlimit_min_cpu_freq"
+			policy_name=$(basename "$path")
+	        dlogc "Set $policy_name maxfreq=$cpu_maxfreq minfreq=$new_midfreq"
 		done
 	fi
 }
@@ -1131,7 +1139,11 @@ performance_profile() {
 	fi
 
 	# Fix Target OPP Index
-	[ -d /proc/ppm ] && setgamefreqppm || setgamefreq
+	if [ -d /proc/ppm ]; then
+	    setgamefreqppm 
+	else
+	    setgamefreq
+	fi
 	dlog "Set CPU freq to max available Frequencies"
 
 	# VM Cache Pressure
@@ -1277,8 +1289,16 @@ balanced_profile() {
 	dlog "Applying I/O scheduler to : $default_iosched"
 
 	# Limit cpu freq
-	[ -d /proc/ppm ] && setfreqppm || setfreq
-	dlog "Set CPU freq to normal Frequencies"
+	if [ -d /proc/ppm ]; then
+	    setfreqppm
+	else
+	    setfreq
+	fi
+	if [ "$(getprop persist.sys.azenithconf.freqoffset)" = "Disabled" ]; then
+        dlog "Set CPU freq to normal Frequencies"
+    else
+	    dlog "Set CPU freq to normal selected Frequencies"
+	fi
 
 	# vm cache pressure
 	zeshia "120" "/proc/sys/vm/vfs_cache_pressure"
@@ -1409,7 +1429,11 @@ eco_mode() {
 	fi
 
 	# Limit cpu freq
-	[ -d /proc/ppm ] && setfreqppm || setfreq
+	if [ -d /proc/ppm ]; then
+	    setfreqppm
+	else
+	    setfreq
+	fi
 	dlog "Set CPU freq to low Frequencies"
 
 	# VM Cache Pressure
