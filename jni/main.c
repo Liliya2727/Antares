@@ -143,11 +143,15 @@ int main(int argc, char* argv[]) {
 
     // Initiate Daemon
     log_zenith(LOG_INFO, "Daemon started as PID %d", getpid());
+    // Set daemon PID to Prop
     setspid();
     systemv("setprop persist.sys.rianixia.learning_enabled true");
     systemv("setprop persist.sys.azenith.state running");
+    // Clean old VMT
     cleanup_vmt();
     notify("Initializing...");
+    // Set Default ThermalPath
+    systemv("setprop persist.sys.rianixia.thermalcore-bigdata.path /data/adb/.config/AZenith/debug");
     runthermalcore();
     run_profiler(PERFCOMMON);
     char prev_ai_state[PROP_VALUE_MAX] = "0";
