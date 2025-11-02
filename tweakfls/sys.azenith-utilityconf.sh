@@ -117,6 +117,7 @@ setsgov() {
 	chmod 644 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 	echo "$1" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 	chmod 444 /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+	dlog "Set current CPU Governor to $1"
 }
 
 setsIO() {
@@ -127,6 +128,7 @@ setsIO() {
 			chmod 444 "/sys/block/$block/queue/scheduler"
 		fi
 	done
+	dlog "Set current IO Scheduler to $1"
 }
 
 setthermalcore() {
