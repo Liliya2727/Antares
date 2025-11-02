@@ -20,6 +20,7 @@
 
 MODDIR=${0%/*}
 logpath="/data/adb/.config/AZenith/debug/AZenithVerbose.log"
+logpathdm="/data/adb/.config/AZenith/debug/AZenith.log"
 
 AZLog() {
 	if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
@@ -37,6 +38,15 @@ dlog() {
 	message="$1"
 	log_tag="AZenithUtility"
 	sys.azenith-service_log "$log_tag" 1 "$message"
+}
+
+dlog() {
+	local message log_tag
+	message="$1"
+	timestamp=$(date +"%Y-%m-%d %H:%M:%S.%3N")
+	log_tag="AZenith_Utility"
+	echo "$timestamp I $log_tag: $message" >>"$logpathdm"
+    log -t "$log_tag" "$message"
 }
 
 zeshia() {
@@ -134,7 +144,7 @@ setthermalcore() {
         local pid
         pid="$(pgrep -f rianixiathermalcore)"
         if [ -n "$pid" ]; then
-            dlog "Started Thermalcore service with pid $pid"
+            dlog "Starting Thermalcore Service with pid $pid"
         else
             dlog "Thermalcore service started but PID not found"
         fi
