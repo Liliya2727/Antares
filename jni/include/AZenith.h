@@ -14,11 +14,23 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
-#define GAME_LIB                                                                                                                    \
-    "libunity\\.so|libUE4\\.so|libframeestimation(VK|GL)\\.so|libflutter\\.so|libapp\\.so|libGGP\\.so|libGame\\.so|"                \
-    "libvirglrenderer\\.so|libvortekrenderer\\.so|libwinlator\\.so|libminecraftpe\\.so|libc\\+\\+_shared\\.so|libnative-mvd-"       \
-    "render\\.so|libMiHoYoMTRSDK\\.so|libil2cpp\\.so|libmoba\\.so|libResources\\.so|libyuanshen\\.so|libcri_(vip|ware)_unity\\.so|" \
-    "libgamemaster\\.so|LibPixUI_PXplugin\\.so|LibVkLayer_swapchain_rotate\\.so|libzstd\\.so|libPixUI_Unity\\.so"
+#define GAME_LIB \
+    "libunity\\.so|libUE4\\.so|libUnreal|libframeestimation(VK|GL)\\.so|libflutter\\.so|libapp\\.so|libGGP\\.so|" \
+    "libGame\\.so|libgamemaster\\.so|libvortekrenderer\\.so|libvirglrenderer\\.so|libwinlator\\.so|" \
+    "libminecraftpe\\.so|libil2cpp\\.so|libcri_(vip|ware)_unity\\.so|libResources\\.so|" \
+    "libyuanshen\\.so|libMiHoYoMTRSDK\\.so|libmoba\\.so|libnative-mvd-render\\.so|" \
+    "LibPixUI_PXplugin\\.so|LibVkLayer_swapchain_rotate\\.so|libPixUI_Unity\\.so|libzstd\\.so|" \
+    "libcocos2dcpp\\.so|libcocos2djs\\.so|libcocos\\.so|libgodot_android\\.so|libgodot_openxr\\.so|" \
+    "libgame_engine\\.so|libengine\\.so|libgameext\\.so|libEGL\\.so|" \
+    "libTGame\\.so|libTDataMaster\\.so|libTDataMasterEx\\.so|libtencent\\.so|libTxGame\\.so|libGCloudVoice\\.so|" \
+    "libGCloud\\.so|libWeTest\\.so|libWeGame\\.so|libMSDK\\.so|libQAppEngine\\.so|" \
+    "libRenderer\\.so|libRendering\\.so|libRenderCore\\.so|libRenderEngine\\.so|" \
+    "libRenderScript\\.so|libRenderThread\\.so|libgraphics\\.so|libgfx\\.so|" \
+    "libcri_mana\\.so|libcri_atom\\.so|libcri_adx2\\.so|libcri_movie\\.so|libspine\\.so|" \
+    "libdragonbones\\.so|libLive2DCubismCore\\.so|libLive2D\\.so|libPhysX\\.so|libhavok\\.so|" \
+    "liblua\\.so|libluajit\\.so|libtolua\\.so|libjsb\\.so|" \
+    "libEGL_emulation\\.so|libGLESv3_emulation\\.so|libhoudini\\.so|libbox64\\.so|libbox86\\.so|" \
+    "libOgreMain\\.so|libCryEngine\\.so|libGameBase\\.so|libMain\\.so|libcore\\.so"
 
 #define BASEDIR "/data/adb/modules/AZenith"
 #define INTDIR "/data/adb/.config/AZenith"
