@@ -24,7 +24,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
+#include <glob.h>
 
 /***********************************************************************************
  * Function Name      : GamePreload
@@ -37,17 +37,14 @@ void GamePreload(const char *package) {
         log_preload(LOG_WARN, "Package is null or empty");
         return;
     }
+
     char apk_path[256] = {0};
     {
         char cmd[256];
-        snprintf(cmd, sizeof(cmd),
-                 "cmd package path %s 2>/dev/null", package);
+        snprintf(cmd, sizeof(cmd), "cmd package path %s 2>/dev/null", package);
 
         FILE *fp = popen(cmd, "r");
-        if (!fp) {
-            log_preload(LOG_ERROR, "Failed popen() when reading APK path");
-            return;
-        }
+        if (!fp) return;
         if (fgets(apk_path, sizeof(apk_path), fp)) {
             char *pos = strstr(apk_path, ":/");
             if (pos) memmove(apk_path, pos + 1, strlen(pos));
@@ -55,59 +52,51 @@ void GamePreload(const char *package) {
         pclose(fp);
     }
     apk_path[strcspn(apk_path, "\n")] = 0;
-    if (apk_path[0] == 0) {
-        log_preload(LOG_ERROR, "Could not resolve APK path for %s", package);
-        return;
-    }
+    if (apk_path[0] == 0) return;
 
     char *base_path = strdup(apk_path);
     if (!base_path) return;
     char *slash = strrchr(base_path, '/');
     if (slash) *slash = '\0';
-    const char *abi_list[] = {
-        "arm64-v8a",
-        "arm64",
-        NULL
-    };
+
+    const char *abi_list[] = { "arm64-v8a", "arm64", NULL };
     char lib_path[300] = {0};
     bool abi_found = false;
     for (int i = 0; abi_list[i]; i++) {
-        snprintf(lib_path, sizeof(lib_path),
-                 "%s/lib/%s", base_path, abi_list[i]);
+        snprintf(lib_path, sizeof(lib_path), "%s/lib/%s", base_path, abi_list[i]);
         if (access(lib_path, F_OK) == 0) {
             log_preload(LOG_INFO, "ABI detected: %s", abi_list[i]);
             abi_found = true;
             break;
         }
     }
-
     if (!abi_found) {
         log_preload(LOG_WARN, "No ABI folder found under %s/lib", base_path);
         free(base_path);
         return;
     }
-    DIR *dir = opendir(lib_path);
-    bool found_so = false;
-    if (dir) {
-        struct dirent *e;
-        while ((e = readdir(dir)) != NULL) {
-            if (strstr(e->d_name, ".so")) {
-                found_so = true;
-                break;
-            }
-        }
-        closedir(dir);
-    }
 
-    if (!found_so) {
-        log_preload(LOG_WARN, "No .so libraries inside %s — skipping", lib_path);
+    char pattern[350];
+    snprintf(pattern, sizeof(pattern), "%s/*.so", lib_path);
+    glob_t gl;
+    if (glob(pattern, 0, NULL, &gl) != 0 || gl.gl_pathc == 0) {
+        log_preload(LOG_WARN, "No .so libraries found in %s", lib_path);
         free(base_path);
         return;
     }
-    log_preload(LOG_INFO, "Preloading: %s/*.so", lib_path);
-    int ret = systemv("sys.azenith-preloadbin -mt 500M %s/*.so", lib_path);
+
+    char cmd[1200] = {0};
+    snprintf(cmd, sizeof(cmd), "sys.azenith-preloadbin -mt 500M");
+    for (size_t i = 0; i < gl.gl_pathc; i++) {
+        strncat(cmd, " ", sizeof(cmd) - strlen(cmd) - 1);
+        strncat(cmd, gl.gl_pathv[i], sizeof(cmd) - strlen(cmd) - 1);
+    }
+    log_preload(LOG_INFO, "Preloading all .so: %s/*.so", lib_path);
+    int ret = systemv("%s", cmd);
     if (ret != 0) {
         log_preload(LOG_ERROR, "Preload for %s failed with code %d", package, ret);
     }
+
+    globfree(&gl);
     free(base_path);
 }
