@@ -33,24 +33,33 @@
  ***********************************************************************************/
 void GamePreload(const char *package) {
     if (!package || strlen(package) == 0) {
-        log_preload(LOG_WARN, "Package is null or empty");
+        log_zenith(LOG_WARN, "Package is null or empty");
         return;
     }
 
     char apk_path[256] = {0};
     char cmd_apk[512];
-    snprintf(cmd_apk, sizeof(cmd_apk), "cmd package path %s | head -n1 | cut -d: -f2", package);
+    snprintf(cmd_apk, sizeof(cmd_apk),
+             "cmd package path %s | head -n1 | cut -d: -f2", package);
 
     FILE *apk = popen(cmd_apk, "r");
     if (!apk || !fgets(apk_path, sizeof(apk_path), apk)) {
-        log_preload(LOG_WARN, "Failed to get apk path for %s", package);
+        log_zenith(LOG_WARN, "Failed to get APK path for %s", package);
         if (apk) pclose(apk);
         return;
     }
     pclose(apk);
-    apk_path[strcspn(apk_path, "\n")] = 0;
+    apk_path[strcspn(apk_path, "\n")] = 0;  // Remove newline
 
-    // Use the lib folder inside the APK path
+    // Strip 'base.apk' to get the folder
+    char *last_slash = strrchr(apk_path, '/');
+    if (!last_slash) {
+        log_zenith(LOG_WARN, "Failed to determine APK folder from path: %s", apk_path);
+        return;
+    }
+    *last_slash = '\0';  // Remove 'base.apk'
+
+    // Set lib_path to the APK folder with trailing slash
     char lib_path[300];
     snprintf(lib_path, sizeof(lib_path), "%s/", apk_path);
 
@@ -64,9 +73,6 @@ void GamePreload(const char *package) {
     snprintf(preload_cmd, sizeof(preload_cmd),
              "sys.azenith-preloadbin -dL -tm 600M \"%s\"", lib_path);
 
-    if (systemv(preload_cmd) == 0) {
-        log_preload(LOG_INFO, "Preloaded game library folder: %s", lib_path);
-    } else {
-        log_zenith(LOG_WARN, "Failed to preload folder: %s", lib_path);
-    }
+    systemv(preload_cmd);
+    log_preload(LOG_INFO, "Preloading libs: %s", lib_path);
 }
