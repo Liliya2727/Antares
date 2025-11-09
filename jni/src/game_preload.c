@@ -37,76 +37,45 @@ void GamePreload(const char *package) {
         return;
     }
 
+    // Resolve APK path
     char apk_path[256] = {0};
-    {
-        char cmd[256];
-        snprintf(cmd, sizeof(cmd), "cmd package path %s 2>/dev/null", package);
-        FILE *fp = popen(cmd, "r");
-        if (!fp) return;
-
-        if (fgets(apk_path, sizeof(apk_path), fp)) {
-            char *pos = strstr(apk_path, ":/");
-            if (pos) memmove(apk_path, pos + 1, strlen(pos));
-        }
-        pclose(fp);
+    char cmd_apk[512];
+    snprintf(cmd_apk, sizeof(cmd_apk), "cmd package path %s | head -n1 | cut -d: -f2", package);
+    FILE *apk = popen(cmd_apk, "r");
+    if (!apk || !fgets(apk_path, sizeof(apk_path), apk)) {
+        log_preload(LOG_WARN, "Failed to get apk path for %s", package);
+        if (apk) pclose(apk);
+        return;
     }
+    pclose(apk);
     apk_path[strcspn(apk_path, "\n")] = 0;
-    if (apk_path[0] == 0) return;
 
-    char *base_path = strdup(apk_path);
-    if (!base_path) return;
-    char *slash = strrchr(base_path, '/');
-    if (slash) *slash = '\0';
+    // ==== lib path preload (vmt -dL /path/to/lib.so) ====
+    char *last_slash = strrchr(apk_path, '/');
+    if (!last_slash) return;
+    *last_slash = '\0';
 
-    const char *abi_list[] = { "arm64-v8a", "arm64", NULL };
-    char lib_path[300] = {0};
-    bool abi_found = false;
+    char lib_path[300];
+    snprintf(lib_path, sizeof(lib_path), "%s/lib/arm64", apk_path);
+    bool lib_found = access(lib_path, F_OK) == 0;
 
-    for (int i = 0; abi_list[i]; i++) {
-        snprintf(lib_path, sizeof(lib_path), "%s/lib/%s", base_path, abi_list[i]);
-        if (access(lib_path, F_OK) == 0) {
-            log_preload(LOG_INFO, "ABI detected: %s", abi_list[i]);
-            abi_found = true;
-            break;
+    if (lib_found) {
+        char find_cmd[512];
+        snprintf(find_cmd, sizeof(find_cmd), "find %s -type f -name '*.so' 2>/dev/null", lib_path);
+        FILE *pipe = popen(find_cmd, "r");
+        if (pipe) {
+            char lib[512];
+            while (fgets(lib, sizeof(lib), pipe)) {
+                lib[strcspn(lib, "\n")] = 0;
+
+                // Preload the .so file
+                char preload_cmd[600];
+                snprintf(preload_cmd, sizeof(preload_cmd), "sys.azenith-preloadbin -mt 500M \"%s\"", lib);
+                if (systemv(preload_cmd) == 0) {
+                    log_preload(LOG_INFO, "Preloaded native: %s", lib);
+                }
+            }
+            pclose(pipe);
         }
     }
-
-    if (!abi_found) {
-        log_preload(LOG_WARN, "No ABI folder found under %s/lib", base_path);
-        free(base_path);
-        return;
-    }
-
-    DIR *dir = opendir(lib_path);
-    if (!dir) {
-        log_preload(LOG_WARN, "Cannot open directory %s", lib_path);
-        free(base_path);
-        return;
-    }
-    struct dirent *entry;
-    bool found_so = false;
-    char cmd[1200] = {0};
-    snprintf(cmd, sizeof(cmd), "sys.azenith-preloadbin -mt 500M");
-    while ((entry = readdir(dir)) != NULL) {
-        if (strstr(entry->d_name, ".so")) {
-            found_so = true;
-            strncat(cmd, " ", sizeof(cmd) - strlen(cmd) - 1);
-            strncat(cmd, lib_path, sizeof(cmd) - strlen(cmd) - 1);
-            strncat(cmd, "/", sizeof(cmd) - strlen(cmd) - 1);
-            strncat(cmd, entry->d_name, sizeof(cmd) - strlen(cmd) - 1);
-        }
-    }
-    closedir(dir);
-    if (!found_so) {
-        log_preload(LOG_WARN, "No .so libraries found in %s — skipping preload", lib_path);
-        free(base_path);
-        return;
-    }
-    log_preload(LOG_INFO, "Preloading all .so in %s", lib_path);
-    int ret = systemv("%s", cmd);
-    if (ret != 0) {
-        log_preload(LOG_ERROR, "Preload for %s failed with code %d", package, ret);
-    }
-
-    free(base_path);
 }
