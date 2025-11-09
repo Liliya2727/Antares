@@ -102,102 +102,111 @@ void GamePreload(const char *package) {
     char lib_path[300];
     snprintf(lib_path, sizeof(lib_path), "%s/lib/arm64", base_path);
 
+    bool should_process_split = false;
     if (access(lib_path, F_OK) == 0) {
-
+    
+        bool found_any_so = false;
+    
         char find_cmd[512];
         snprintf(find_cmd, sizeof(find_cmd),
                  "find \"%s\" -type f -name '*.so' 2>/dev/null", lib_path);
-
+    
         FILE *pipe = popen(find_cmd, "r");
+    
         if (pipe) {
             char lib[MAX_PATH_LEN];
-
+    
             while (fgets(lib, sizeof(lib), pipe)) {
+                found_any_so = true;
                 lib[strcspn(lib, "\n")] = 0;
-
-                if (is_already_processed(lib)) 
+    
+                if (is_already_processed(lib))
                     continue;
-
+    
                 bool filename_match =
                     (regexec(&game_lib_regex, lib, 0, NULL, 0) == 0);
-
+    
                 bool content_match = false;
-
+    
                 if (!filename_match) {
                     int ret = systemv("strings \"%s\" | grep -qE \"%s\"",
                                       lib, GPU_RENDER_REGEX);
                     if (ret == 0)
                         content_match = true;
                 }
-
+    
                 if (filename_match || content_match) {
-
                     int ret = systemv("sys.azenith-preloadbin -dL \"%s\"", lib);
                     if (ret == 0) {
                         fprintf(processed_out, "%s\n", lib);
                         fflush(processed_out);
-                        log_preload(LOG_INFO, "Preloaded apk libs: %s", lib);
                     }
                 }
             }
-
+    
             pclose(pipe);
         }
+    
+        if (!found_any_so)
+            should_process_split = true;
+    
+    } else {
+        should_process_split = true;
     }
-
-    char split_cmd[512];
-    snprintf(split_cmd, sizeof(split_cmd), "ls \"%s\"/*.apk 2>/dev/null", base_path);
-
-    FILE *apk_list = popen(split_cmd, "r");
-    if (apk_list) {
-        char apk_file[512];
-
-        while (fgets(apk_file, sizeof(apk_file), apk_list)) {
-            apk_file[strcspn(apk_file, "\n")] = 0;
-
-            char list_cmd[600];
-            snprintf(list_cmd, sizeof(list_cmd),
-                     "unzip -l \"%s\" | awk '{print $4}' | grep '\\.so$'",
-                     apk_file);
-
-            FILE *liblist = popen(list_cmd, "r");
-            if (!liblist) continue;
-
-            char innerlib[512];
-
-            while (fgets(innerlib, sizeof(innerlib), liblist)) {
-
-                innerlib[strcspn(innerlib, "\n")] = 0;
-
-                bool filename_match =
-                    (regexec(&game_lib_regex, innerlib, 0, NULL, 0) == 0);
-
-                bool content_match = false;
-
-                if (!filename_match) {
-                    int ret = systemv(
-                        "unzip -p \"%s\" \"%s\" | strings | grep -qE \"%s\"",
-                        apk_file, innerlib, GPU_RENDER_REGEX
-                    );
-                    if (ret == 0)
-                        content_match = true;
+    
+    if (should_process_split) {
+    
+        char split_cmd[512];
+        snprintf(split_cmd, sizeof(split_cmd),
+                 "ls \"%s\"/*.apk 2>/dev/null", base_path);
+    
+        FILE *apk_list = popen(split_cmd, "r");
+        if (apk_list) {
+            char apk_file[512];
+    
+            while (fgets(apk_file, sizeof(apk_file), apk_list)) {
+                apk_file[strcspn(apk_file, "\n")] = 0;
+    
+                char list_cmd[600];
+                snprintf(list_cmd, sizeof(list_cmd),
+                         "unzip -l \"%s\" | awk '{print $4}' | grep '\\.so$'",
+                         apk_file);
+    
+                FILE *liblist = popen(list_cmd, "r");
+                if (!liblist) continue;
+    
+                char innerlib[512];
+                while (fgets(innerlib, sizeof(innerlib), liblist)) {
+    
+                    innerlib[strcspn(innerlib, "\n")] = 0;
+    
+                    bool filename_match =
+                        (regexec(&game_lib_regex, innerlib, 0, NULL, 0) == 0);
+    
+                    bool content_match = false;
+    
+                    if (!filename_match) {
+                        int ret = systemv(
+                            "unzip -p \"%s\" \"%s\" | strings | grep -qE \"%s\"",
+                            apk_file, innerlib, GPU_RENDER_REGEX
+                        );
+                        if (ret == 0)
+                            content_match = true;
+                    }
+    
+                    if (filename_match || content_match) {
+                        systemv(
+                            "unzip -p \"%s\" \"%s\" | sys.azenith-preloadbin -dL -",
+                            apk_file, innerlib
+                        );
+                    }
                 }
-
-                if (filename_match || content_match) {
-
-                    int ret = systemv(
-                        "unzip -p \"%s\" \"%s\" | sys.azenith-preloadbin -dL -",
-                        apk_file, innerlib
-                    );
-                    if (ret == 0)
-                        log_preload(LOG_INFO, "Preloaded from APK: %s", innerlib);
-                }
+    
+                pclose(liblist);
             }
-
-            pclose(liblist);
+    
+            pclose(apk_list);
         }
-
-        pclose(apk_list);
     }
 
     free(base_path);
