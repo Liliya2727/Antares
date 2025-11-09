@@ -36,7 +36,6 @@ void GamePreload(const char *package) {
         log_preload(LOG_WARN, "Package is null or empty");
         return;
     }
-
     char apk_path[256] = {0};
     char cmd_apk[512];
     snprintf(cmd_apk, sizeof(cmd_apk), "cmd package path %s | head -n1 | cut -d: -f2", package);
@@ -48,32 +47,36 @@ void GamePreload(const char *package) {
     }
     pclose(apk);
     apk_path[strcspn(apk_path, "\n")] = 0;
-
     char *last_slash = strrchr(apk_path, '/');
     if (!last_slash) return;
     *last_slash = '\0';
-
     char lib_path[300];
     snprintf(lib_path, sizeof(lib_path), "%s/lib/arm64", apk_path);
     bool lib_found = access(lib_path, F_OK) == 0;
-
     if (lib_found) {
         char find_cmd[512];
         snprintf(find_cmd, sizeof(find_cmd), "find %s -type f -name '*.so' 2>/dev/null", lib_path);
         FILE *pipe = popen(find_cmd, "r");
         if (pipe) {
             char lib[512];
+            bool any_preloaded = false;
             while (fgets(lib, sizeof(lib), pipe)) {
                 lib[strcspn(lib, "\n")] = 0;
-
-                // Preload the .so file
                 char preload_cmd[600];
                 snprintf(preload_cmd, sizeof(preload_cmd), "sys.azenith-preloadbin -tm 500M \"%s\"", lib);
                 if (systemv(preload_cmd) == 0) {
                     log_preload(LOG_INFO, "Preloaded native: %s", lib);
+                    any_preloaded = true;
                 }
             }
             pclose(pipe);
+            if (!any_preloaded) {
+                log_zenith(LOG_WARN, "No .so files found in %s", lib_path);
+            }
+        } else {
+            log_zenith(LOG_WARN, "Failed to run find command in %s", lib_path);
         }
+    } else {
+        log_zenith(LOG_WARN, "Library path does not exist: %s", lib_path);
     }
 }
