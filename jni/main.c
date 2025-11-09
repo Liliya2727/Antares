@@ -18,7 +18,7 @@
 #include <libgen.h>
 char* gamestart = NULL;
 pid_t game_pid = 0;
-preload_active = false;
+bool preload_active = false;
 
 int main(int argc, char* argv[]) {
     // Handle case when not running on root
