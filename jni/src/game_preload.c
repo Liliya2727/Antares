@@ -39,8 +39,7 @@ void GamePreload(const char *package) {
 
     char apk_path[256] = {0};
     char cmd_apk[512];
-    snprintf(cmd_apk, sizeof(cmd_apk),
-             "cmd package path %s | head -n1 | cut -d: -f2", package);
+    snprintf(cmd_apk, sizeof(cmd_apk), "cmd package path %s | head -n1 | cut -d: -f2", package);
 
     FILE *apk = popen(cmd_apk, "r");
     if (!apk || !fgets(apk_path, sizeof(apk_path), apk)) {
@@ -51,34 +50,23 @@ void GamePreload(const char *package) {
     pclose(apk);
     apk_path[strcspn(apk_path, "\n")] = 0;
 
+    // Use the lib folder inside the APK path
     char lib_path[300];
-    snprintf(lib_path, sizeof(lib_path), "%s", apk_path);
+    snprintf(lib_path, sizeof(lib_path), "%s/", apk_path);
 
     if (access(lib_path, F_OK) != 0) {
         log_zenith(LOG_WARN, "Library path does not exist: %s", lib_path);
         return;
     }
 
+    // Preload the entire folder
     char preload_cmd[512];
     snprintf(preload_cmd, sizeof(preload_cmd),
-             "sys.azenith-preloadbin -v -L -tm 600M \"%s\"", lib_path);
+             "sys.azenith-preloadbin -dL -tm 600M \"%s\"", lib_path);
 
-    FILE *pipe = popen(preload_cmd, "r");
-    if (!pipe) {
-        log_zenith(LOG_WARN, "Failed to run preload command: %s", lib_path);
-        return;
-    }
-
-    char line[512];
-    while (fgets(line, sizeof(line), pipe)) {
-        line[strcspn(line, "\n")] = 0;
-        log_preload(LOG_INFO, "%s", line); 
-    }
-
-    int exit_code = pclose(pipe);
-    if (exit_code != 0) {
-        log_zenith(LOG_WARN, "Preload command exited with code %d for %s", exit_code, lib_path);
+    if (systemv(preload_cmd) == 0) {
+        log_preload(LOG_INFO, "Preloaded game library folder: %s", lib_path);
     } else {
-        log_preload(LOG_INFO, "Finished preloading folder: %s", lib_path);
+        log_zenith(LOG_WARN, "Failed to preload folder: %s", lib_path);
     }
 }
