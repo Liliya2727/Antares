@@ -40,7 +40,8 @@ void GamePreload(const char *package) {
     
     char apk_path[256] = {0};
     char cmd_apk[512];
-    snprintf(cmd_apk, sizeof(cmd_apk), "cmd package path %s | head -n1 | cut -d: -f2", package);
+    snprintf(cmd_apk, sizeof(cmd_apk),
+             "cmd package path %s | head -n1 | cut -d: -f2", package);
     FILE *apk = popen(cmd_apk, "r");
     if (!apk || !fgets(apk_path, sizeof(apk_path), apk)) {
         log_preload(LOG_ERROR, "Failed to get APK path");
@@ -54,16 +55,40 @@ void GamePreload(const char *package) {
     char *slash = strrchr(base_path, '/');
     if (slash) *slash = '\0';
     char lib_path[300];
-    
     snprintf(lib_path, sizeof(lib_path), "%s/lib/arm64", base_path);
-    
-    if (access(lib_path, F_OK) == 0) {
-        log_preload(LOG_INFO, "Preloading all libraries from: %s", lib_path);
-        int ret = systemv("sys.azenith-preloadbin -mt 500M \"%s\"/*", lib_path);
-        if (ret != 0)
-            log_preload(LOG_ERROR, "Preload failed for %s", lib_path);
-    } else {
-        log_preload(LOG_WARN, "lib/arm64 not found for %s — skipping preload", package);
+    if (access(lib_path, F_OK) != 0) {
+        log_zenith(LOG_WARN, "Directory %s does not exist — skipping preload", lib_path);
+        free(base_path);
+        return;
     }
+    
+    bool found_so = false;
+    DIR *dir = opendir(lib_path);
+    if (dir) {
+        struct dirent *entry;
+        while ((entry = readdir(dir)) != NULL) {
+            if (strstr(entry->d_name, ".so")) {
+                found_so = true;
+                break;
+            }
+        }
+        closedir(dir);
+    }
+    
+    if (!found_so) {
+        log_zenith(LOG_WARN, "No .so libraries found in %s — skipping preload", lib_path);
+        free(base_path);
+        return;
+    }
+    
+    char cmd[600];
+    snprintf(cmd, sizeof(cmd),
+            "sys.azenith-preloadbin -mt 500M \"%s\"/*", lib_path);
+    log_preload(LOG_INFO, "Preloading libs : \"%s\"/*", lib_path);
+    int ret = system(cmd);
+    if (ret != 0) {
+        log_zenith(LOG_ERROR, "Preload failed for %s", package);
+    }
+    
     free(base_path);
 }

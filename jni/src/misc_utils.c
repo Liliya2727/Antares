@@ -228,7 +228,7 @@ void cleanup_vmt(void) {
         log_zenith(LOG_INFO, "Killing restover preload processes");
         systemv("pkill -9 -f sys.azenith-preloadbin");    
     }
-}
+} 
 
 /***********************************************************************************
  * Function Name      : preload
@@ -256,7 +256,7 @@ void preload(const char* pkg) {
             _exit(0);
         }
         preload_active = true;
-        log_preload(LOG_INFO, "Preloading game PKG %s", pkg);
+        log_zenith(LOG_INFO, "Preloading game pkg: %s", pkg);
     }
 }
 
