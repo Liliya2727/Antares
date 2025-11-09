@@ -255,6 +255,7 @@ void preload(const char* pkg) {
             }
             _exit(0);
         }
+        preload_active = true;
         log_preload(LOG_INFO, "Preloading game PKG %s", pkg);
     }
 }
@@ -268,6 +269,7 @@ void preload(const char* pkg) {
 void stop_preloading() {
     if (preload_active) {
         cleanup_vmt();
+        preload_active = false;
         int status;
         pid_t wpid;
         while ((wpid = waitpid(-1, &status, WNOHANG)) > 0) {
