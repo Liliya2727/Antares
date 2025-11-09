@@ -89,18 +89,21 @@ int main(int argc, char* argv[]) {
             log_zenith(LOG_INFO, "Applying Performance Profile via execute");
             toast("Applying Performance Profile");
             run_profiler(PERFORMANCE_PROFILE);
+            cur_mode = PERFORMANCE_PROFILE;
             fprintf(stderr, "Applying Performance Profile\n");
             return EXIT_SUCCESS;
         } else if (strcmp(profile, "2") == 0) {
             log_zenith(LOG_INFO, "Applying Balanced Profile via execute");
             toast("Applying Balanced Profile");
             run_profiler(BALANCED_PROFILE);
+            cur_mode = BALANCED_PROFILE;
             fprintf(stderr, "Applying Balanced Profile\n");
             return EXIT_SUCCESS;
         } else if (strcmp(profile, "3") == 0) {
             log_zenith(LOG_INFO, "Applying Eco Mode via execute");
             toast("Applying Eco Mode");
             run_profiler(ECO_MODE);
+            cur_mode = ECO_MODE;
             fprintf(stderr, "Applying Eco Mode\n");
             return EXIT_SUCCESS;
         } else {
