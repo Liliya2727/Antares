@@ -119,6 +119,7 @@ void toast(const char* message) {
     char val[PROP_VALUE_MAX] = {0};
     if (__system_property_get("persist.sys.azenithconf.showtoast", val) > 0) {
         if (val[0] == '1') {
+            // Show toast
             int exit = systemv("su -lp 2000 -c \"/system/bin/am start -a android.intent.action.MAIN "
                                "-e toasttext '%s' -n azenith.toast/.MainActivity >/dev/null 2>&1\"",
                                message);
@@ -126,6 +127,8 @@ void toast(const char* message) {
             if (exit != 0) [[clang::unlikely]] {
                 log_zenith(LOG_WARN, "Unable to show toast message: %s", message);
             }
+            sleep(6);
+            exit = systemv("su -lp 2000 -c \"/system/bin/am force-stop azenith.toast >/dev/null 2>&1\"");
         }
     }
 }
@@ -223,10 +226,12 @@ void setspid(void) {
  * Description        : kill preload process
  ***********************************************************************************/
 void cleanup_vmt(void) {
-    log_zenith(LOG_INFO, "Killing restover preload processes");
-    systemv("pkill -9 -f sys.azenith-preloadbin");    
-    
-} 
+    int pr = systemv("/system/bin/toybox pidof sys.azenith-preloadbin > /dev/null 2>&1");
+    if (pr == 0) {
+        log_zenith(LOG_INFO, "Killing restover preload processes");
+        systemv("pkill -9 -f sys.azenith-preloadbin");
+    }
+}
 
 /***********************************************************************************
  * Function Name      : preload

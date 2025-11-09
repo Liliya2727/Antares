@@ -140,7 +140,7 @@ int main(int argc, char* argv[]) {
     // Remove old logs before start initializing script
     systemv("rm -f /data/adb/.config/AZenith/debug/AZenith.log");
     systemv("rm -f /data/adb/.config/AZenith/debug/AZenithVerbose.log");
-    systemv("rm -f /data/adb/.config/AZenith/debug/AZenithPR.log");
+    systemv("rm -f /data/adb/.config/AZenith/preload/AZenithPR.log");
 
     // Initiate Daemon
     log_zenith(LOG_INFO, "Daemon started as PID %d", getpid());
