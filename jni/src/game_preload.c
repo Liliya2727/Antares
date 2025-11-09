@@ -63,7 +63,7 @@ void GamePreload(const char *package) {
             while (fgets(lib, sizeof(lib), pipe)) {
                 lib[strcspn(lib, "\n")] = 0;
                 char preload_cmd[600];
-                snprintf(preload_cmd, sizeof(preload_cmd), "sys.azenith-preloadbin -dLtm 600M \"%s/*\"", lib_path);
+                snprintf(preload_cmd, sizeof(preload_cmd), "sys.azenith-preloadbin -dLtm 600M \"%s\"", lib);
                 if (systemv(preload_cmd) == 0) {
                     log_preload(LOG_INFO, "Preloaded native: %s", lib);
                     any_preloaded = true;
