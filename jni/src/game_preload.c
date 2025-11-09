@@ -37,7 +37,6 @@ void GamePreload(const char *package) {
         return;
     }
 
-    // Resolve APK path
     char apk_path[256] = {0};
     char cmd_apk[512];
     snprintf(cmd_apk, sizeof(cmd_apk), "cmd package path %s | head -n1 | cut -d: -f2", package);
@@ -50,7 +49,6 @@ void GamePreload(const char *package) {
     pclose(apk);
     apk_path[strcspn(apk_path, "\n")] = 0;
 
-    // ==== lib path preload (vmt -dL /path/to/lib.so) ====
     char *last_slash = strrchr(apk_path, '/');
     if (!last_slash) return;
     *last_slash = '\0';
@@ -70,7 +68,7 @@ void GamePreload(const char *package) {
 
                 // Preload the .so file
                 char preload_cmd[600];
-                snprintf(preload_cmd, sizeof(preload_cmd), "sys.azenith-preloadbin -mt 500M \"%s\"", lib);
+                snprintf(preload_cmd, sizeof(preload_cmd), "sys.azenith-preloadbin -tm 500M \"%s\"", lib);
                 if (systemv(preload_cmd) == 0) {
                     log_preload(LOG_INFO, "Preloaded native: %s", lib);
                 }

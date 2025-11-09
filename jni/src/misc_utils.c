@@ -223,11 +223,9 @@ void setspid(void) {
  * Description        : kill preload process
  ***********************************************************************************/
 void cleanup_vmt(void) {
-    int pr1 = systemv("/system/bin/toybox pidof sys.azenith-preloadbin > /dev/null 2>&1");
-    if (pr1 == 0) {
-        log_zenith(LOG_INFO, "Killing restover preload processes");
-        systemv("pkill -9 -f sys.azenith-preloadbin");    
-    }
+    log_zenith(LOG_INFO, "Killing restover preload processes");
+    systemv("pkill -9 -f sys.azenith-preloadbin");    
+    
 } 
 
 /***********************************************************************************
