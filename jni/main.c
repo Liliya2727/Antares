@@ -64,6 +64,33 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
+    // Make sure only one instance is running
+    if (check_running_state() == 1) {
+        fprintf(stderr, "\033[31mERROR:\033[0m Another instance of Daemon is already running!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Handle case when module modified by 3rd party
+    is_kanged();
+
+    // Daemonize service
+    if (daemon(0, 0)) {
+        log_zenith(LOG_FATAL, "Unable to daemonize service");
+        systemv("setprop persist.sys.azenith.service \"\"");
+        systemv("setprop persist.sys.azenith.state stopped");
+        exit(EXIT_FAILURE);
+    }
+
+    // Register signal handlers
+    signal(SIGINT, sighandler);
+    signal(SIGTERM, sighandler);
+
+    // Initialize variables
+    bool need_profile_checkup = false;
+    MLBBState mlbb_is_running = MLBB_NOT_RUNNING;
+    ProfileMode cur_mode = PERFCOMMON;
+    static bool did_notify_start = false;
+    
     // Expose profiler interface
     if (strcmp(base_name, "sys.azenith-profiler") == 0) {
         if (argc < 2) {
@@ -111,33 +138,6 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
     }
-
-    // Make sure only one instance is running
-    if (check_running_state() == 1) {
-        fprintf(stderr, "\033[31mERROR:\033[0m Another instance of Daemon is already running!\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // Handle case when module modified by 3rd party
-    is_kanged();
-
-    // Daemonize service
-    if (daemon(0, 0)) {
-        log_zenith(LOG_FATAL, "Unable to daemonize service");
-        systemv("setprop persist.sys.azenith.service \"\"");
-        systemv("setprop persist.sys.azenith.state stopped");
-        exit(EXIT_FAILURE);
-    }
-
-    // Register signal handlers
-    signal(SIGINT, sighandler);
-    signal(SIGTERM, sighandler);
-
-    // Initialize variables
-    bool need_profile_checkup = false;
-    MLBBState mlbb_is_running = MLBB_NOT_RUNNING;
-    ProfileMode cur_mode = PERFCOMMON;
-    static bool did_notify_start = false;
 
     // Remove old logs before start initializing script
     systemv("rm -f /data/adb/.config/AZenith/debug/AZenith.log");
