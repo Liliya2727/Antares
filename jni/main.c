@@ -16,10 +16,7 @@
 
 #include <AZenith.h>
 #include <libgen.h>
-unsigned int LOOP_INTERVAL = 5;
 char* gamestart = NULL;
-bool preload_active = false;
-bool did_log_preload = true;
 pid_t game_pid = 0;
 
 int main(int argc, char* argv[]) {
@@ -218,11 +215,13 @@ int main(int argc, char* argv[]) {
 
         // Only fetch gamestart when user not in-game
         // prevent overhead from dumpsys commands.
-        if (!gamestart) {
+        if (!gamestart) {            
             gamestart = get_gamestart();
+            // Preload
+            preload(gamestart);
         } else if (game_pid != 0 && kill(game_pid, 0) == -1) [[clang::unlikely]] {
             log_zenith(LOG_INFO, "Game %s exited, resetting profile...", gamestart);
-            stop_preloading(&LOOP_INTERVAL);
+            stop_preloading();
             game_pid = 0;
             free(gamestart);
             gamestart = get_gamestart();
@@ -234,9 +233,7 @@ int main(int argc, char* argv[]) {
         if (gamestart)
             mlbb_is_running = handle_mlbb(gamestart);
 
-        if (gamestart && get_screenstate() && mlbb_is_running != MLBB_RUN_BG) {
-            // Preload on loop
-            preload(gamestart, &LOOP_INTERVAL);
+        if (gamestart && get_screenstate() && mlbb_is_running != MLBB_RUN_BG) {            
             // Bail out if we already on performance profile
             if (!need_profile_checkup && cur_mode == PERFORMANCE_PROFILE)
                 continue;
@@ -256,10 +253,6 @@ int main(int argc, char* argv[]) {
             log_zenith(LOG_INFO, "Applying performance profile for %s", gamestart);
             toast("Applying Performance Profile");
             set_priority(game_pid);
-            if (!did_log_preload) {
-                log_zenith(LOG_INFO, "Start Preloading game package %s", gamestart);
-                did_log_preload = true;
-            }
             run_profiler(PERFORMANCE_PROFILE);
         } else if (get_low_power_state()) {
             // Bail out if we already on powersave profile

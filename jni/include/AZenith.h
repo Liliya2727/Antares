@@ -14,31 +14,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
-#define GAME_LIB \
-    "libunity\\.so|libUE4\\.so|libUnreal|libframeestimation(VK|GL)\\.so|libflutter\\.so|libapp\\.so|libGGP\\.so|" \
-    "libGame\\.so|libgamemaster\\.so|libvortekrenderer\\.so|libvirglrenderer\\.so|libwinlator\\.so|" \
-    "libminecraftpe\\.so|libil2cpp\\.so|libcri_(vip|ware)_unity\\.so|libResources\\.so|" \
-    "libyuanshen\\.so|libMiHoYoMTRSDK\\.so|libmoba\\.so|libnative-mvd-render\\.so|" \
-    "LibPixUI_PXplugin\\.so|LibVkLayer_swapchain_rotate\\.so|libPixUI_Unity\\.so|libzstd\\.so|" \
-    "libcocos2dcpp\\.so|libcocos2djs\\.so|libcocos\\.so|libgodot_android\\.so|libgodot_openxr\\.so|" \
-    "libgame_engine\\.so|libengine\\.so|libgameext\\.so|libEGL\\.so|" \
-    "libTGame\\.so|libTDataMaster\\.so|libTDataMasterEx\\.so|libtencent\\.so|libTxGame\\.so|libGCloudVoice\\.so|" \
-    "libGCloud\\.so|libWeTest\\.so|libWeGame\\.so|libMSDK\\.so|libQAppEngine\\.so|" \
-    "libRenderer\\.so|libRendering\\.so|libRenderCore\\.so|libRenderEngine\\.so|" \
-    "libRenderScript\\.so|libRenderThread\\.so|libgraphics\\.so|libgfx\\.so|" \
-    "libcri_mana\\.so|libcri_atom\\.so|libcri_adx2\\.so|libcri_movie\\.so|libspine\\.so|" \
-    "libdragonbones\\.so|libLive2DCubismCore\\.so|libLive2D\\.so|libPhysX\\.so|libhavok\\.so|" \
-    "liblua\\.so|libluajit\\.so|libtolua\\.so|libjsb\\.so|" \
-    "libEGL_emulation\\.so|libGLESv3_emulation\\.so|libhoudini\\.so|libbox64\\.so|libbox86\\.so|" \
-    "libOgreMain\\.so|libCryEngine\\.so|libGameBase\\.so|libMain\\.so|libcore\\.so"
-
-#define BASEDIR "/data/adb/modules/AZenith"
-#define INTDIR "/data/adb/.config/AZenith"
-#define MSC BASEDIR
-#define SEARCH_PATHS "/vendor/lib64/egl /vendor/lib64/hw"
-#define PROCESSED_FILE_LIST INTDIR "/preload/processed_files.txt"
-
-extern unsigned int LOOP_INTERVAL;
+#define LOOP_INTERVAL 5
 #define MAX_DATA_LENGTH 1024
 #define MAX_COMMAND_LENGTH 600
 #define MAX_OUTPUT_LENGTH 256
@@ -48,7 +24,7 @@ extern unsigned int LOOP_INTERVAL;
 #define LOG_TAG "AZenith"
 
 #define LOG_FILE "/data/adb/.config/AZenith/debug/AZenith.log"
-#define LOG_FILE_PRELOAD "/data/adb/.config/AZenith/debug/AZenithPR.log"
+#define LOG_FILE_PRELOAD "/data/adb/.config/AZenith/preload/AZenithPR.log"
 #define PROFILE_MODE "/data/adb/.config/AZenith/API/current_profile"
 #define GAME_INFO "/data/adb/.config/AZenith/API/gameinfo"
 #define GAMELIST "/data/adb/.config/AZenith/gamelist/gamelist.txt"
@@ -100,8 +76,8 @@ extern pid_t game_pid;
 
 // Misc Utilities
 extern void GamePreload(const char* package);
-extern void preload(const char* pkg, unsigned int* LOOP_INTERVAL);
-extern void stop_preloading(unsigned int* LOOP_INTERVAL);
+extern void preload(const char* pkg);
+extern void stop_preloading();
 extern void cleanup_vmt(void);
 extern bool preload_active;
 extern bool did_log_preload;

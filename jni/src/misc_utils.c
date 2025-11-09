@@ -236,9 +236,8 @@ void cleanup_vmt(void) {
  * Returns            : None
  * Description        : Run preloads on loop
  ***********************************************************************************/
-void preload(const char* pkg, unsigned int* LOOP_INTERVAL) {
+void preload(const char* pkg) {
     if (!pkg || !*pkg) return;
-
     char val[PROP_VALUE_MAX] = {0};
     if (__system_property_get("persist.sys.azenithconf.APreload", val) > 0 && val[0] == '1') {
         pid_t pid = fork();
@@ -256,10 +255,7 @@ void preload(const char* pkg, unsigned int* LOOP_INTERVAL) {
             }
             _exit(0);
         }
-
-        *LOOP_INTERVAL = 40;
-        did_log_preload = false;
-        preload_active = true;
+        log_preload(LOG_INFO, "Preloading game PKG %s", pkg);
     }
 }
 
@@ -269,13 +265,9 @@ void preload(const char* pkg, unsigned int* LOOP_INTERVAL) {
  * Returns            : None
  * Description        : stop if preload is running
  ***********************************************************************************/
-void stop_preloading(unsigned int* LOOP_INTERVAL) {
+void stop_preloading() {
     if (preload_active) {
         cleanup_vmt();
-        *LOOP_INTERVAL = 5;
-        did_log_preload = true;
-        preload_active = false;
-        systemv("rm -f /data/adb/.config/AZenith/preload/processed_files.txt");
         int status;
         pid_t wpid;
         while ((wpid = waitpid(-1, &status, WNOHANG)) > 0) {
