@@ -37,10 +37,6 @@
     "PATH=/system/bin:/system/xbin:/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:/debug_ramdisk:/sbin:/sbin/su:/su/bin:/su/" \
     "xbin:/data/data/com.termux/files/usr/bin"
 
-#define IS_MLBB(gamestart)                                                                               \
-    (strcmp(gamestart, "com.mobile.legends") == 0 || strcmp(gamestart, "com.mobilelegends.hwag") == 0 || \
-     strcmp(gamestart, "com.mobiin.gp") == 0 || strcmp(gamestart, "com.mobilechess.gp") == 0)
-
 #define IS_AWAKE(state) (strcmp(state, "Awake") == 0 || strcmp(state, "true") == 0)
 #define IS_LOW_POWER(state) (strcmp(state, "true") == 0 || strcmp(state, "1") == 0)
 
@@ -114,14 +110,13 @@ pid_t pidof(const char* name);
 int uidof(pid_t pid);
 
 // Handler
-extern pid_t mlbb_pid;
-MLBBState handle_mlbb(const char* gamestart);
+char* get_visible_package(void);
+char* get_recent_package(const char* gamestart);
 
 // Profiler
 extern bool (*get_screenstate)(void);
 extern bool (*get_low_power_state)(void);
 char* get_gamestart(void);
-char* get_visible_package(void);
 bool get_screenstate_normal(void);
 bool get_low_power_state_normal(void);
 void run_profiler(const int profile);

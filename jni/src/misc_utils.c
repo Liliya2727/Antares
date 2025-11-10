@@ -127,6 +127,7 @@ void toast(const char* message) {
             if (exit != 0) [[clang::unlikely]] {
                 log_zenith(LOG_WARN, "Unable to show toast message: %s", message);
             }
+        system("am force-stop azenith.toast")
         }
     }
 }

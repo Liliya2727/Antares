@@ -196,7 +196,6 @@ int main(int argc, char* argv[]) {
         // Update state
         char ai_state[PROP_VALUE_MAX] = {0};
         __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
-
         if (did_notify_start) {
             if (strcmp(prev_ai_state, "1") == 0 && strcmp(ai_state, "0") == 0) {
                 log_zenith(LOG_INFO, "Dynamic profile is enabled, Reapplying Balanced Profiles");
@@ -220,70 +219,96 @@ int main(int argc, char* argv[]) {
 
         // Only fetch gamestart when user not in-game
         // prevent overhead from dumpsys commands.
-        if (!gamestart) {            
-            gamestart = get_gamestart();
-            // Preload
+        char* visible_pkg = NULL;
+
+        if (!gamestart) {
+            gamestart = get_gamestart(); // Foreground game package        
             preload(gamestart);
         } else if (game_pid != 0 && kill(game_pid, 0) == -1) [[clang::unlikely]] {
             log_zenith(LOG_INFO, "Game %s exited, resetting profile...", gamestart);
-            stop_preloading();
+            stop_preloading(&LOOP_INTERVAL);
             game_pid = 0;
             free(gamestart);
             gamestart = get_gamestart();
-
-            // Force profile recheck to make sure new game session get boosted
-            need_profile_checkup = true;
+            need_profile_checkup = true; // force recheck
         }
-
-        if (gamestart)
-            mlbb_is_running = handle_mlbb(gamestart);
-
-        if (gamestart && get_screenstate() && mlbb_is_running != MLBB_RUN_BG) {            
-            // Bail out if we already on performance profile
+        
+        // Fetch PID only if we have gamestart
+        if (gamestart) {
+            if (game_pid != 0 && kill(game_pid, 0) == -1) {
+                log_zenith(LOG_INFO, "Game %s PID exited, resetting...", gamestart);
+                stop_preloading(&LOOP_INTERVAL);
+                game_pid = 0;
+                free(gamestart);
+                gamestart = get_gamestart();
+                need_profile_checkup = true;
+            }
+        }
+        
+        // Determine if gamestart is in recents
+        bool in_recents = false;
+        if (gamestart && game_pid != 0) {
+            char* recent_pkg = get_recent_package(gamestart);
+            if (recent_pkg) {
+                in_recents = true;
+                free(recent_pkg);
+            }
+        }
+        
+        // PERFORMANCE PROFILE LOGIC
+        if (gamestart && ((get_screenstate() && strcmp(gamestart, get_visible_package()) == 0) || 
+                          (game_pid != 0 && in_recents))) {
+        
+        
             if (!need_profile_checkup && cur_mode == PERFORMANCE_PROFILE)
-                continue;
-
-            // Get PID and check if the game is "real" running program
-            // Handle weird behavior of MLBB
-            game_pid = (mlbb_is_running == MLBB_RUNNING) ? mlbb_pid : pidof(gamestart);
+                goto skip_profile; // Already on performance
+        
+            // Get PID of game package
+            if (get_screenstate() && strcmp(gamestart, get_visible_package()) == 0)
+                game_pid = pidof(gamestart);
+        
             if (game_pid == 0) [[clang::unlikely]] {
                 log_zenith(LOG_ERROR, "Unable to fetch PID of %s", gamestart);
                 free(gamestart);
                 gamestart = NULL;
-                continue;
+                goto skip_profile;
             }
-
+        
             cur_mode = PERFORMANCE_PROFILE;
             need_profile_checkup = false;
             log_zenith(LOG_INFO, "Applying performance profile for %s", gamestart);
             toast("Applying Performance Profile");
             set_priority(game_pid);
             run_profiler(PERFORMANCE_PROFILE);
+        
+        // ECO MODE
         } else if (get_low_power_state()) {
-            // Bail out if we already on powersave profile
-            if (cur_mode == ECO_MODE)
-                continue;
-
-            cur_mode = ECO_MODE;
-            need_profile_checkup = false;
-            log_zenith(LOG_INFO, "Applying ECO Mode");
-            toast("Applying Eco Mode");
-            run_profiler(ECO_MODE);
-        } else {
-            // Bail out if we already on normal profile
-            if (cur_mode == BALANCED_PROFILE)
-                continue;
-
-            cur_mode = BALANCED_PROFILE;
-            need_profile_checkup = false;
-            log_zenith(LOG_INFO, "Applying Balanced profile");
-            toast("Applying Balanced profile");
-            if (!did_notify_start) {
-                notify("AZenith is running successfully");
-                did_notify_start = true;
+            if (cur_mode != ECO_MODE) {
+                cur_mode = ECO_MODE;
+                need_profile_checkup = false;
+                log_zenith(LOG_INFO, "Applying ECO Mode");
+                toast("Applying Eco Mode");
+                run_profiler(ECO_MODE);
+                
             }
-            run_profiler(BALANCED_PROFILE);
+        
+        // BALANCED FALLBACK
+        } else {
+            if (cur_mode != BALANCED_PROFILE) {
+                cur_mode = BALANCED_PROFILE;
+                need_profile_checkup = false;
+                log_zenith(LOG_INFO, "Applying Balanced profile");
+                toast("Applying Balanced profile");
+                run_profiler(BALANCED_PROFILE);
+                if (!did_notify_start) {
+                    notify("AZenith is running successfully");
+                    did_notify_start = true;
+                }
+            }
         }
+        
+        skip_profile:
+        ;
     }
 
     return 0;
