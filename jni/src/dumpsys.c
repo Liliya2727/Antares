@@ -129,7 +129,7 @@ bool get_recent_package(const char* gamestart) {
 
                     if (strcmp(gamestart, pkg) == 0) {
                         pclose(fp);
-                        return true;  // Found either foreground or background
+                        return true;
                     }
                 }
             }
@@ -139,5 +139,5 @@ bool get_recent_package(const char* gamestart) {
     }
 
     pclose(fp);
-    return false;  // Not found in recents or foreground
+    return false;  
 }
