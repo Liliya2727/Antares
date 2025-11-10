@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 Rem01Gaming
+ * Copyright (C) 2024-2025 Zexshia
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,7 +80,7 @@ char* get_visible_package(void) {
 /************************************************************
  * Function Name   : get_recent_package
  *
- * Description       : Reads "dumpsys window displays" and extracts the
+ * Description       : Reads "dumpsys activity activities" and extracts the
  *                      package name of the currently visible (recent) app.
  *
  * Returns.          : Returns a malloc()'d string containing the package name,
@@ -89,55 +89,39 @@ char* get_visible_package(void) {
 bool get_recent_package(const char* gamestart) {
     if (!gamestart) return false;
 
-    FILE *fp = popen("dumpsys window displays", "r");
+    FILE *fp = popen("dumpsys activity activities", "r");
     if (!fp) {
-        log_zenith(0, "Failed to run dumpsys window displays");
+        log_zenith(LOG_ERROR, "Failed to run dumpsys activity activities");
         return false;
     }
 
     char line[MAX_LINE];
-    char last_task_line[MAX_LINE] = {0};
     bool in_task_section = false;
 
     while (fgets(line, sizeof(line), fp)) {
         line[strcspn(line, "\n")] = 0;
 
-        if (!in_task_section && strstr(line, "Application tokens in top down Z order:")) {
+        // Start parsing after "Run #"
+        if (!in_task_section && strstr(line, "Run #")) {
             in_task_section = true;
             continue;
         }
         if (!in_task_section) continue;
+
+        // End of relevant section
         if (strlen(line) == 0) break;
 
-        // Save last task line
-        if (strstr(line, "* Task{") && strstr(line, "type=standard")) {
-            strcpy(last_task_line, line);
-            continue;
-        }
-
-        if (strstr(line, "* ActivityRecord{") && last_task_line[0] != '\0') {
-            char *u0 = strstr(line, " u0 ");
-            if (u0) {
-                u0 += 4;
-                char *slash = strchr(u0, '/');
-                if (slash) {
-                    size_t len = slash - u0;
-                    if (len >= MAX_PACKAGE) len = MAX_PACKAGE - 1;
-                    char pkg[MAX_PACKAGE] = {0};
-                    memcpy(pkg, u0, len);
-                    pkg[len] = 0;
-
-                    if (strcmp(gamestart, pkg) == 0) {
-                        pclose(fp);
-                        return true;
-                    }
-                }
+        // Look for package name
+        char *pkg_pos = strstr(line, gamestart);
+        if (pkg_pos) {
+            // Check if task is not finishing or destroyed
+            if (!strstr(line, "finishing=true") && !strstr(line, "state=DESTROYED")) {
+                pclose(fp);
+                return true;
             }
-
-            last_task_line[0] = 0;
         }
     }
 
     pclose(fp);
-    return false;  
+    return false;
 }
