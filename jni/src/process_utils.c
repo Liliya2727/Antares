@@ -27,36 +27,48 @@
  ***********************************************************************************/
 pid_t pidof(const char *package_name) {
     if (!package_name) return 0;
+
     FILE *fp = popen("dumpsys activity top", "r");
     if (!fp) {
-        perror("popen");
+        log_zenith(LOG_INFO, "Failed to run dumpsys activity top");
         return 0;
     }
-    char line[1024];
-    pid_t pid = 0;
-    while (fgets(line, sizeof(line), fp)) {
-        if (strstr(line, "ACTIVITY") && strstr(line, package_name)) {
-            char *pid_str = strstr(line, "pid=");
-            if (pid_str) {
-                pid_str += 4;
-                
-                if (strncmp(pid_str, "(not running)", 13) == 0) {
-                    pid = 0;
-                    break;
-                }
 
-                char buf[16] = {0};
-                size_t i = 0;
-                while (isdigit((unsigned char)pid_str[i]) && i < sizeof(buf) - 1) {
-                    buf[i] = pid_str[i];
-                    i++;
-                }
-                buf[i] = 0;
-                pid = (pid_t)atoi(buf);
+    char line[2048];
+    pid_t pid = 0;
+
+    while (fgets(line, sizeof(line), fp)) {
+        // Look for the ACTIVITY line containing the package
+        if (strstr(line, "ACTIVITY") && strstr(line, package_name)) {
+
+            // Find "pid=" in the line
+            char *pid_str = strstr(line, "pid=");
+            if (!pid_str) continue;
+
+            pid_str += 4; // skip "pid="
+
+            // Check if process is not running
+            if (strncmp(pid_str, "(not running)", 13) == 0) {
+                pid = 0;
                 break;
             }
+
+            // Extract the PID digits
+            char buf[16] = {0};
+            size_t i = 0;
+            while (isdigit((unsigned char)pid_str[i]) && i < sizeof(buf) - 1) {
+                buf[i] = pid_str[i];
+                i++;
+            }
+            buf[i] = 0;
+
+            pid = (pid_t)atoi(buf);
+
+            // Stop at the first match
+            break;
         }
     }
+
     pclose(fp);
     return pid;
 }

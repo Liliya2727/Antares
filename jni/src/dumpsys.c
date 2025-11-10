@@ -28,7 +28,7 @@
 char* get_visible_package(void) {
     FILE *fp = popen("dumpsys window displays", "r");
     if (!fp) {
-        log_zenith(0, "Failed to run dumpsys window displays");
+        log_zenith(LOG_INFO, "Failed to run dumpsys window displays");
         return NULL;
     }
 
