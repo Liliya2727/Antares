@@ -111,13 +111,12 @@ int uidof(pid_t pid);
 
 // Handler
 char* get_visible_package(void);
-char* get_recent_package(void);
+bool is_game_in_recent(const char* gamestart);
 
 // Profiler
 extern bool (*get_screenstate)(void);
 extern bool (*get_low_power_state)(void);
 char* get_gamestart(void);
-char* get_gamerecent(void);
 bool get_screenstate_normal(void);
 bool get_low_power_state_normal(void);
 void run_profiler(const int profile);

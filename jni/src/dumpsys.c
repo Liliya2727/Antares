@@ -78,7 +78,7 @@ char* get_visible_package(void) {
 }
 
 /************************************************************
- * Function Name   : get_recent_package
+ * Function Name   : is_game_in_recent
  *
  * Description       : Reads "dumpsys activity activities" and extracts the
  *                      package name of the currently visible (recent) app.
@@ -86,15 +86,17 @@ char* get_visible_package(void) {
  * Returns.          : Returns a malloc()'d string containing the package name,
  *                     or NULL if none is found. Caller must free().
  ************************************************************/
- char* get_recent_package(void) {
+bool is_game_in_recent(const char* gamestart) {
+    if (!gamestart) return false;
+
     FILE *fp = popen("dumpsys activity recents", "r");
     if (!fp) {
         log_zenith(LOG_INFO, "Failed to run dumpsys activity recents");
-        return NULL;
+        return false;
     }
 
     char line[MAX_LINE];
-    char pkg[MAX_PACKAGE] = {0};
+    bool found = false;
 
     while (fgets(line, sizeof(line), fp)) {
         line[strcspn(line, "\n")] = 0;
@@ -102,24 +104,26 @@ char* get_visible_package(void) {
         if (strncmp(line, "* Recent #", 10) != 0)
             continue;
 
-        char *a_pos = strstr(line, "A=");
+        // Look for "A=<pid>:<package>" pattern
+        char* a_pos = strstr(line, " A=");
         if (!a_pos) continue;
 
-        char *colon = strchr(a_pos, ':');
+        char* colon = strchr(a_pos, ':');
         if (!colon) continue;
 
+        char pkg[MAX_PACKAGE] = {0};
         size_t len = strlen(colon + 1);
         if (len >= MAX_PACKAGE) len = MAX_PACKAGE - 1;
         strncpy(pkg, colon + 1, len);
         pkg[len] = 0;
 
-        break; // return the first recent app
+        if (strcmp(pkg, gamestart) == 0) {
+            found = true;
+            break;
+        }
     }
 
     pclose(fp);
-
-    if (pkg[0] == '\0')
-        return NULL;
-
-    return strdup(pkg); // caller must free
+    return found;
+    log_zenith(LOG_INFO, "Return = %s", found);
 }

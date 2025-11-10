@@ -217,27 +217,19 @@ int main(int argc, char* argv[]) {
         }
 
         // Only fetch gamestart when user not in-game
-        // prevent overhead from dumpsys commands.
         if (!gamestart) {
             gamestart = get_gamestart();
             preload(gamestart);
-        } else {
-            // Check PID and recent package
-            char *recent_pkg = get_gamerecent();
+        }
         
-            if (game_pid == 0 || kill(game_pid, 0) == -1 || !recent_pkg || strcmp(recent_pkg, gamestart) != 0) {
-                log_zenith(LOG_INFO, "Game %s exited or removed from recents, resetting profile...", gamestart);
-                stop_preloading();
-        
-                game_pid = 0;
-                free(gamestart);
-                gamestart = get_gamestart();
-                need_profile_checkup = true;
-            }
-        
-            if (recent_pkg) {
-                free(recent_pkg);
-            }
+        // Reset if PID is dead or game not in recent apps
+        if (game_pid != 0 && (kill(game_pid, 0) == -1 || !is_game_in_recent(gamestart))) [[clang::unlikely]] {
+            log_zenith(LOG_INFO, "Game %s exited or removed from recents, resetting profile...", gamestart);
+            stop_preloading();
+            game_pid = 0;
+            free(gamestart);
+            gamestart = get_gamestart();
+            need_profile_checkup = true;
         }
               
         // Profiler Logic

@@ -87,56 +87,6 @@ char* get_gamestart(void) {
 }
 
 /***********************************************************************************
- * Function Name      : get_gamerecent
- * Inputs             : None
- * Returns            : char* (dynamically allocated string with the game package name)
- * Description        : Searches for the currently visible application that matches
- *                      any package name listed in gamelist.
- *                      This helps identify if a specific game is running in the foreground.
- *                      Uses dumpsys to retrieve visible apps and filters by packages
- *                      listed in Gamelist.
- * Note               : Caller is responsible for freeing the returned string.
- ***********************************************************************************/
-char* get_gamerecent(void) {
-    char *pkg = get_recent_package();
-    if (!pkg) return NULL;
-    FILE *gf = fopen(GAMELIST, "r");
-    if (!gf) {
-        free(pkg);
-        return NULL;
-    }
-    fseek(gf, 0, SEEK_END);
-    long size = ftell(gf);
-    rewind(gf);
-
-    if (size <= 0) {
-        fclose(gf);
-        free(pkg);
-        return NULL;
-    }
-    char *line = malloc(size + 1);
-    if (!line) {
-        fclose(gf);
-        free(pkg);
-        return NULL;
-    }
-    fread(line, 1, size, gf);
-    fclose(gf);
-    line[size] = '\0';
-    char *token = strtok(line, "|");
-    while (token) {
-        if (strcmp(token, pkg) == 0) {
-            free(line);
-            return pkg; // matches a game in the list
-        }
-        token = strtok(NULL, "|");
-    }
-    free(line);
-    free(pkg);
-    return NULL;
-}
-
-/***********************************************************************************
  * Function Name      : get_screenstate_normal
  * Inputs             : None
  * Returns            : bool - true if screen was awake
