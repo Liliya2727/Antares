@@ -116,25 +116,20 @@ bool get_recent_package(const char* gamestart) {
         }
 
         if (strstr(line, "* ActivityRecord{") && last_task_line[0] != '\0') {
-            bool visible = strstr(last_task_line, "visible=true") != NULL;
+            char *u0 = strstr(line, " u0 ");
+            if (u0) {
+                u0 += 4;
+                char *slash = strchr(u0, '/');
+                if (slash) {
+                    size_t len = slash - u0;
+                    if (len >= MAX_PACKAGE) len = MAX_PACKAGE - 1;
+                    char pkg[MAX_PACKAGE] = {0};
+                    memcpy(pkg, u0, len);
+                    pkg[len] = 0;
 
-            // Only check background/recent
-            if (!visible) {
-                char *u0 = strstr(line, " u0 ");
-                if (u0) {
-                    u0 += 4;
-                    char *slash = strchr(u0, '/');
-                    if (slash) {
-                        size_t len = slash - u0;
-                        if (len >= MAX_PACKAGE) len = MAX_PACKAGE - 1;
-                        char pkg[MAX_PACKAGE] = {0};
-                        memcpy(pkg, u0, len);
-                        pkg[len] = 0;
-
-                        if (strcmp(gamestart, pkg) == 0) {
-                            pclose(fp);
-                            return true;  // Found in recents/background
-                        }
+                    if (strcmp(gamestart, pkg) == 0) {
+                        pclose(fp);
+                        return true;  // Found either foreground or background
                     }
                 }
             }
@@ -144,5 +139,5 @@ bool get_recent_package(const char* gamestart) {
     }
 
     pclose(fp);
-    return false;  // Not found in background
+    return false;  // Not found in recents or foreground
 }
