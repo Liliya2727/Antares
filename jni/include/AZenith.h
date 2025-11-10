@@ -37,6 +37,10 @@
     "PATH=/system/bin:/system/xbin:/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:/debug_ramdisk:/sbin:/sbin/su:/su/bin:/su/" \
     "xbin:/data/data/com.termux/files/usr/bin"
 
+#define IS_MLBB(gamestart)                                                                               \
+    (strcmp(gamestart, "com.mobile.legends") == 0 || strcmp(gamestart, "com.mobilelegends.hwag") == 0 || \
+     strcmp(gamestart, "com.mobiin.gp") == 0 || strcmp(gamestart, "com.mobilechess.gp") == 0)
+     
 #define IS_AWAKE(state) (strcmp(state, "Awake") == 0 || strcmp(state, "true") == 0)
 #define IS_LOW_POWER(state) (strcmp(state, "true") == 0 || strcmp(state, "1") == 0)
 
@@ -109,9 +113,12 @@ void set_priority(const pid_t pid);
 pid_t pidof(const char* name);
 int uidof(pid_t pid);
 
-// Handler
+// Dumpsys
 char* get_visible_package(void);
-bool is_game_in_recent(const char* gamestart);
+
+// Handler
+extern pid_t mlbb_pid;
+MLBBState handle_mlbb(const char* gamestart);
 
 // Profiler
 extern bool (*get_screenstate)(void);

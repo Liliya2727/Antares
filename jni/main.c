@@ -217,29 +217,33 @@ int main(int argc, char* argv[]) {
         }
 
         // Only fetch gamestart when user not in-game
+        // prevent overhead from dumpsys commands.
         if (!gamestart) {
             gamestart = get_gamestart();
             preload(gamestart);
-        }
-        
-        // Reset if PID is dead or game not in recent apps
-        if (game_pid != 0 && (kill(game_pid, 0) == -1 || !is_game_in_recent(gamestart))) [[clang::unlikely]] {
-            log_zenith(LOG_INFO, "Game %s exited or removed from recents, resetting profile...", gamestart);
+        } else if (game_pid != 0 && kill(game_pid, 0) == -1) [[clang::unlikely]] {
+            log_zenith(LOG_INFO, "Game %s exited, resetting profile...", gamestart);
             stop_preloading();
             game_pid = 0;
             free(gamestart);
             gamestart = get_gamestart();
+            // Force profile recheck to make sure new game session get boosted
             need_profile_checkup = true;
         }
-              
-        // Profiler Logic
-        if (gamestart && get_screenstate()) {
+
+        if (gamestart)
+            mlbb_is_running = handle_mlbb(gamestart);
+
+        if (gamestart && get_screenstate() && mlbb_is_running != MLBB_RUN_BG) {
+            // Preload on loop
+            
             // Bail out if we already on performance profile
             if (!need_profile_checkup && cur_mode == PERFORMANCE_PROFILE)
                 continue;
-        
-            // Fetch PID 
-            game_pid = pidof(gamestart);
+
+            // Get PID and check if the game is "real" running program
+            // Handle weird behavior of MLBB
+            game_pid = (mlbb_is_running == MLBB_RUNNING) ? mlbb_pid : pidof(gamestart);
             if (game_pid == 0) [[clang::unlikely]] {
                 log_zenith(LOG_ERROR, "Unable to fetch PID of %s", gamestart);
                 free(gamestart);
