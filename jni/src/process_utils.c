@@ -29,7 +29,7 @@ pid_t pidof(const char *package_name) {
     if (!package_name) return 0;
     FILE *fp = popen("dumpsys activity top", "r");
     if (!fp) {
-        fprintf(stderr, "popen failed: %s\n", strerror(errno));
+        log_zenith(0, "Failed to run dumpsys activity top");
         return 0;
     }
     char line[1024];
