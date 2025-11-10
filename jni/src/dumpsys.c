@@ -86,47 +86,86 @@ char* get_visible_package(void) {
  * Returns.          : Returns a malloc()'d string containing the package name,
  *                     or NULL if none is found. Caller must free().
  ************************************************************/
+static bool extract_and_compare(const char *line, const char *start_token, const char *gamestart) {
+    const char *token_pos = strstr(line, start_token);
+    if (!token_pos) {
+        return false; // Token not found
+    }
+
+    // Move the pointer past the token itself
+    token_pos += strlen(start_token);
+
+    // Handle the UID:package format (like "A=10123:com.example")
+    const char *colon = strchr(token_pos, ':');
+    if (colon && (colon - token_pos < 10)) { // Check if colon is close (likely a UID)
+        token_pos = colon + 1; // Skip the UID and colon
+    }
+
+    // Now, extract the package name
+    char pkg[MAX_PACKAGE] = {0};
+    size_t i = 0;
+    
+    // Package names stop at a '/' (for activity), a ' ' (space), or end of line
+    while (token_pos[i] != '/' && token_pos[i] != ' ' && token_pos[i] != '\0' && i < MAX_PACKAGE - 1) {
+        pkg[i] = token_pos[i];
+        i++;
+    }
+    pkg[i] = '\0'; // Null terminate
+
+    // Check if we extracted anything and if it matches
+    if (i > 0 && strcmp(pkg, gamestart) == 0) {
+        return true;
+    }
+    
+    return false;
+}
+
 bool get_recent_package(const char* gamestart) {
-    if (!gamestart) return false;
+    if (!gamestart) {
+        return false;
+    }
 
     FILE *fp = popen("dumpsys activity recents", "r");
     if (!fp) {
-        log_zenith(LOG_INFO, "Failed to run dumpsys activity recents");
+        // log_zenith(LOG_INFO, "Failed to run dumpsys activity recents");
+        perror("popen failed"); // Using perror for system call failures is good
         return false;
     }
 
     char line[MAX_LINE];
+    bool found = false;
+
+    // List of tokens to search for. Most specific (realActivity) first.
+    const char *tokens[] = {
+        "realActivity=", // Common on modern Android
+        "baseActivity=", // Common on older Android
+        "A=",            // Your original check
+        "app="           // Another possible variant
+    };
+    int num_tokens = sizeof(tokens) / sizeof(tokens[0]);
+
     while (fgets(line, sizeof(line), fp)) {
-        line[strcspn(line, "\n")] = 0;
-
-        // Only process lines like "* Recent #0: Task{... A=PID:package}"
-        if (strncmp(line, "* Recent #", 10) != 0) continue;
-
-        // Find the "A=" part which precedes UID:package
-        char *a_pos = strstr(line, " A=");
-        if (!a_pos) continue;
-        a_pos += 3; // skip " A="
-
-        // Find the colon separating UID and package
-        char *colon = strchr(a_pos, ':');
-        if (!colon) continue;
-        colon += 1; // skip ':'
-
-        // Extract package (stop at first space or end of line)
-        char pkg[MAX_PACKAGE] = {0};
-        size_t i = 0;
-        while (colon[i] != ' ' && colon[i] != '\0' && i < MAX_PACKAGE - 1) {
-            pkg[i] = colon[i];
-            i++;
+        // We only care about lines that might contain activity info
+        // Your "* Recent #" check is good, but let's also check for "Task{"
+        // as a fallback, since the line prefix can also change.
+        if (strncmp(line, "* Recent #", 10) != 0 && !strstr(line, "Task{")) {
+            continue;
         }
-        pkg[i] = 0;
 
-        if (strcmp(pkg, gamestart) == 0) {
-            pclose(fp);
-            return true;
+        // Try to find the package using any of our known tokens
+        for (int i = 0; i < num_tokens; i++) {
+            if (extract_and_compare(line, tokens[i], gamestart)) {
+                found = true;
+                break; // Found it, no need to check other tokens on this line
+            }
+        }
+
+        if (found) {
+            break; // Found it, no need to read more lines
         }
     }
 
     pclose(fp);
-    return false;
+    return found;
 }
+
