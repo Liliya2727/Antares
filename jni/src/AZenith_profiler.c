@@ -41,6 +41,59 @@ void run_profiler(const int profile) {
     (void)systemv("sys.azenith-profilesettings %d", profile);
 }
 
+/************************************************************
+ * Function Name   : get_visible_package
+ *
+ * Description       : Reads "dumpsys activity activities" and extracts the
+ *                      package name of the currently visible (foreground) app.
+ *
+ * Returns.          : Returns a malloc()'d string containing the package name,
+ *                     or NULL if none is found. Caller must free().
+ ************************************************************/
+char* get_visible_package(void) {
+    FILE *fp = popen("dumpsys activity activities", "r");
+    if (!fp) return NULL;
+
+    char line[MAX_LINE];
+    char last_activity_line[MAX_LINE] = {0};
+    char pkg[MAX_PACKAGE] = {0};
+
+    while (fgets(line, sizeof(line), fp)) {
+
+        if (strstr(line, "topActivity=ComponentInfo{")) {
+            strcpy(last_activity_line, line);
+        }
+
+        if (strstr(line, "visible=true")) {
+
+            // example:
+            // topActivity=ComponentInfo{com.termux/com.termux.app.TermuxActivity}
+
+            char *start = strstr(last_activity_line, "ComponentInfo{");
+            if (!start) continue;
+            start += strlen("ComponentInfo{");
+
+            char *slash = strchr(start, '/');
+            if (!slash) continue;
+
+            size_t len = slash - start;
+            if (len >= MAX_PACKAGE) len = MAX_PACKAGE - 1;
+
+            memcpy(pkg, start, len);
+            pkg[len] = '\0';
+
+            break;
+        }
+    }
+
+    pclose(fp);
+
+    if (pkg[0] == '\0')
+        return NULL;
+
+    return strdup(pkg); // caller must free
+}
+
 /***********************************************************************************
  * Function Name      : get_gamestart
  * Inputs             : None
@@ -53,8 +106,26 @@ void run_profiler(const int profile) {
  * Note               : Caller is responsible for freeing the returned string.
  ***********************************************************************************/
 char* get_gamestart(void) {
-    return execute_command("cmd activity stack list | grep -m1 'visible=true' | cut -d: -f2 | cut -d/ -f1 | grep -Eo -f %s", GAMELIST);
+    char *pkg = get_visible_package();
+    if (!pkg) return NULL;
+    FILE *gf = fopen(GAMELIST, "r");
+    if (!gf) {
+        free(pkg);
+        return NULL;
+    }
+    char entry[128];
+    while (fgets(entry, sizeof(entry), gf)) {
+        entry[strcspn(entry, "\n")] = 0;
+        if (strcmp(entry, pkg) == 0) {
+            fclose(gf);
+            return pkg;
+        }
+    }
+    fclose(gf);
+    free(pkg);
+    return NULL;
 }
+
 /***********************************************************************************
  * Function Name      : get_screenstate_normal
  * Inputs             : None

@@ -157,9 +157,13 @@ int main(int argc, char* argv[]) {
     run_profiler(PERFCOMMON);
     char prev_ai_state[PROP_VALUE_MAX] = "0";
     __system_property_get("persist.sys.azenithconf.AIenabled", prev_ai_state);
-
+    
     while (1) {
-        sleep(LOOP_INTERVAL);
+        if (cur_mode == PERFORMANCE_PROFILE) {
+            usleep(LOOP_INTERVAL_MS * 1000);
+        } else {
+            sleep(LOOP_INTERVAL_SEC);
+        }
 
         // Handle case when module gets updated
         if (access(MODULE_UPDATE, F_OK) == 0) [[clang::unlikely]] {

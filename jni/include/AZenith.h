@@ -14,12 +14,14 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
-#define LOOP_INTERVAL 5
+#define LOOP_INTERVAL_MS 500
+#define LOOP_INTERVAL_SEC 5
 #define MAX_DATA_LENGTH 1024
 #define MAX_COMMAND_LENGTH 600
 #define MAX_OUTPUT_LENGTH 256
 #define MAX_PATH_LENGTH 256
-
+#define MAX_LINE 512
+#define MAX_PACKAGE 128
 #define NOTIFY_TITLE "AZenith"
 #define LOG_TAG "AZenith"
 
@@ -119,6 +121,7 @@ MLBBState handle_mlbb(const char* gamestart);
 extern bool (*get_screenstate)(void);
 extern bool (*get_low_power_state)(void);
 char* get_gamestart(void);
+char* get_visible_package(void);
 bool get_screenstate_normal(void);
 bool get_low_power_state_normal(void);
 void run_profiler(const int profile);
