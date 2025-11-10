@@ -237,7 +237,7 @@ int main(int argc, char* argv[]) {
         }
               
         // Profiler Logic
-        if (gamestart && get_screenstate() && strcmp(gamestart, get_visible_package()) == 0 || game_pid != 0) {
+        if (gamestart && get_screenstate() {
             // Bail out if we already on performance profile
             if (!need_profile_checkup && cur_mode == PERFORMANCE_PROFILE)
                 continue;
