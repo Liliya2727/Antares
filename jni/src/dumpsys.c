@@ -99,20 +99,27 @@ bool get_recent_package(const char* gamestart) {
     while (fgets(line, sizeof(line), fp)) {
         line[strcspn(line, "\n")] = 0;
 
-        if (strncmp(line, "* Recent #", 10) != 0)
-            continue;
+        // Only process lines like "* Recent #0: Task{... A=PID:package}"
+        if (strncmp(line, "* Recent #", 10) != 0) continue;
 
+        // Find the "A=" part which precedes UID:package
         char *a_pos = strstr(line, " A=");
         if (!a_pos) continue;
+        a_pos += 3; // skip " A="
 
+        // Find the colon separating UID and package
         char *colon = strchr(a_pos, ':');
         if (!colon) continue;
+        colon += 1; // skip ':'
 
+        // Extract package (stop at first space or end of line)
         char pkg[MAX_PACKAGE] = {0};
-        size_t len = strlen(colon + 1);
-        if (len >= MAX_PACKAGE) len = MAX_PACKAGE - 1;
-        strncpy(pkg, colon + 1, len);
-        pkg[len] = 0;
+        size_t i = 0;
+        while (colon[i] != ' ' && colon[i] != '\0' && i < MAX_PACKAGE - 1) {
+            pkg[i] = colon[i];
+            i++;
+        }
+        pkg[i] = 0;
 
         if (strcmp(pkg, gamestart) == 0) {
             pclose(fp);
