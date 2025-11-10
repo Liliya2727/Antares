@@ -89,36 +89,34 @@ char* get_visible_package(void) {
 bool get_recent_package(const char* gamestart) {
     if (!gamestart) return false;
 
-    FILE *fp = popen("dumpsys activity activities", "r");
+    FILE *fp = popen("dumpsys activity recents", "r");
     if (!fp) {
-        log_zenith(LOG_ERROR, "Failed to run dumpsys activity activities");
+        fprintf(stderr, "Failed to run dumpsys activity recents\n");
         return false;
     }
 
     char line[MAX_LINE];
-    bool in_task_section = false;
-
     while (fgets(line, sizeof(line), fp)) {
         line[strcspn(line, "\n")] = 0;
 
-        // Start parsing after "Run #"
-        if (!in_task_section && strstr(line, "Run #")) {
-            in_task_section = true;
+        if (strncmp(line, "* Recent #", 10) != 0)
             continue;
-        }
-        if (!in_task_section) continue;
 
-        // End of relevant section
-        if (strlen(line) == 0) break;
+        char *a_pos = strstr(line, " A=");
+        if (!a_pos) continue;
 
-        // Look for package name
-        char *pkg_pos = strstr(line, gamestart);
-        if (pkg_pos) {
-            // Check if task is not finishing or destroyed
-            if (!strstr(line, "finishing=true") && !strstr(line, "state=DESTROYED")) {
-                pclose(fp);
-                return true;
-            }
+        char *colon = strchr(a_pos, ':');
+        if (!colon) continue;
+
+        char pkg[MAX_PACKAGE] = {0};
+        size_t len = strlen(colon + 1);
+        if (len >= MAX_PACKAGE) len = MAX_PACKAGE - 1;
+        strncpy(pkg, colon + 1, len);
+        pkg[len] = 0;
+
+        if (strcmp(pkg, gamestart) == 0) {
+            pclose(fp);
+            return true;
         }
     }
 

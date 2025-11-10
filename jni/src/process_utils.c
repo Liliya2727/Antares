@@ -25,71 +25,34 @@
  * Description        : Fetch PID from a process name.
  * Note               : You can input inexact process name.
  ***********************************************************************************/
-pid_t pidof(const char* name) {
-    DIR* proc_dir = opendir("/proc");
-    if (!proc_dir) [[clang::unlikely]] {
-        perror("opendir");
+pid_t pidof(const char *package_name) {
+    if (!package_name) return 0;
+    FILE *fp = popen("dumpsys activity top", "r");
+    if (!fp) {
+        fprintf(stderr, "popen failed: %s\n", strerror(errno));
         return 0;
     }
-
-    pid_t tracked_pid = 0;
-    struct dirent* entry;
-
-    while ((entry = readdir(proc_dir))) {
-        if (entry->d_type != DT_DIR)
-            continue;
-
-        // Check if directory name is a valid PID
-        bool is_pid = true;
-        for (char* p = entry->d_name; *p; ++p) {
-            if (!isdigit((unsigned char)*p)) {
-                is_pid = false;
+    char line[1024];
+    pid_t pid = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        if (strstr(line, "ACTIVITY") && strstr(line, package_name)) {
+            char *pid_str = strstr(line, "pid=");
+            if (pid_str) {
+                pid_str += 4;
+                char buf[16] = {0};
+                size_t i = 0;
+                while (isdigit((unsigned char)pid_str[i]) && i < sizeof(buf)-1) {
+                    buf[i] = pid_str[i];
+                    i++;
+                }
+                buf[i] = 0;
+                pid = (pid_t)atoi(buf);
                 break;
             }
         }
-
-        if (!is_pid) [[clang::unlikely]] {
-            continue;
-        }
-
-        // Read cmdline
-        char path[256];
-        snprintf(path, sizeof(path), "/proc/%s/cmdline", entry->d_name);
-        FILE* fp = fopen(path, "r");
-
-        if (!fp) [[clang::unlikely]] {
-            continue;
-        }
-
-        char cmdline[4096];
-        size_t len = fread(cmdline, 1, sizeof(cmdline) - 1, fp);
-        fclose(fp);
-
-        if (len == 0) [[clang::unlikely]] {
-            continue;
-        }
-
-        // Replace null bytes with spaces
-        for (size_t i = 0; i < len; ++i) {
-            if (cmdline[i] == '\0')
-                cmdline[i] = ' ';
-        }
-        cmdline[len] = '\0';
-
-        // Check for substring match
-        if (strstr(cmdline, name) != NULL) {
-            char* end;
-            long pid_val = strtol(entry->d_name, &end, 10);
-            if (end == entry->d_name || *end != '\0' || pid_val <= 0)
-                continue;
-
-            if (tracked_pid == 0 || pid_val < tracked_pid)
-                tracked_pid = (pid_t)pid_val;
-        }
     }
-
-    closedir(proc_dir);
-    return tracked_pid;
+    pclose(fp);
+    return pid;
 }
 
 /***********************************************************************************
