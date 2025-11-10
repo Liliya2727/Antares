@@ -29,7 +29,7 @@ pid_t pidof(const char *package_name) {
     if (!package_name) return 0;
     FILE *fp = popen("dumpsys activity top", "r");
     if (!fp) {
-        log_zenith(0, "Failed to run dumpsys activity top");
+        perror("popen");
         return 0;
     }
     char line[1024];
@@ -39,9 +39,15 @@ pid_t pidof(const char *package_name) {
             char *pid_str = strstr(line, "pid=");
             if (pid_str) {
                 pid_str += 4;
+                
+                if (strncmp(pid_str, "(not running)", 13) == 0) {
+                    pid = 0;
+                    break;
+                }
+
                 char buf[16] = {0};
                 size_t i = 0;
-                while (isdigit((unsigned char)pid_str[i]) && i < sizeof(buf)-1) {
+                while (isdigit((unsigned char)pid_str[i]) && i < sizeof(buf) - 1) {
                     buf[i] = pid_str[i];
                     i++;
                 }
