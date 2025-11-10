@@ -222,27 +222,15 @@ int main(int argc, char* argv[]) {
         char* visible_pkg = NULL;
 
         if (!gamestart) {
-            gamestart = get_gamestart(); // Foreground game package        
+            gamestart = get_gamestart(); // Foreground game package
             preload(gamestart);
         } else if (game_pid != 0 && kill(game_pid, 0) == -1) [[clang::unlikely]] {
-            log_zenith(LOG_INFO, "Game %s exited, resetting profile...", gamestart);
+            log_zenith(LOG_INFO, "Game %s PID exited, resetting profile...", gamestart);
             stop_preloading();
             game_pid = 0;
             free(gamestart);
             gamestart = get_gamestart();
             need_profile_checkup = true; // force recheck
-        }
-        
-        // Fetch PID only if we have gamestart
-        if (gamestart) {
-            if (game_pid != 0 && kill(game_pid, 0) == -1) {
-                log_zenith(LOG_INFO, "Game %s PID exited, resetting...", gamestart);
-                stop_preloading(&LOOP_INTERVAL);
-                game_pid = 0;
-                free(gamestart);
-                gamestart = get_gamestart();
-                need_profile_checkup = true;
-            }
         }
         
         // Determine if gamestart is in recents
