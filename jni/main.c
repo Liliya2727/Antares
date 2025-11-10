@@ -226,7 +226,7 @@ int main(int argc, char* argv[]) {
             preload(gamestart);
         } else if (game_pid != 0 && kill(game_pid, 0) == -1) [[clang::unlikely]] {
             log_zenith(LOG_INFO, "Game %s exited, resetting profile...", gamestart);
-            stop_preloading(&LOOP_INTERVAL);
+            stop_preloading();
             game_pid = 0;
             free(gamestart);
             gamestart = get_gamestart();
