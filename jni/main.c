@@ -221,18 +221,30 @@ int main(int argc, char* argv[]) {
         if (!gamestart) {
             gamestart = get_gamestart();
             preload(gamestart);
-        } else if (game_pid != 0 && kill(game_pid, 0) == -1) [[clang::unlikely]] {
-            game_pid = 0;        
-            // Check dumpsys to see if game is still in recents
-            if (!get_recent_package(gamestart)) {
-                log_zenith(LOG_INFO, "Game %s PID exited, resetting profile...", gamestart);
-                game_pid = 0;
-                stop_preloading();
-                free(gamestart);
-                gamestart = get_gamestart();
-    
-                // Force profile recheck to make sure new game session get boosted
-                need_profile_checkup = true;
+        } else {
+            // Check if PID is dead
+            if (game_pid != 0 && kill(game_pid, 0) == -1) [[clang::unlikely]] {
+                game_pid = 0;        
+                // Check dumpsys to see if game is still in recents/background
+                if (!get_recent_package(gamestart)) {
+                    log_zenith(LOG_INFO, "Game %s PID exited and not in recents, resetting profile...", gamestart);
+                    stop_preloading();
+                    game_pid = 0;
+                    free(gamestart);
+                    gamestart = get_gamestart();
+                    need_profile_checkup = true; // force profile recheck
+                }
+            } 
+            // PID is alive, but maybe app removed from recents
+            else if (game_pid != 0) {
+                if (!get_recent_package(gamestart)) {
+                    log_zenith(LOG_INFO, "Game %s PID alive but not in recents, resetting profile...", gamestart);
+                    stop_preloading();
+                    game_pid = 0;
+                    free(gamestart);
+                    gamestart = get_gamestart();
+                    need_profile_checkup = true; // force profile recheck
+                }
             }
         }
               
