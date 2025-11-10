@@ -224,13 +224,11 @@ int main(int argc, char* argv[]) {
         }
         
         // Check if PID is alive
-        if (game_pid != 0 && kill(game_pid, 0) == -1) {
-            log_zenith(LOG_INFO, "Game %s PID exited, verifying if still running...", gamestart);
-            game_pid = 0;
-        
+        if (game_pid != 0 && kill(game_pid, 0) == -1) { 
+            game_pid = 0;        
             // Check dumpsys to see if game is still in recents
-            if (!is_recent_package(gamestart)) {
-                log_zenith(LOG_INFO, "Game %s not in recents, resetting profile...", gamestart);
+            if (!get_recent_package(gamestart)) {
+                log_zenith(LOG_INFO, "Game %s PID exited, verifying if still running...", gamestart);
                 stop_preloading();
                 free(gamestart);
                 gamestart = NULL;
