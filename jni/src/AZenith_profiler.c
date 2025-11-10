@@ -117,24 +117,32 @@ char* get_gamestart(void) {
     char *pkg = get_visible_package();
     if (!pkg) return NULL;
     FILE *gf = fopen(GAMELIST, "r");
-    if (!gf) {
-        log_zenith(LOG_WARN, "Gamelist file not found: %s", GAMELIST);
+    fseek(gf, 0, SEEK_END);
+    long size = ftell(gf);
+    rewind(gf);
+    if (size <= 0) {
+        fclose(gf);
         free(pkg);
         return NULL;
     }
-    char line[4096];
-    if (fgets(line, sizeof(line), gf)) {
-        line[strcspn(line, "\r\n")] = 0;
-        char *token = strtok(line, "|");
-        while (token) {
-            if (strcmp(token, pkg) == 0) {
-                fclose(gf);
-                return pkg;
-            }
-            token = strtok(NULL, "|");
-        }
+    char *line = malloc(size + 1);
+    if (!line) {
+        fclose(gf);
+        free(pkg);
+        return NULL;
     }
+    fread(line, 1, size, gf);
     fclose(gf);
+    line[size] = '\0';
+    char *token = strtok(line, "|");
+    while (token) {
+        if (strcmp(token, pkg) == 0) {
+            free(line);
+            return pkg;
+        }
+        token = strtok(NULL, "|");
+    }
+    free(line);
     free(pkg);
     return NULL;
 }
