@@ -134,6 +134,8 @@ int main(int argc, char* argv[]) {
 
     // Initialize variables
     bool need_profile_checkup = false;
+    MLBBState mlbb_is_running = MLBB_NOT_RUNNING;
+    ProfileMode cur_mode = PERFCOMMON;
     static bool did_notify_start = false;
 
     // Remove old logs before start initializing script
