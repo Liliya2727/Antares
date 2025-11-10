@@ -219,66 +219,69 @@ int main(int argc, char* argv[]) {
         // Only fetch gamestart when user not in-game
         // prevent overhead from dumpsys commands.
         if (!gamestart) {
-            gamestart = get_gamestart(); // Foreground game package
-            preload(gamestart);
-        } else if (game_pid != 0 && kill(game_pid, 0) == -1) [[clang::unlikely]] {
-            log_zenith(LOG_INFO, "Game %s PID exited, resetting profile...", gamestart);
-            stop_preloading();
-            game_pid = 0;
-            free(gamestart);
             gamestart = get_gamestart();
-            need_profile_checkup = true; // force recheck
+            preload(gamestart);
         }
         
-        // Determine if gamestart is in recents
-        bool in_recents = false;
-        if (gamestart && game_pid != 0) {
-            char* recent_pkg = get_recent_package(gamestart);
-            if (recent_pkg) {
-                in_recents = true;
-                free(recent_pkg);
+        // Check if PID is alive
+        if (game_pid != 0 && kill(game_pid, 0) == -1) {
+            log_zenith(LOG_INFO, "Game %s PID exited, verifying if still running...", gamestart);
+            game_pid = 0;
+        
+            // Check dumpsys to see if game is still in recents
+            if (!is_recent_package(gamestart)) {
+                log_zenith(LOG_INFO, "Game %s not in recents, resetting profile...", gamestart);
+                stop_preloading();
+                free(gamestart);
+                gamestart = NULL;
+                need_profile_checkup = true;
+                goto apply_fallback;
             }
         }
         
+        // Check if foreground
+        bool is_foreground = gamestart && get_screenstate() && strcmp(gamestart, get_visible_package()) == 0;
+        
         // PERFORMANCE PROFILE LOGIC
-        if (gamestart && ((get_screenstate() && strcmp(gamestart, get_visible_package()) == 0) || 
-                          (game_pid != 0 && in_recents))) {
-        
-        
+        if (gamestart && (is_foreground || game_pid != 0)) {
             if (!need_profile_checkup && cur_mode == PERFORMANCE_PROFILE)
                 goto skip_profile; // Already on performance
         
-            // Get PID of game package
-            if (get_screenstate() && strcmp(gamestart, get_visible_package()) == 0)
+            // Fetch PID if in foreground
+            if (is_foreground)
                 game_pid = pidof(gamestart);
         
-            if (game_pid == 0) [[clang::unlikely]] {
-                log_zenith(LOG_ERROR, "Unable to fetch PID of %s", gamestart);
+            // If PID still null even after foreground check, reset profile
+            if (game_pid == 0) {
+                log_zenith(LOG_INFO, "Game PID null, resetting profile...");
+                stop_preloading();
                 free(gamestart);
                 gamestart = NULL;
-                goto skip_profile;
+                need_profile_checkup = true;
+                goto apply_fallback;
             }
         
             cur_mode = PERFORMANCE_PROFILE;
             need_profile_checkup = false;
-            log_zenith(LOG_INFO, "Applying performance profile for %s", gamestart);
+            log_zenith(LOG_INFO, "Applying Performance Profile for %s", gamestart);
             toast("Applying Performance Profile");
             set_priority(game_pid);
             run_profiler(PERFORMANCE_PROFILE);
         
-        // ECO MODE
+            skip_profile:
+            ;
         } else if (get_low_power_state()) {
+            // ECO MODE
             if (cur_mode != ECO_MODE) {
                 cur_mode = ECO_MODE;
                 need_profile_checkup = false;
                 log_zenith(LOG_INFO, "Applying ECO Mode");
                 toast("Applying Eco Mode");
                 run_profiler(ECO_MODE);
-                
             }
-        
-        // BALANCED FALLBACK
         } else {
+        apply_fallback:
+            // BALANCED fallback
             if (cur_mode != BALANCED_PROFILE) {
                 cur_mode = BALANCED_PROFILE;
                 need_profile_checkup = false;
@@ -291,9 +294,6 @@ int main(int argc, char* argv[]) {
                 }
             }
         }
-        
-        skip_profile:
-        ;
     }
 
     return 0;

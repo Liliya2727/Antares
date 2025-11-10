@@ -86,18 +86,17 @@ char* get_visible_package(void) {
  * Returns.          : Returns a malloc()'d string containing the package name,
  *                     or NULL if none is found. Caller must free().
  ************************************************************/
-char* get_recent_package(const char* gamestart) {
-    if (!gamestart) return NULL;
+bool get_recent_package(const char* gamestart) {
+    if (!gamestart) return false;
 
     FILE *fp = popen("dumpsys window displays", "r");
     if (!fp) {
         log_zenith(0, "Failed to run dumpsys window displays");
-        return NULL;
+        return false;
     }
 
     char line[MAX_LINE];
     char last_task_line[MAX_LINE] = {0};
-    char pkg[MAX_PACKAGE] = {0};
     bool in_task_section = false;
 
     while (fgets(line, sizeof(line), fp)) {
@@ -117,26 +116,33 @@ char* get_recent_package(const char* gamestart) {
         }
 
         if (strstr(line, "* ActivityRecord{") && last_task_line[0] != '\0') {
-            char *u0 = strstr(line, " u0 ");
-            if (u0) {
-                u0 += 4; // skip " u0 "
-                char *slash = strchr(u0, '/');
-                if (slash) {
-                    size_t len = slash - u0;
-                    if (len >= MAX_PACKAGE) len = MAX_PACKAGE - 1;
-                    memcpy(pkg, u0, len);
-                    pkg[len] = 0;
+            bool visible = strstr(last_task_line, "visible=true") != NULL;
 
-                    if (strcmp(gamestart, pkg) == 0) {
-                        pclose(fp);
-                        return strdup(pkg);
+            // Only check background/recent
+            if (!visible) {
+                char *u0 = strstr(line, " u0 ");
+                if (u0) {
+                    u0 += 4;
+                    char *slash = strchr(u0, '/');
+                    if (slash) {
+                        size_t len = slash - u0;
+                        if (len >= MAX_PACKAGE) len = MAX_PACKAGE - 1;
+                        char pkg[MAX_PACKAGE] = {0};
+                        memcpy(pkg, u0, len);
+                        pkg[len] = 0;
+
+                        if (strcmp(gamestart, pkg) == 0) {
+                            pclose(fp);
+                            return true;  // Found in recents/background
+                        }
                     }
                 }
             }
-            last_task_line[0] = 0; 
+
+            last_task_line[0] = 0;
         }
     }
 
     pclose(fp);
-    return NULL;
+    return false;  // Not found in background
 }
