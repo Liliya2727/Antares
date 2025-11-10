@@ -126,11 +126,11 @@ char* get_gamestart(void) {
     }
     char entry[128];
     while (fgets(entry, sizeof(entry), gf)) {
-        entry[strcspn(entry, "\n")] = 0;
+        entry[strcspn(entry, "\r\n")] = 0;
         if (strcmp(entry, pkg) == 0) {
-            log_zenith(1, "Game detected in foreground: %s", pkg);
+            log_zenith(LOG_INFO, "Game detected in foreground: %s", pkg);
             fclose(gf);
-            return pkg; // caller must free
+            return pkg;
         }
     }
     log_zenith(LOG_INFO, "No matching game in foreground (current: %s)", pkg);
