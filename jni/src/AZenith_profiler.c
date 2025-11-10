@@ -52,45 +52,32 @@ void run_profiler(const int profile) {
  ************************************************************/
 char* get_visible_package(void) {
     FILE *fp = popen("dumpsys activity activities", "r");
-    if (!fp) return NULL;
-
+    if (!fp) {
+        log_zenith(LOG_WARN, "Failed to run dumpsys activity activities");
+        return NULL;
+    }
     char line[MAX_LINE];
-    char last_activity_line[MAX_LINE] = {0};
     char pkg[MAX_PACKAGE] = {0};
-
     while (fgets(line, sizeof(line), fp)) {
-
-        if (strstr(line, "topActivity=ComponentInfo{")) {
-            strcpy(last_activity_line, line);
-        }
-
-        if (strstr(line, "visible=true")) {
-
-            // example:
-            // topActivity=ComponentInfo{com.termux/com.termux.app.TermuxActivity}
-
-            char *start = strstr(last_activity_line, "ComponentInfo{");
-            if (!start) continue;
-            start += strlen("ComponentInfo{");
-
+        // Look for the topActivity line
+        char *start = strstr(line, "topActivity=ComponentInfo{");
+        if (start) {
+            start += strlen("topActivity=ComponentInfo{");
             char *slash = strchr(start, '/');
             if (!slash) continue;
-
             size_t len = slash - start;
             if (len >= MAX_PACKAGE) len = MAX_PACKAGE - 1;
-
             memcpy(pkg, start, len);
             pkg[len] = '\0';
-
+            log_zenith(LOG_INFO, "Detected topActivity package: %s", pkg);
             break;
         }
     }
-
     pclose(fp);
-
-    if (pkg[0] == '\0')
+    if (pkg[0] == '\0') {
+        log_zenith(LOG_WARN, "No topActivity found");
         return NULL;
-
+    }
     return strdup(pkg); // caller must free
 }
 
@@ -110,17 +97,21 @@ char* get_gamestart(void) {
     if (!pkg) return NULL;
     FILE *gf = fopen(GAMELIST, "r");
     if (!gf) {
+        log_zenith(LOG_WARN, "Gamelist file not found: %s", GAMELIST);
         free(pkg);
         return NULL;
     }
     char entry[128];
     while (fgets(entry, sizeof(entry), gf)) {
         entry[strcspn(entry, "\n")] = 0;
+
         if (strcmp(entry, pkg) == 0) {
+            log_zenith(LOG_INFO, "Game detected in foreground: %s", pkg);
             fclose(gf);
             return pkg;
         }
     }
+    log_zenith(LOG_INFO, "No matching game in foreground (current: %s)", pkg);
     fclose(gf);
     free(pkg);
     return NULL;
