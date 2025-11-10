@@ -221,14 +221,23 @@ int main(int argc, char* argv[]) {
         if (!gamestart) {
             gamestart = get_gamestart();
             preload(gamestart);
-        } else if (game_pid == 0 || kill(game_pid, 0) == -1 || !get_recent_package(gamestart)) {
-            // PID dead or app not in recents/background → reset
-            log_zenith(LOG_INFO, "Game %s exited or removed from recents, resetting profile...", gamestart);
-            stop_preloading();
-            game_pid = 0;
-            free(gamestart);
-            gamestart = get_gamestart();
-            need_profile_checkup = true;
+        } else {
+            // Check PID and recent package
+            char *recent_pkg = get_gamerecent();
+        
+            if (game_pid == 0 || kill(game_pid, 0) == -1 || !recent_pkg || strcmp(recent_pkg, gamestart) != 0) {
+                log_zenith(LOG_INFO, "Game %s exited or removed from recents, resetting profile...", gamestart);
+                stop_preloading();
+        
+                game_pid = 0;
+                free(gamestart);
+                gamestart = get_gamestart();
+                need_profile_checkup = true;
+            }
+        
+            if (recent_pkg) {
+                free(recent_pkg);
+            }
         }
               
         // Profiler Logic

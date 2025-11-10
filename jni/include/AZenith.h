@@ -118,6 +118,7 @@ bool get_recent_package(const char* gamestart);
 extern bool (*get_screenstate)(void);
 extern bool (*get_low_power_state)(void);
 char* get_gamestart(void);
+char* get_gamerecent(void);
 bool get_screenstate_normal(void);
 bool get_low_power_state_normal(void);
 void run_profiler(const int profile);
