@@ -221,76 +221,66 @@ int main(int argc, char* argv[]) {
         if (!gamestart) {
             gamestart = get_gamestart();
             preload(gamestart);
-        }
-        
-        // Check if PID is alive
-        if (game_pid != 0 && kill(game_pid, 0) == -1) { 
+        } else if (game_pid != 0 && kill(game_pid, 0) == -1) [[clang::unlikely]] {
             game_pid = 0;        
             // Check dumpsys to see if game is still in recents
             if (!get_recent_package(gamestart)) {
-                log_zenith(LOG_INFO, "Game %s PID exited, verifying if still running...", gamestart);
+                log_zenith(LOG_INFO, "Game %s PID exited, resetting profile...", gamestart);
+                game_pid = 0;
                 stop_preloading();
                 free(gamestart);
-                gamestart = NULL;
+                gamestart = get_gamestart();
+    
+                // Force profile recheck to make sure new game session get boosted
                 need_profile_checkup = true;
-                goto apply_fallback;
             }
         }
-        
-        // Check if foreground
-        bool is_foreground = gamestart && get_screenstate() && strcmp(gamestart, get_visible_package()) == 0;
-        
-        // PERFORMANCE PROFILE LOGIC
-        if (gamestart && (is_foreground || game_pid != 0)) {
+              
+        // Profiler Logic
+        if (gamestart && get_screenstate() && strcmp(gamestart, get_visible_package()) == 0 || game_pid != 0) {
+            // Bail out if we already on performance profile
             if (!need_profile_checkup && cur_mode == PERFORMANCE_PROFILE)
-                goto skip_profile; // Already on performance
+                continue;
         
-            // Fetch PID if in foreground
-            if (is_foreground)
-                game_pid = pidof(gamestart);
-        
-            // If PID still null even after foreground check, reset profile
-            if (game_pid == 0) {
-                log_zenith(LOG_INFO, "Game PID null, resetting profile...");
-                stop_preloading();
+            // Fetch PID 
+            game_pid = pidof(gamestart);
+            if (game_pid == 0) [[clang::unlikely]] {
+                log_zenith(LOG_ERROR, "Unable to fetch PID of %s", gamestart);
                 free(gamestart);
                 gamestart = NULL;
-                need_profile_checkup = true;
-                goto apply_fallback;
+                continue;
             }
         
             cur_mode = PERFORMANCE_PROFILE;
             need_profile_checkup = false;
-            log_zenith(LOG_INFO, "Applying Performance Profile for %s", gamestart);
+            log_zenith(LOG_INFO, "Applying performance profile for %s", gamestart);
             toast("Applying Performance Profile");
             set_priority(game_pid);
             run_profiler(PERFORMANCE_PROFILE);
-        
-            skip_profile:
-            ;
         } else if (get_low_power_state()) {
-            // ECO MODE
-            if (cur_mode != ECO_MODE) {
-                cur_mode = ECO_MODE;
-                need_profile_checkup = false;
-                log_zenith(LOG_INFO, "Applying ECO Mode");
-                toast("Applying Eco Mode");
-                run_profiler(ECO_MODE);
-            }
+            // Bail out if we already on powersave profile
+            if (cur_mode == ECO_MODE)
+                continue;
+
+            cur_mode = ECO_MODE;
+            need_profile_checkup = false;
+            log_zenith(LOG_INFO, "Applying ECO Mode");
+            toast("Applying Eco Mode");
+            run_profiler(ECO_MODE);
         } else {
-        apply_fallback:
-            // BALANCED fallback
-            if (cur_mode != BALANCED_PROFILE) {
-                cur_mode = BALANCED_PROFILE;
-                need_profile_checkup = false;
-                log_zenith(LOG_INFO, "Applying Balanced profile");
-                toast("Applying Balanced profile");
-                run_profiler(BALANCED_PROFILE);
-                if (!did_notify_start) {
-                    notify("AZenith is running successfully");
-                    did_notify_start = true;
-                }
+            // Bail out if we already on normal profile
+            if (cur_mode == BALANCED_PROFILE)
+                continue;
+
+            cur_mode = BALANCED_PROFILE;
+            need_profile_checkup = false;
+            log_zenith(LOG_INFO, "Applying Balanced profile");
+            toast("Applying Balanced profile");
+            if (!did_notify_start) {
+                notify("AZenith is running successfully");
+                did_notify_start = true;
             }
+            run_profiler(BALANCED_PROFILE);
         }
     }
 
