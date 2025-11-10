@@ -111,7 +111,7 @@ int uidof(pid_t pid);
 
 // Handler
 char* get_visible_package(void);
-static bool extract_and_compare(const char *line, const char *start_token, const char *gamestart);
+bool extract_and_compare(const char *line, const char *start_token, const char *gamestart);
 bool get_recent_package(const char* gamestart);
 
 // Profiler

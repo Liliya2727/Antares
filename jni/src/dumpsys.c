@@ -86,7 +86,7 @@ char* get_visible_package(void) {
  * Returns.          : Returns a malloc()'d string containing the package name,
  *                     or NULL if none is found. Caller must free().
  ************************************************************/
-static bool extract_and_compare(const char *line, const char *start_token, const char *gamestart) {
+bool extract_and_compare(const char *line, const char *start_token, const char *gamestart) {
     const char *token_pos = strstr(line, start_token);
     if (!token_pos) {
         return false; // Token not found
