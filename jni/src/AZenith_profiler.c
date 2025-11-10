@@ -62,7 +62,7 @@ char* get_visible_package(void) {
     char pkg[MAX_PACKAGE] = {0};
     bool in_task_section = false;
     while (fgets(line, sizeof(line), fp)) {
-        line[strcspn(line, "\n")] = 0; // remove newline
+        line[strcspn(line, "\n")] = 0;
         if (!in_task_section && strstr(line, "Application tokens in top down Z order:")) {
             in_task_section = true;
             continue;
@@ -88,7 +88,6 @@ char* get_visible_package(void) {
                         if (len >= MAX_PACKAGE) len = MAX_PACKAGE - 1;
                         memcpy(pkg, u0, len);
                         pkg[len] = 0;
-                        log_zenith(1, "Detected visible package: %s", pkg);
                         break;
                     }
                 }
@@ -98,7 +97,6 @@ char* get_visible_package(void) {
     }
     pclose(fp);
     if (pkg[0] == '\0') {
-        log_zenith(0, "No visible topActivity found");
         return NULL;
     }
     return strdup(pkg); // caller must free
@@ -124,16 +122,18 @@ char* get_gamestart(void) {
         free(pkg);
         return NULL;
     }
-    char entry[128];
-    while (fgets(entry, sizeof(entry), gf)) {
-        entry[strcspn(entry, "\r\n")] = 0;
-        if (strcmp(entry, pkg) == 0) {
-            log_zenith(LOG_INFO, "Game detected in foreground: %s", pkg);
-            fclose(gf);
-            return pkg;
+    char line[4096];
+    if (fgets(line, sizeof(line), gf)) {
+        line[strcspn(line, "\r\n")] = 0;
+        char *token = strtok(line, "|");
+        while (token) {
+            if (strcmp(token, pkg) == 0) {
+                fclose(gf);
+                return pkg;
+            }
+            token = strtok(NULL, "|");
         }
     }
-    log_zenith(LOG_INFO, "No matching game in foreground (current: %s)", pkg);
     fclose(gf);
     free(pkg);
     return NULL;
