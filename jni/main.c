@@ -134,7 +134,6 @@ int main(int argc, char* argv[]) {
 
     // Initialize variables
     bool need_profile_checkup = false;
-    MLBBState mlbb_is_running = MLBB_NOT_RUNNING;    
     static bool did_notify_start = false;
 
     // Remove old logs before start initializing script
@@ -219,8 +218,6 @@ int main(int argc, char* argv[]) {
 
         // Only fetch gamestart when user not in-game
         // prevent overhead from dumpsys commands.
-        char* visible_pkg = NULL;
-
         if (!gamestart) {
             gamestart = get_gamestart(); // Foreground game package
             preload(gamestart);
