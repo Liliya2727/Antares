@@ -91,7 +91,7 @@ bool get_recent_package(const char* gamestart) {
 
     FILE *fp = popen("dumpsys activity recents", "r");
     if (!fp) {
-        fprintf(stderr, "Failed to run dumpsys activity recents\n");
+        log_zenith(LOG_INFO, "Failed to run dumpsys activity recents");
         return false;
     }
 
