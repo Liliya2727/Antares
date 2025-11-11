@@ -71,7 +71,7 @@ void GamePreload(const char *package) {
     // Preload the entire folder
     char preload_cmd[512];
     snprintf(preload_cmd, sizeof(preload_cmd),
-             "sys.azenith-preloadbin -dL -tm 600M \"%s\"", lib_path);
+             "sys.azenith-preloadbin -dL -tm 600M \"%s/lib/arm64/\"", lib_path);
 
     systemv(preload_cmd);
     log_preload(LOG_INFO, "Preloading libs: %s", lib_path);
