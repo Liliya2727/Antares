@@ -73,26 +73,42 @@ void GamePreload(const char *package) {
         log_zenith(LOG_WARN, "Failed to run preloadbin for %s", package);
         return;
     }
-
+    
     log_zenith(LOG_INFO, "Preloading game %s", package);
-    log_preload(LOG_DEBUG, "Preloading libs %s/lib/arm64 with budget %s", lib_path, budget);
+    log_preload(LOG_INFO, "Preloading libs %s/lib/arm64 with budget %s", lib_path, budget);
+    
     char line[1024];
+    int total_pages = 0;
+    char total_size[32] = {0};
+    
     while (fgets(line, sizeof(line), fp)) {
-    char *p = strstr(line, "Touched Pages:");
-    if (p) {
+        line[strcspn(line, "\n")] = 0; // remove newline
+    
+        log_preload(LOG_DEBUG, "[PRELOAD OUTPUT] %s", line); // verbose output of preloadbin
+    
+        char *p_pages = strstr(line, "Touched Pages:");
+        if (p_pages) {
             int pages = 0;
             char size[32] = {0};
-            log_preload(LOG_DEBUG, "%s", line);  
-            // Use p (skip leading spaces) instead of line
-            if (sscanf(p, "Touched Pages: %d (%31[^)])", &pages, size) == 2) {
-                log_zenith(LOG_DEBUG, "Preloading complete: %d memory pages touched", pages);
+    
+            if (sscanf(p_pages, "Touched Pages: %d (%31[^)])", &pages, size) == 2) {
+                total_pages += pages;
+                strncpy(total_size, size, sizeof(total_size) - 1);
+    
+                log_zenith(LOG_DEBUG, "Preloading complete: %s memory pages touched", pages);
                 log_zenith(LOG_DEBUG, "Total memory used for preloaded libraries: %s", size);
             } else {
-                // Debug: log the line if sscanf failed
-                log_zenith(LOG_WARN, "Failed to parse Touched Pages line: '%s'", line);
+                log_zenith(LOG_WARN, "Failed to parse Touched Pages);
             }
         }
+    
+        // Optional: log each library loaded if sys.azenith-preloadbin prints paths
+        if (strstr(line, ".so")) {
+            log_preload(LOG_DEBUG, "Library touched: %s", line);
+        }
     }
-
+    
+    log_preload(LOG_INFO, "Game %s preloaded all libs: total %d pages touched (~%s)", package, total_pages, total_size);
+    
     pclose(fp);
 }
