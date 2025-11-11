@@ -95,10 +95,10 @@ void GamePreload(const char *package) {
                 total_pages += pages;
                 strncpy(total_size, size, sizeof(total_size) - 1);
     
-                log_zenith(LOG_DEBUG, "Preloading complete: %s memory pages touched", pages);
+                log_zenith(LOG_DEBUG, "Preloading complete: %d memory pages touched", pages);
                 log_zenith(LOG_DEBUG, "Total memory used for preloaded libraries: %s", size);
             } else {
-                log_zenith(LOG_WARN, "Failed to parse Touched Pages);
+                log_zenith(LOG_WARN, "Failed to parse Touched Pages");
             }
         }
     
