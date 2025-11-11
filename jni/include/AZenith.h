@@ -14,8 +14,8 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
-#define LOOP_INTERVAL_MS 500
-#define LOOP_INTERVAL_SEC 3
+#define LOOP_INTERVAL_MS 700
+#define LOOP_INTERVAL_SEC 2
 #define MAX_DATA_LENGTH 1024
 #define MAX_COMMAND_LENGTH 600
 #define MAX_OUTPUT_LENGTH 256

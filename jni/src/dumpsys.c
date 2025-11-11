@@ -26,6 +26,9 @@
  *                     or NULL if none is found. Caller must free().
  ************************************************************/
 char* get_visible_package(void) {
+    if (!get_screenstate()) {
+        return NULL;
+    }
     FILE *fp = popen("dumpsys window displays", "r");
     if (!fp) {
         log_zenith(LOG_INFO, "Failed to run dumpsys window displays");
