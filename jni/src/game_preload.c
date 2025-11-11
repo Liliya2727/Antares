@@ -75,18 +75,18 @@ void GamePreload(const char *package) {
     }
 
     log_zenith(LOG_INFO, "Preloading game %s", package);
-    log_preload(LOG_INFO, "Preloading libs %s/lib/arm64 with budget %s", lib_path, budget);
+    log_preload(LOG_DEBUG, "Preloading libs %s/lib/arm64 with budget %s", lib_path, budget);
     char line[1024];
     while (fgets(line, sizeof(line), fp)) {
     char *p = strstr(line, "Touched Pages:");
     if (p) {
             int pages = 0;
             char size[32] = {0};
-    
+            log_preload(LOG_DEBUG, "%s", line);  
             // Use p (skip leading spaces) instead of line
             if (sscanf(p, "Touched Pages: %d (%31[^)])", &pages, size) == 2) {
-                log_zenith(LOG_INFO, "Touched Pages : %d", pages);
-                log_zenith(LOG_INFO, "Size : %s", size);
+                log_zenith(LOG_DEBUG, "Preloading complete: %d memory pages touched", pages);
+                log_zenith(LOG_DEBUG, "Total memory used for preloaded libraries: %s", size);
             } else {
                 // Debug: log the line if sscanf failed
                 log_zenith(LOG_WARN, "Failed to parse Touched Pages line: '%s'", line);
