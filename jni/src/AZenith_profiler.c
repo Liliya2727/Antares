@@ -99,24 +99,36 @@ char* get_gamestart(void) {
 bool get_screenstate_normal(void) {
     static char fetch_failed = 0;
 
-    char* screenstate = execute_command("dumpsys power | grep -Eo 'mWakefulness=Awake|mWakefulness=Asleep' "
-                                        "| awk -F'=' '{print $2}'");
+    char *output = execute_command("dumpsys power");
+    if (!output) {
+        goto fetch_fail;
+    }
+    char *p = strstr(output, "mWakefulness=");
+    if (p) {
+        p += strlen("mWakefulness=");
 
-    if (screenstate) [[clang::likely]] {
+        char state[16] = {0};
+        int i = 0;
+
+        while (p[i] && p[i] != '\n' && i < 15) {
+            state[i] = p[i];
+            i++;
+        }
+        state[i] = 0;
+        free(output);
         fetch_failed = 0;
-        return IS_AWAKE(screenstate);
+        return IS_AWAKE(state);
     }
 
+    free(output);
+fetch_fail:
     fetch_failed++;
     log_zenith(LOG_ERROR, "Unable to fetch current screenstate");
 
     if (fetch_failed == 6) {
         log_zenith(LOG_FATAL, "get_screenstate is out of order!");
-
-        // Set default state after too many failures via function pointer
         get_screenstate = return_true;
     }
-
     return true;
 }
 
@@ -134,25 +146,46 @@ bool get_screenstate_normal(void) {
 bool get_low_power_state_normal(void) {
     static char fetch_failed = 0;
 
-    char* low_power = execute_direct("/system/bin/settings", "settings", "get", "global", "low_power", NULL);
-    if (!low_power) {
-        low_power = execute_command("dumpsys power | grep -Eo "
-                                    "'mSettingBatterySaverEnabled=true|mSettingBatterySaverEnabled=false' | "
-                                    "awk -F'=' '{print $2}'");
-    }
+    // First try: settings get global low_power
+    char *low_power = execute_direct("/system/bin/settings",
+                                     "settings", "get", "global", "low_power", NULL);
 
-    if (low_power) [[clang::likely]] {
+    if (low_power) {
+        // Trim whitespace/newlines
+        char *p = low_power;
+        while (*p == ' ' || *p == '\t') p++;
+        for (int i = strlen(p) - 1; i >= 0 && (p[i] == '\n' || p[i] == '\r'); i--)
+            p[i] = 0;
+
         fetch_failed = 0;
-        return IS_LOW_POWER(low_power);
+        return IS_LOW_POWER(p);
+    }
+    // Fallback: dumpsys power
+    char *output = execute_command("dumpsys power");
+    if (output) {
+        char *p = strstr(output, "mSettingBatterySaverEnabled=");
+        if (p) {
+            p += strlen("mSettingBatterySaverEnabled=");
+            char value[8] = {0};
+            int i = 0;
+            while (p[i] && p[i] != '\n' && i < 7) {
+                value[i] = p[i];
+                i++;
+            }
+            value[i] = 0;
+            free(output);
+            fetch_failed = 0;
+            return IS_LOW_POWER(value);
+        }
+        free(output);
     }
 
+    // Both failed
     fetch_failed++;
     log_zenith(LOG_ERROR, "Unable to fetch battery saver status");
 
     if (fetch_failed == 6) {
         log_zenith(LOG_FATAL, "get_low_power_state is out of order!");
-
-        // Set default state after too many failures via function pointer
         get_low_power_state = return_false;
     }
 
