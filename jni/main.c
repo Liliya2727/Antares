@@ -80,7 +80,6 @@ int main(int argc, char* argv[]) {
         if (strcmp(ai_state, "1") == 0) {
             log_zenith(LOG_WARN, "Can't apply profile in current mode");
             fprintf(stderr, "\033[31mERROR:\033[0m Cannot apply profile manually while auto mode is enabled.\n");
-            toast("Can't apply profiles");
             return EXIT_FAILURE;
         }
 
@@ -198,14 +197,14 @@ int main(int argc, char* argv[]) {
         __system_property_get("persist.sys.azenithconf.AIenabled", ai_state);
         if (did_notify_start) {
             if (strcmp(prev_ai_state, "1") == 0 && strcmp(ai_state, "0") == 0) {
-                log_zenith(LOG_INFO, "Dynamic profile is enabled, Reapplying Balanced Profiles");
+                log_zenith(LOG_INFO, "Dynamic profile is disabled, Reapplying Balanced Profiles");
                 toast("Applying Balanced Profile");
                 cur_mode = BALANCED_PROFILE;
                 run_profiler(BALANCED_PROFILE);
             }
 
             if (strcmp(prev_ai_state, "0") == 0 && strcmp(ai_state, "1") == 0) {
-                log_zenith(LOG_INFO, "Dynamic profile is disabled, Reapplying Balanced Profiles");
+                log_zenith(LOG_INFO, "Dynamic profile is enabled, Reapplying Balanced Profiles");
                 toast("Applying Balanced Profile");
                 cur_mode = BALANCED_PROFILE;
                 run_profiler(BALANCED_PROFILE);

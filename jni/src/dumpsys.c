@@ -56,7 +56,7 @@ char* get_visible_package(void) {
                 // Extract package from ActivityRecord line
                 char *u0 = strstr(line, " u0 ");
                 if (u0) {
-                    u0 += 4; // skip " u0 "
+                    u0 += 4; 
                     char *slash = strchr(u0, '/');
                     if (slash) {
                         size_t len = slash - u0;
