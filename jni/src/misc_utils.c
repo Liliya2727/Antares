@@ -228,7 +228,6 @@ void setspid(void) {
 void cleanup_vmt(void) {
     int pr = systemv("/system/bin/toybox pidof sys.azenith-preloadbin > /dev/null 2>&1");
     if (pr == 0) {
-        log_zenith(LOG_INFO, "Killing restover preload processes");
         systemv("pkill -9 -f sys.azenith-preloadbin");
     }
 }
@@ -259,7 +258,6 @@ void preload(const char* pkg) {
             _exit(0);
         }
         preload_active = true;
-        log_zenith(LOG_INFO, "Preloading game pkg: %s", pkg);
     }
 }
 

@@ -15,15 +15,7 @@
  */
 
 #include <AZenith.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <regex.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#include <sys/system_properties.h>
 
 /***********************************************************************************
  * Function Name      : GamePreload
@@ -49,17 +41,15 @@ void GamePreload(const char *package) {
         return;
     }
     pclose(apk);
-    apk_path[strcspn(apk_path, "\n")] = 0;  // Remove newline
+    apk_path[strcspn(apk_path, "\n")] = 0;
 
-    // Strip 'base.apk' to get the folder
     char *last_slash = strrchr(apk_path, '/');
     if (!last_slash) {
         log_zenith(LOG_WARN, "Failed to determine APK folder from path: %s", apk_path);
         return;
     }
-    *last_slash = '\0';  // Remove 'base.apk'
+    *last_slash = '\0';
 
-    // Set lib_path to the APK folder with trailing slash
     char lib_path[300];
     snprintf(lib_path, sizeof(lib_path), "%s", apk_path);
 
@@ -68,11 +58,38 @@ void GamePreload(const char *package) {
         return;
     }
 
-    // Preload the entire folder
+    char budget[32] = {0};
+    __system_property_get("persist.sys.azenithconf.preloadbudget", budget);
+    if (strlen(budget) == 0) {
+        strcpy(budget, "500M"); // default
+    }
+
     char preload_cmd[512];
     snprintf(preload_cmd, sizeof(preload_cmd),
-             "sys.azenith-preloadbin -dL -tm 600M \"%s/lib/arm64/\"", lib_path);
+             "sys.azenith-preloadbin -v -t -m %s \"%s/lib/arm64/*\"", budget, lib_path);
 
-    systemv(preload_cmd);
-    log_preload(LOG_INFO, "Preloading libs: %s/lib/arm64/*", lib_path);
+    FILE *fp = popen(preload_cmd, "r");
+    if (!fp) {
+        log_zenith(LOG_WARN, "Failed to run preloadbin for %s", package);
+        return;
+    }
+
+    log_zenith(LOG_INFO, "Preloading game %s", package);
+
+    char line[1024];
+    while (fgets(line, sizeof(line), fp)) {
+        log_preload(LOG_INFO, "%s", line);
+        char *p = strstr(line, "Touched Pages:");
+        if (p) {
+            int pages = 0;
+            char size[32] = {0};
+
+            if (sscanf(line, "Touched Pages: %d (%31[^)])", &pages, size) == 2) {
+                log_zenith(LOG_INFO, "Touched Pages : %d", pages);
+                log_zenith(LOG_INFO, "Size : %s", size);
+            }
+        }
+    }
+
+    pclose(fp);
 }
