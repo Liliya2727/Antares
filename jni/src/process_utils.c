@@ -64,6 +64,37 @@ pid_t pidof(const char* name) {
 }
 
 /***********************************************************************************
+ * Function Name      : uidof
+ * Inputs             : pid (pid_t) - PID of process
+ * Returns            : uid (int) - UID of process
+ * Description        : Fetch UID from a process id.
+ * Note               : Returns -1 on error.
+ ***********************************************************************************/
+int uidof(pid_t pid) {
+    char path[MAX_PATH_LENGTH];
+    char line[MAX_DATA_LENGTH];
+    FILE* status_file;
+    int uid = -1;
+
+    snprintf(path, sizeof(path), "/proc/%d/status", (int)pid);
+    status_file = fopen(path, "r");
+    if (!status_file) {
+        perror("fopen");
+        return -1;
+    }
+
+    while (fgets(line, sizeof(line), status_file) != NULL) {
+        if (strncmp(line, "Uid:", 4) == 0) {
+            sscanf(line + 4, "%d", &uid);
+            break;
+        }
+    }
+
+    fclose(status_file);
+    return uid;
+}
+
+/***********************************************************************************
  * Function Name      : set_priority
  * Inputs             : pid (pid_t) - PID to be boosted
  * Returns            : None
