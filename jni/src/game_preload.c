@@ -61,7 +61,7 @@ void GamePreload(const char *package) {
 
     // Set lib_path to the APK folder with trailing slash
     char lib_path[300];
-    snprintf(lib_path, sizeof(lib_path), "%s/", apk_path);
+    snprintf(lib_path, sizeof(lib_path), "%s", apk_path);
 
     if (access(lib_path, F_OK) != 0) {
         log_zenith(LOG_WARN, "Library path does not exist: %s", lib_path);
@@ -74,5 +74,5 @@ void GamePreload(const char *package) {
              "sys.azenith-preloadbin -dL -tm 600M \"%s/lib/arm64/\"", lib_path);
 
     systemv(preload_cmd);
-    log_preload(LOG_INFO, "Preloading libs: %s", lib_path);
+    log_preload(LOG_INFO, "Preloading libs: %s/lib/arm64/*", lib_path);
 }
