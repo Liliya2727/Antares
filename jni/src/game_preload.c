@@ -84,8 +84,6 @@ void GamePreload(const char *package) {
     while (fgets(line, sizeof(line), fp)) {
         line[strcspn(line, "\n")] = 0; // remove newline
     
-        log_preload(LOG_DEBUG, "[PRELOAD OUTPUT] %s", line); // verbose output of preloadbin
-    
         char *p_pages = strstr(line, "Touched Pages:");
         if (p_pages) {
             int pages = 0;
@@ -102,7 +100,6 @@ void GamePreload(const char *package) {
             }
         }
     
-        // Optional: log each library loaded if sys.azenith-preloadbin prints paths
         if (strstr(line, ".so")) {
             log_preload(LOG_DEBUG, "Library touched: %s", line);
         }
