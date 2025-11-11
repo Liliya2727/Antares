@@ -26,42 +26,36 @@
  * Note               : You can input inexact process name.
  ***********************************************************************************/
 pid_t pidof(const char* name) {
-    if (!name || name[0] == '\0') {
-        return 0;
-    }
+    if (!name || !name[0]) return 0;
 
-    FILE* fp = popen("dumpsys activity top", "r");
-    if (!fp) {
-        return 0;
-    }
+    FILE* fp = popen("dumpsys activity activities", "r");
+    if (!fp) return 0;
 
     char line[4096];
     pid_t pid = 0;
 
     while (fgets(line, sizeof(line), fp)) {
-        if (!strstr(line, "ACTIVITY") || !strstr(line, name))
-            continue;
 
-        char* pos = strstr(line, "pid=");
-        if (!pos)
-            continue;
+        // We only want ProcessRecord and our package name
+        if (!strstr(line, "ProcessRecord{")) continue;
+        if (!strstr(line, name)) continue;
 
-        pos += 4;
-        if (strncmp(pos, "(not running)", 13) == 0) {
-            pid = 0;
+        char* colon = strstr(line, ":");
+        if (!colon) continue;
+
+        char* p = colon - 1;
+        while (p > line && isdigit((unsigned char)*p)) {
+            p--;
+        }
+        p++;  // Move to first digit
+
+        if (!isdigit((unsigned char)p[0])) continue;
+
+        long val = strtol(p, NULL, 10);
+        if (val > 0) {
+            pid = (pid_t)val;
             break;
         }
-
-        if (!isdigit((unsigned char)pos[0])) {
-            continue;
-        }
-
-        long val = strtol(pos, NULL, 10);
-        if (val <= 0)
-            continue;
-
-        pid = (pid_t)val;
-        break;
     }
 
     pclose(fp);
