@@ -66,7 +66,7 @@ void GamePreload(const char *package) {
 
     char preload_cmd[512];
     snprintf(preload_cmd, sizeof(preload_cmd),
-             "sys.azenith-preloadbin -v -t -m %s \"%s/lib/arm64/*\"", budget, lib_path);
+             "sys.azenith-preloadbin -v -t -m %s \"%s/lib/arm64\"", budget, lib_path);
 
     FILE *fp = popen(preload_cmd, "r");
     if (!fp) {
@@ -75,10 +75,9 @@ void GamePreload(const char *package) {
     }
 
     log_zenith(LOG_INFO, "Preloading game %s", package);
-
+    log_preload(LOG_INFO, "Preloading libs %s/lib/arm64 with budget %s", lib_path, budget);
     char line[1024];
     while (fgets(line, sizeof(line), fp)) {
-        log_preload(LOG_INFO, "%s", line);
         char *p = strstr(line, "Touched Pages:");
         if (p) {
             int pages = 0;
