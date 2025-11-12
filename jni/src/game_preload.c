@@ -77,7 +77,8 @@ void GamePreload(const char *package) {
     char line[1024];
     int total_pages = 0;
     char total_size[32] = {0};
-    
+        
+    sleep(4);
     if (lib_exists) {
         char preload_cmd[512];
         snprintf(preload_cmd, sizeof(preload_cmd),
@@ -89,7 +90,7 @@ void GamePreload(const char *package) {
             return;
         }
     
-        log_zenith(LOG_INFO, "Preloading game %s", package);
+        log_zenith(LOG_INFO, "Preloading game libs %s", package);
         log_preload(LOG_INFO, "Preloading libs %s with budget %s", lib_path, budget);
     
     } else {
@@ -104,11 +105,10 @@ void GamePreload(const char *package) {
             return;
         }
     
-        log_zenith(LOG_INFO, "Preloading game %s", package);
+        log_zenith(LOG_INFO, "Preloading game split apks %s", package);
         log_preload(LOG_INFO, "Preloading split apks %s with budget %s", apk_path, budget);
     }
     
-    // Then your while loop can process fp safely
     while (fgets(line, sizeof(line), fp)) {
         line[strcspn(line, "\n")] = 0;
     
