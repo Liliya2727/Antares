@@ -78,10 +78,6 @@ extern pid_t game_pid;
 
 // Misc Utilities
 extern void GamePreload(const char* package);
-extern void preload(const char* pkg);
-extern void stop_preloading();
-extern void cleanup_vmt(void);
-extern bool preload_active;
 void sighandler(const int signal);
 char* trim_newline(char* string);
 void notify(const char* message);

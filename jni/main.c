@@ -18,7 +18,6 @@
 #include <libgen.h>
 char* gamestart = NULL;
 pid_t game_pid = 0;
-bool preload_active = false;
 
 int main(int argc, char* argv[]) {
     // Handle case when not running on root
@@ -220,10 +219,8 @@ int main(int argc, char* argv[]) {
         // prevent overhead from dumpsys commands.
         if (!gamestart) {
             gamestart = get_gamestart();
-            preload(gamestart);
         } else if (game_pid != 0 && kill(game_pid, 0) == -1) [[clang::unlikely]] {
             log_zenith(LOG_INFO, "Game %s exited, resetting profile...", gamestart);
-            stop_preloading();
             game_pid = 0;
             free(gamestart);
             gamestart = get_gamestart();
@@ -255,8 +252,13 @@ int main(int argc, char* argv[]) {
             need_profile_checkup = false;
             log_zenith(LOG_INFO, "Applying performance profile for %s", gamestart);
             toast("Applying Performance Profile");
-            set_priority(game_pid);
+            set_priority(game_pid);            
             run_profiler(PERFORMANCE_PROFILE);
+            char preload_active[PROP_VALUE_MAX] = {0};
+            __system_property_get("persist.sys.azenithconf.Apreload", preload_active);
+            if (strcmp(preload_active, "1") == 0) {
+                GamePreload(gamestart);
+            }
         } else if (is_initialize_complete && get_low_power_state()) {
             // Bail out if we already on powersave profile
             if (cur_mode == ECO_MODE)

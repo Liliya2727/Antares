@@ -220,65 +220,6 @@ void setspid(void) {
 }
 
 /***********************************************************************************
- * Function Name      : cleanup
- * Inputs             : None
- * Returns            : None
- * Description        : kill preload process
- ***********************************************************************************/
-void cleanup_vmt(void) {
-    int pr = systemv("/system/bin/toybox pidof sys.azenith-preloadbin > /dev/null 2>&1");
-    if (pr == 0) {
-        systemv("pkill -9 -f sys.azenith-preloadbin");
-    }
-}
-
-/***********************************************************************************
- * Function Name      : preload
- * Inputs             : gamepkg
- * Returns            : None
- * Description        : Run preloads on loop
- ***********************************************************************************/
-void preload(const char* pkg) {
-    if (!pkg || !*pkg) return;
-    char val[PROP_VALUE_MAX] = {0};
-    if (__system_property_get("persist.sys.azenithconf.APreload", val) > 0 && val[0] == '1') {
-        pid_t pid = fork();
-        if (pid < 0) {
-            log_zenith(LOG_ERROR, "Failed to fork process for GamePreload");
-            return;
-        } else if (pid == 0) {
-            pid_t pid2 = fork();
-            if (pid2 < 0) {
-                log_zenith(LOG_ERROR, "Failed to fork second process for GamePreload");
-                _exit(1);
-            } else if (pid2 == 0) {
-                GamePreload(pkg);
-                _exit(0);
-            }
-            _exit(0);
-        }
-        preload_active = true;
-    }
-}
-
-/***********************************************************************************
- * Function Name      : stop preload
- * Inputs             : none
- * Returns            : None
- * Description        : stop if preload is running
- ***********************************************************************************/
-void stop_preloading() {
-    if (preload_active) {
-        cleanup_vmt();
-        preload_active = false;
-        int status;
-        pid_t wpid;
-        while ((wpid = waitpid(-1, &status, WNOHANG)) > 0) {
-        }
-    }
-}
-
-/***********************************************************************************
  * Function Name      : runthermalcore
  * Inputs             : none
  * Returns            : None

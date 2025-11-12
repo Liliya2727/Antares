@@ -78,7 +78,6 @@ void GamePreload(const char *package) {
     int total_pages = 0;
     char total_size[32] = {0};
         
-    sleep(4);
     if (lib_exists) {
         char preload_cmd[512];
         snprintf(preload_cmd, sizeof(preload_cmd),
