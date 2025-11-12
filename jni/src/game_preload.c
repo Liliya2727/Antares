@@ -25,6 +25,7 @@
  * Description        : Preloads all native libraries (.so) inside lib/arm64
  ***********************************************************************************/
 void GamePreload(const char *package) {
+    sleep(5);
     if (!package || strlen(package) == 0) {
         log_zenith(LOG_WARN, "Package is null or empty");
         return;
