@@ -15,6 +15,7 @@
  */
 
 #include <AZenith.h>
+#include <dirent.h>
 #include <sys/system_properties.h>
 
 /***********************************************************************************
@@ -49,10 +50,23 @@ void GamePreload(const char *package) {
         return;
     }
     *last_slash = '\0';
-
+   
     char lib_path[300];
     snprintf(lib_path, sizeof(lib_path), "%s/lib/arm64", apk_path);
-    bool lib_exists = access(lib_path, F_OK) == 0;
+
+    // check if .so exists
+    bool lib_exists = false;
+    DIR *dir = opendir(lib_path);
+    if (dir) {
+        struct dirent *entry;
+        while ((entry = readdir(dir)) != NULL) {
+            if (strstr(entry->d_name, ".so")) {
+                lib_exists = true;
+                break;
+            }
+        }
+        closedir(dir);
+    }
     
     char budget[32] = {0};
     __system_property_get("persist.sys.azenithconf.preloadbudget", budget);
