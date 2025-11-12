@@ -146,8 +146,6 @@ int main(int argc, char* argv[]) {
     setspid();
     systemv("setprop persist.sys.rianixia.learning_enabled true");
     systemv("setprop persist.sys.azenith.state running");
-    // Clean old VMT
-    cleanup_vmt();
     notify("Initializing...");
     // Set Default ThermalPath
     systemv("setprop persist.sys.rianixia.thermalcore-bigdata.path /data/adb/.config/AZenith/debug");
