@@ -253,7 +253,7 @@ int main(int argc, char* argv[]) {
             set_priority(game_pid);            
             run_profiler(PERFORMANCE_PROFILE);
             char preload_active[PROP_VALUE_MAX] = {0};
-            __system_property_get("persist.sys.azenithconf.Apreload", preload_active);
+            __system_property_get("persist.sys.azenithconf.APreload", preload_active);
             if (strcmp(preload_active, "1") == 0) {
                 GamePreload(gamestart);
             }
