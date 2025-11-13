@@ -56,6 +56,10 @@ char* get_gamestart(void) {
     char *pkg = get_visible_package();
     if (!pkg) return NULL;
     FILE *gf = fopen(GAMELIST, "r");
+    if (!gf) {
+        free(pkg);
+        return NULL;
+    }
     fseek(gf, 0, SEEK_END);
     long size = ftell(gf);
     rewind(gf);
