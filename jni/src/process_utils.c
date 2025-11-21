@@ -17,7 +17,6 @@
 #include <AZenith.h>
 #include <sys/system_properties.h>
 
-
 /***********************************************************************************
  * Function Name      : pidof
  * Inputs             : name (char *) - Name of process
@@ -26,10 +25,12 @@
  * Note               : You can input inexact process name.
  ***********************************************************************************/
 pid_t pidof(const char* name) {
-    if (!name || !name[0]) return 0;
+    if (!name || !name[0])
+        return 0;
 
     FILE* fp = popen("dumpsys activity activities", "r");
-    if (!fp) return 0;
+    if (!fp)
+        return 0;
 
     char line[4096];
     pid_t pid = 0;
@@ -37,20 +38,24 @@ pid_t pidof(const char* name) {
     while (fgets(line, sizeof(line), fp)) {
 
         // We only want ProcessRecord and our package name
-        if (!strstr(line, "ProcessRecord{")) continue;
-        if (!strstr(line, name)) continue;
+        if (!strstr(line, "ProcessRecord{"))
+            continue;
+        if (!strstr(line, name))
+            continue;
 
         char* colon = strstr(line, ":");
-        if (!colon) continue;
+        if (!colon)
+            continue;
 
         // Go backward to find the start of the PID number
         char* p = colon - 1;
         while (p > line && isdigit((unsigned char)*p)) {
             p--;
         }
-        p++;  // Move to first digit
+        p++; // Move to first digit
 
-        if (!isdigit((unsigned char)p[0])) continue;
+        if (!isdigit((unsigned char)p[0]))
+            continue;
 
         long val = strtol(p, NULL, 10);
         if (val > 0) {

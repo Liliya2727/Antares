@@ -18,18 +18,16 @@
 
 /************************************************************
  * Function Name   : get_visible_package
- *
- * Description       : Reads "dumpsys window displays" and extracts the
- *                      package name of the currently visible (foreground) app.
- *
- * Returns.          : Returns a malloc()'d string containing the package name,
- *                     or NULL if none is found. Caller must free().
+ * Description     : Reads "dumpsys window displays" and extracts the
+ *                   package name of the currently visible (foreground) app.
+ * Returns.        : Returns a malloc()'d string containing the package name,
+ *                   or NULL if none is found. Caller must free().
  ************************************************************/
 char* get_visible_package(void) {
     if (!get_screenstate()) {
         return NULL;
     }
-    FILE *fp = popen("dumpsys window displays", "r");
+    FILE* fp = popen("dumpsys window displays", "r");
     if (!fp) {
         log_zenith(LOG_INFO, "Failed to run dumpsys window displays");
         return NULL;
@@ -45,8 +43,10 @@ char* get_visible_package(void) {
             in_task_section = true;
             continue;
         }
-        if (!in_task_section) continue;
-        if (strlen(line) == 0) break;
+        if (!in_task_section)
+            continue;
+        if (strlen(line) == 0)
+            break;
         // Save last task line
         if (strstr(line, "* Task{") && strstr(line, "type=standard")) {
             strcpy(last_task_line, line);
@@ -57,25 +57,26 @@ char* get_visible_package(void) {
             bool visible = strstr(last_task_line, "visible=true") != NULL;
             if (visible) {
                 // Extract package from ActivityRecord line
-                char *u0 = strstr(line, " u0 ");
+                char* u0 = strstr(line, " u0 ");
                 if (u0) {
-                    u0 += 4; 
-                    char *slash = strchr(u0, '/');
+                    u0 += 4;
+                    char* slash = strchr(u0, '/');
                     if (slash) {
                         size_t len = slash - u0;
-                        if (len >= MAX_PACKAGE) len = MAX_PACKAGE - 1;
+                        if (len >= MAX_PACKAGE)
+                            len = MAX_PACKAGE - 1;
                         memcpy(pkg, u0, len);
                         pkg[len] = 0;
                         break;
                     }
                 }
             }
-            last_task_line[0] = 0; // reset task line
+            last_task_line[0] = 0;
         }
     }
     pclose(fp);
     if (pkg[0] == '\0') {
         return NULL;
     }
-    return strdup(pkg); // caller must free
+    return strdup(pkg);
 }

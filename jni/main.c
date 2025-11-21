@@ -153,7 +153,7 @@ int main(int argc, char* argv[]) {
     run_profiler(PERFCOMMON);
     char prev_ai_state[PROP_VALUE_MAX] = "0";
     __system_property_get("persist.sys.azenithconf.AIenabled", prev_ai_state);
-    
+
     while (1) {
         if (cur_mode == PERFORMANCE_PROFILE) {
             usleep(LOOP_INTERVAL_MS * 1000);
@@ -231,7 +231,7 @@ int main(int argc, char* argv[]) {
 
         if (is_initialize_complete && gamestart && get_screenstate() && mlbb_is_running != MLBB_RUN_BG) {
             // Preload on loop
-            
+
             // Bail out if we already on performance profile
             if (!need_profile_checkup && cur_mode == PERFORMANCE_PROFILE)
                 continue;
@@ -245,12 +245,12 @@ int main(int argc, char* argv[]) {
                 gamestart = NULL;
                 continue;
             }
-        
+
             cur_mode = PERFORMANCE_PROFILE;
             need_profile_checkup = false;
             log_zenith(LOG_INFO, "Applying performance profile for %s", gamestart);
             toast("Applying Performance Profile");
-            set_priority(game_pid);            
+            set_priority(game_pid);
             run_profiler(PERFORMANCE_PROFILE);
             char preload_active[PROP_VALUE_MAX] = {0};
             __system_property_get("persist.sys.azenithconf.APreload", preload_active);

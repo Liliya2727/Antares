@@ -3,14 +3,14 @@
 
 #include <ctype.h>
 #include <dirent.h>
+#include <ftw.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/file.h>
 #include <sys/stat.h>
-#include <ftw.h>
-#include <sys/system_properties.h>
 #include <sys/syscall.h>
+#include <sys/system_properties.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -24,7 +24,6 @@
 #define MAX_PACKAGE 128
 #define NOTIFY_TITLE "AZenith"
 #define LOG_TAG "AZenith"
-
 #define LOG_FILE "/data/adb/.config/AZenith/debug/AZenith.log"
 #define LOG_FILE_PRELOAD "/data/adb/.config/AZenith/preload/AZenithPR.log"
 #define PROFILE_MODE "/data/adb/.config/AZenith/API/current_profile"
@@ -40,7 +39,7 @@
 #define IS_MLBB(gamestart)                                                                               \
     (strcmp(gamestart, "com.mobile.legends") == 0 || strcmp(gamestart, "com.mobilelegends.hwag") == 0 || \
      strcmp(gamestart, "com.mobiin.gp") == 0 || strcmp(gamestart, "com.mobilechess.gp") == 0)
-     
+
 #define IS_AWAKE(state) (strcmp(state, "Awake") == 0 || strcmp(state, "true") == 0)
 #define IS_LOW_POWER(state) (strcmp(state, "true") == 0 || strcmp(state, "1") == 0)
 

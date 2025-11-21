@@ -53,9 +53,10 @@ void run_profiler(const int profile) {
  * Note               : Caller is responsible for freeing the returned string.
  ***********************************************************************************/
 char* get_gamestart(void) {
-    char *pkg = get_visible_package();
-    if (!pkg) return NULL;
-    FILE *gf = fopen(GAMELIST, "r");
+    char* pkg = get_visible_package();
+    if (!pkg)
+        return NULL;
+    FILE* gf = fopen(GAMELIST, "r");
     if (!gf) {
         free(pkg);
         return NULL;
@@ -68,7 +69,7 @@ char* get_gamestart(void) {
         free(pkg);
         return NULL;
     }
-    char *line = malloc(size + 1);
+    char* line = malloc(size + 1);
     if (!line) {
         fclose(gf);
         free(pkg);
@@ -77,7 +78,7 @@ char* get_gamestart(void) {
     fread(line, 1, size, gf);
     fclose(gf);
     line[size] = '\0';
-    char *token = strtok(line, "|");
+    char* token = strtok(line, "|");
     while (token) {
         if (strcmp(token, pkg) == 0) {
             free(line);
@@ -103,7 +104,7 @@ char* get_gamestart(void) {
 bool get_screenstate_normal(void) {
     static char fetch_failed = 0;
 
-    FILE *fp = popen("dumpsys power", "r");
+    FILE* fp = popen("dumpsys power", "r");
     if (!fp) {
         log_zenith(LOG_ERROR, "Failed to run dumpsys power");
         goto fetch_fail;
@@ -113,11 +114,12 @@ bool get_screenstate_normal(void) {
     bool found = false;
     bool is_awake = true;
     while (fgets(line, sizeof(line), fp)) {
-        char *p = strstr(line, "mWakefulness=");
+        char* p = strstr(line, "mWakefulness=");
         if (p) {
             p += strlen("mWakefulness=");
-            char *newline = strchr(p, '\n');
-            if (newline) *newline = 0;
+            char* newline = strchr(p, '\n');
+            if (newline)
+                *newline = 0;
 
             is_awake = (strcmp(p, "Awake") == 0 || strcmp(p, "true") == 0);
             found = true;
@@ -157,12 +159,13 @@ fetch_fail:
 bool get_low_power_state_normal(void) {
     static char fetch_failed = 0;
 
-    FILE *fp = popen("/system/bin/settings get global low_power", "r");
+    FILE* fp = popen("/system/bin/settings get global low_power", "r");
     if (fp) {
         char line[128];
         if (fgets(line, sizeof(line), fp)) {
-            char *p = line;
-            while (*p == ' ' || *p == '\t') p++;
+            char* p = line;
+            while (*p == ' ' || *p == '\t')
+                p++;
             for (int i = strlen(p) - 1; i >= 0 && (p[i] == '\n' || p[i] == '\r'); i--)
                 p[i] = 0;
 
@@ -176,12 +179,13 @@ bool get_low_power_state_normal(void) {
     if (fp) {
         char line[512];
         while (fgets(line, sizeof(line), fp)) {
-            char *p = strstr(line, "mSettingBatterySaverEnabled=");
+            char* p = strstr(line, "mSettingBatterySaverEnabled=");
             if (p) {
                 p += strlen("mSettingBatterySaverEnabled=");
 
-                char *newline = strchr(p, '\n');
-                if (newline) *newline = 0;
+                char* newline = strchr(p, '\n');
+                if (newline)
+                    *newline = 0;
 
                 pclose(fp);
                 fetch_failed = 0;

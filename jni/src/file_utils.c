@@ -82,7 +82,7 @@ int write2file(const char* filename, const bool append, const bool use_flock, co
 int check_running_state(void) {
     char state[64] = {0};
 
-    FILE *fp = popen("getprop persist.sys.azenith.state", "r");
+    FILE* fp = popen("getprop persist.sys.azenith.state", "r");
     if (!fp) {
         perror("popen");
         return -1;

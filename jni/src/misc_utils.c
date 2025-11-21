@@ -127,8 +127,8 @@ void toast(const char* message) {
             if (exit != 0) [[clang::unlikely]] {
                 log_zenith(LOG_WARN, "Unable to show toast message: %s", message);
             }
-        sleep(2);
-        systemv("am force-stop azenith.toast");
+            sleep(2);
+            systemv("am force-stop azenith.toast");
         }
     }
 }
@@ -230,7 +230,7 @@ void runthermalcore(void) {
     __system_property_get("persist.sys.azenithconf.thermalcore", thermalcore);
     if (strcmp(thermalcore, "1") == 0) {
         systemv("sys.azenith-rianixiathermalcorev4 &");
-        FILE *fp = popen("pidof sys.azenith-rianixiathermalcorev4", "r");
+        FILE* fp = popen("pidof sys.azenith-rianixiathermalcorev4", "r");
         if (fp == NULL) {
             perror("pidof failed");
             log_zenith(LOG_INFO, "Failed to run Thermalcore service");
