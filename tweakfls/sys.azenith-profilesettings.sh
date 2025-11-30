@@ -1144,7 +1144,9 @@ performance_profile() {
         dlog "Applying global governor: performance"    
     else
         BIG_POLICY=$(get_biggest_cluster)
-        [ -n "$BIG_POLICY" ] && echo "performance" > "/sys/devices/system/cpu/cpufreq/$BIG_POLICY/scaling_governor"
+        chmod 644 /sys/devices/system/cpu/cpufreq/$BIG_POLICY/scaling_governor
+    	echo "performance" | tee /sys/devices/system/cpu/cpufreq/$BIG_POLICY/scaling_governor >/dev/null
+    	chmod 444 /sys/devices/system/cpu/cpufreq/$BIG_POLICY/scaling_governor
         dlog "Applying performance only to biggest cluster: $BIG_POLICY"
     fi
 
