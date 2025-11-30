@@ -23,6 +23,8 @@ logpath="/data/adb/.config/AZenith/debug/AZenithVerbose.log"
 logpath2="/data/adb/.config/AZenith/debug/AZenith.log"
 limiter=$(getprop persist.sys.azenithconf.freqoffset | sed -e 's/Disabled/100/' -e 's/%//g')
 curprofile=$(<"/data/adb/.config/AZenith/API/current_profile")
+cpulimit=$(getprop persist.sys.azenithconf.cpulimit)
+POLICIES=$(ls /sys/devices/system/cpu/cpufreq | grep policy)
 
 AZLog() {
 	if [ "$(getprop persist.sys.azenith.debugmode)" = "true" ]; then
@@ -439,6 +441,20 @@ applyfreqbalance() {
 
 applyfreqgame() {
 	[ -d /proc/ppm ] && Dsetgamefreqppm || Dsetgamefreq
+}
+
+# detect highest frequency policy (biggest core cluster)
+get_biggest_cluster() {
+    local max_freq=0
+    local target=""
+    for p in $POLICIES; do
+        cur_freq=$(cat /sys/devices/system/cpu/cpufreq/$p/cpuinfo_max_freq 2>/dev/null || echo 0)
+        if [ "$cur_freq" -gt "$max_freq" ]; then
+            max_freq=$cur_freq
+            target=$p
+        fi
+    done
+    echo "$target"
 }
 
 ###############################################
@@ -1122,12 +1138,15 @@ performance_profile() {
 	}
 
 	# Apply Game Governor
-	default_cpu_gov=$(load_default_governor)
-	if [ "$(getprop persist.sys.azenithconf.cpulimit)" -eq 0 ]; then
-		setgov "performance" && dlog "Applying governor to : performance"
-	else
-		setgov "$default_cpu_gov" && dlog "Applying governor to : $default_cpu_gov"
-	fi
+	default_cpu_gov=$(load_default_governor)		
+	if [ "$cpulimit" -eq 0 ]; then
+        setgov "performance"
+        dlog "Applying global governor: performance"    
+    else
+        BIG_POLICY=$(get_biggest_cluster)
+        [ -n "$BIG_POLICY" ] && echo "performance" > "/sys/devices/system/cpu/cpufreq/$BIG_POLICY/scaling_governor"
+        dlog "Applying performance only to biggest cluster: $BIG_POLICY"
+    fi
 
 	# Apply Game I/O Scheduler
 	default_iosched=$(load_default_iosched)
