@@ -387,7 +387,7 @@ Dsetgamefreq() {
 	for path in /sys/devices/system/cpu/*/cpufreq; do
 		cpu_maxfreq=$(<"$path/cpuinfo_max_freq")
 		cpu_minfreq=$(<"$path/cpuinfo_max_freq")
-		new_midtarget=$((cpu_maxfreq * 90 / 100))
+		new_midtarget=$((cpu_maxfreq * 100 / 100))
 		new_midfreq=$(setfreqs "$path/scaling_available_frequencies" "$new_midtarget")
 		applyppmnfreqsets "$cpu_maxfreq" "$path/scaling_max_freq"
 		applyppmnfreqsets "$new_midfreq" "$path/scaling_min_freq"
