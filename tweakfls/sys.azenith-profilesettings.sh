@@ -2009,26 +2009,6 @@ EOF
 		cmd migard start-trace false 2>/dev/null
 		cmd migard stop-trace true 2>/dev/null
 		cmd migard trace-buffer-size 0 2>/dev/null
-	else
-		for trace_file in \
-			/sys/kernel/tracing/instances/mmstat/trace \
-			/sys/kernel/tracing/trace \
-			$(find /sys/kernel/tracing/per_cpu/ -name trace 2>/dev/null); do
-			[ -w "$trace_file" ] && : >"$trace_file" 2>/dev/null
-		done
-		#zeshia "1" /sys/kernel/tracing/options/overwrite
-		#zeshia "1" /sys/kernel/tracing/options/record-tgids
-		for f in /sys/kernel/tracing/*; do
-			[ -w "$f" ] && echo "1" >"$f" 2>/dev/null
-		done
-		cmd accessibility start-trace 2>/dev/null
-		cmd input_method tracing start 2>/dev/null
-		cmd window tracing start 2>/dev/null
-		cmd window tracing size 8192 2>/dev/null
-		cmd migard dump-trace true 2>/dev/null
-		cmd migard start-trace true 2>/dev/null
-		cmd migard stop-trace false 2>/dev/null
-		cmd migard trace-buffer-size 8192 2>/dev/null
 	fi
 
 	kill_logd() {
